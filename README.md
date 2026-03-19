@@ -165,6 +165,36 @@ Build: `cd dgasm && mkdir build && cd build && cmake .. && make`
 
 Requires: C compiler, cmake, flex, bison.
 
+## SimH AP-120B Emulator (`nova_fps.c`)
+
+A 1500-line SimH device plugin that emulates the FPS AP-120B / FPS-100
+array processor. Runs as device 055 on the SimH Nova simulator.
+
+**Working features:**
+- All host interface registers (SWR, FN, LITES, CTL, WC, HMA, APMA)
+- FN command protocol (DEP, EXAM, START, STOP, CONT, STEP, RESET)
+- Program Store loading via panel DEP (4 x 16-bit words per 64-bit instruction)
+- AP instruction execution: 24-field 64-bit microinstruction decode
+- S-pad operations: ADD, SUB, MOV, AND, OR, EQV, CLR, INC, DEC, COM, LDSPI
+- Branch conditions: all 16 types (integer and float)
+- JMP/JSR/RET with subroutine return stack
+- HALT (both DF=0 and DF=1)
+- 38-bit FPS floating point: ADD, SUB, MUL with normalization
+- Floating adder (FADD/FSUB/FSUBR/FEQV/FAND/FOR) with A1/A2 input selection
+- Floating multiplier with M1/M2 input selection
+- Data Pad X/Y: 32 entries each, DPA+index addressing
+- Main Data memory: 64K x 64-bit, read/write via MI field
+- Table Memory ROM: 2K sin/cos tables (generated mathematically)
+- DMA engine with format conversion (38-bit float <-> 32-bit host)
+- Bit reversal (FFT address scrambling)
+- I/O operations: LDDA, OUT, IN, LDOMA, LDDPA, SWDB
+
+**To use:** Copy `nova_fps.c` to `simh/NOVA/`, add to makefile NOVA sources
+and `nova_sys.c` device list, rebuild SimH. Enable with `set fps enabled`.
+
+**Tested:** S-pad arithmetic (LDSPI, ADD, SUB, MOV) verified correct.
+Panel DEP/EXAM protocol verified. Synchronous execution on START.
+
 ## Community Links
 
 - [Nakazoto/FloatingPointSystems](https://github.com/Nakazoto/FloatingPointSystems) -- schematics, board scans, netlists
