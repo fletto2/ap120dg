@@ -40,26 +40,34 @@ A 5-phase DG Nova assembly program that systematically probes the FPS
 interface at device code 055 (octal). It halts after each probe so the
 operator can examine the CPU accumulators and the FPS front panel.
 
-### Phase 1: Find the FN (Function) Register
+### Phase 1: Find the FN (Function) Register Read Channel
 Reads all 12 DI variants after reset. The FN register should have a non-zero
-value (AP halted bit set). The DI instruction that returns a non-zero value
-is the one that reads FN.
+value (AP halted bit in MSB). The DI instruction that returns a non-zero value
+is the one that reads FN status.
 
-### Phase 2: Find the LITES Register
-Writes test patterns (0xFFFF, 0x8000) to all 12 DO variants. Watch the FPS
-front panel LEDs. The instruction that changes the LED pattern is writing to
-the LITES register.
+### Phase 2: Find the SWR Write and FN Write Channels
+Writes 0xFFFF to each of the 12 DO variants, then reads all three DI base
+channels after each write. Look for:
+- Which DO changes the LITES LEDs on the FPS front panel?
+- Which DI shows a changed value after each DO?
 
-### Phase 3: Write-Readback Matrix
-Writes 0xA5A5 via DOA, DOB, DOC, then reads back via DIA, DIB, DIC. If you
-get 0xA5A5 back from one of the reads, that DO/DI pair accesses the same
-register (or a read-write register pair).
+### Phase 3: FN Command Protocol Verification (Key Test)
+The Processor Handbook shows the host loads programs by alternating SWR writes
+(data) and FN writes (commands). This phase tests all 6 possible DO-pair
+combinations (DOA+DOB, DOA+DOC, DOB+DOA, DOB+DOC, DOC+DOA, DOC+DOB) for the
+SWR+FN protocol. For each pair:
+1. Write 0xA5A5 to SWR candidate (first DO)
+2. Write DEP-into-PSA command to FN candidate (second DO)
+3. Write EXAM-PSA command to FN candidate
+4. Read all three DI channels to find the EXAM result (should be 0xA5A5)
 
-### Phase 4: Two-Step REGSEL Test
-The FPS-100 interface board has a 6-bit "register select" bus (REGSEL00-05).
-This phase tests whether the FPS uses a two-step mechanism: write a register
-address via DOA, then read/write data via DOB. If four consecutive reads
-return DIFFERENT values (one per register address 0-3), two-step is confirmed.
+**The pair that produces 0xA5A5 in one of the DI reads is the correct
+SWR/FN mapping.** This is the single most important test.
+
+### Phase 4: DMA Register Discovery
+Tests flag variants (Start, Pulse) of each DO channel with a safe pattern
+(0xA5A5, no HDMA start bit) to find which DO+flag combinations access the
+DMA registers (CTL, WC, HMA, APMA).
 
 ### Phase 5: DONE/BUSY Flag Behavior
 Tests the standard DG DONE/BUSY flag flip-flops after NIOC (Clear), NIOS
@@ -72,17 +80,16 @@ Tests the standard DG DONE/BUSY flag flip-flops after NIOC (Clear), NIOS
 4. Start execution at 0100
 5. At each HALT, examine AC0 (and AC1/AC2/AC3 for Phases 3-4)
 6. Press CONTINUE to advance to the next probe
-7. There are 41 halts total. Record all values.
+7. There are ~43 halts total. Record all values.
 
 ### Interpreting Results
-- **Phase 1**: The halt where AC0 >= 0x8000 (or any non-zero value) identifies
-  which DI instruction reads the FN register
-- **Phase 2**: The halt where the FPS LEDs change identifies which DO
-  instruction writes the LITES register
-- **Phase 3**: The halt where AC1, AC2, or AC3 = 0xA5A5 shows which DI reads
-  back what was written by that DO
-- **Phase 4**: If AC1 differs across the four REGSEL tests, two-step is
-  confirmed; if AC1 is the same each time, it's direct decode
+- **Phase 1**: The halt where AC0 >= 0x8000 (or any non-zero) identifies the
+  DI instruction that reads FN status
+- **Phase 2**: The halt where FPS LEDs change identifies the DO that writes
+  LITES. AC1/AC2/AC3 show what DIA/DIB/DIC read after each write.
+- **Phase 3**: The halt where AC1, AC2, or AC3 = 0xA5A5 identifies the
+  correct SWR/FN DO-pair. **This is the key result.**
+- **Phase 4**: Tests flag variants to find DMA register access
 - **Phase 5**: AC0 encodes flags: 0=both clear, 1=BUSY set, 2=DONE set, 3=both
 
 Results from all 12 Phase 1 reads are also stored at zero-page addresses

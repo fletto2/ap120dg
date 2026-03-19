@@ -1,78 +1,85 @@
 ;======================================================================
-; FPS-100 / AP-120B  Data General Nova  Register Probe Test  v2
+; FPS-100 / AP-120B  Data General Nova  Register Probe Test  v3
 ;======================================================================
 ;
 ; PURPOSE
 ; -------
 ; Systematically probes the FPS array processor interface at DG Nova
 ; device code 055 (octal) to determine which DOA/DOB/DOC instruction
-; (with which S/C/P flag variant) accesses which FPS register.
-;
-; The exact DOx-to-register mapping is currently unknown. This test
-; discovers it empirically by exercising all 24 I/O instruction
-; variants and observing the results.
+; accesses which FPS register, then verifies the FN command protocol
+; documented in the AP-120B Processor Handbook (860-7259-003).
 ;
 ; BACKGROUND
 ; ----------
-; On the PDP-11, the FPS uses 10 memory-mapped registers. On the DG
-; Nova, these must be accessed through 3 I/O buffers (A, B, C) x
-; 4 flag variants (none, S, C, P) = 12 write + 12 read = 24 total
-; instruction variants.
+; The FPS host interface is fundamentally a TWO-REGISTER COMMAND
+; PROTOCOL. From the Processor Handbook, section 4.7:
 ;
-; WHAT WE EXPECT AFTER RESET
-; ---------------------------
-; After NIOC (I/O Clear), the interface BUSY and DONE flags are
-; cleared. The AP processor itself should be halted (power-on state).
-; The FN register should have a non-zero value indicating halted
-; status -- on PDP-11 this is bit 15 (MSB), which corresponds to
-; the MSB of the 16-bit word on the DG data bus (>= 0x8000).
-; However, we check for ANY non-zero value as a fallback since
-; the bit position may differ on the physical DG interface.
+;   1. Host writes DATA to SWR (Switch Register)
+;   2. Host writes COMMANDS to FN (Function Register)
+;   3. Host reads STATUS from FN
 ;
-; IMPORTANT: NIOC resets the INTERFACE (BUSY/DONE flags), not the
-; AP processor itself. The AP halt state is set by the AP hardware
-; at power-on or by writing APIRT to the CTRL register.
+; The FN register has dual function:
+;   WRITE: triggers panel operations (DEP, EXAM, START, STOP, etc.)
+;   READ:  returns AP status (bit 0/MSB = halted, bit 1 = SWR ack)
+;
+; FN command word format (bit 0 = MSB):
+;   Bit 0:     STOP/HALTED
+;   Bit 1:     START (at address in SWR)
+;   Bit 2:     CONT (continue from PSA)
+;   Bit 3:     STEP
+;   Bit 4:     RESET
+;   Bit 5:     EXAM (examine register per REG SELECT)
+;   Bit 6:     DEP  (deposit SWR into register per REG SELECT)
+;   Bit 7:     BREAK
+;   Bits 8-9:  INC  (0=none, 1=MA, 2=DPA, 3=TMA)
+;   Bits 10-11: WORD (which 16-bit portion of wide register, 0-3)
+;   Bits 12-15: REG SELECT (which register, 0-17 octal)
+;
+; REG SELECT: 0=PSA, 1=SPD, 2=MA, 3=TMA, 4=DPA, 5=SPFN, 6=STATUS,
+;   7=DA, 10=PS(by TMA), 15=MD(by MA)
+;
+; The DMA registers (CTL, WC, HMA, APMA) must also be directly
+; writable for DMA setup. These likely use additional DOx instructions.
 ;
 ; PHASES
 ; ------
-; Phase 1: Read all 12 DI variants after reset (find FN register).
-;          NIOC is issued before EACH read to ensure clean state,
-;          since DI+Start would set BUSY as a side effect.
+; Phase 1: Find FN read channel.
+;          NIOC + read all 12 DI variants. The one returning non-zero
+;          (AP halted bit in MSB) reads FN status.
 ;
-; Phase 2: Write test patterns to DO variants (find LITES register).
-;          NIOC is issued before EACH write. Watch FPS front panel
-;          LEDs after each HALT. Two sub-passes:
-;            Pass A: 0xFFFF (all bits) to all 12 DO variants
-;            Pass B: 0x8000 (MSB only) to DOA/DOB/DOC base variants
+; Phase 2: Find SWR write and FN write channels.
+;          Write 0xFFFF to all 12 DO variants, then read the FN channel
+;          found in Phase 1. If FN shows SWR-ack (bit 1), that DO
+;          writes SWR. Also watch LITES LEDs on FPS front panel.
 ;
-; Phase 3: Write-readback test. For each DO variant, write a unique
-;          pattern, then read all 3 DI base variants (DIA/DIB/DIC)
-;          to find which DO/DI pairs access the same register.
+; Phase 3: Verify FN command protocol.
+;          Using the SWR and FN channels found in Phases 1-2, execute
+;          the Processor Handbook loading sequence:
+;          - Deposit a known value into PSA via SWR+FN
+;          - Examine PSA back via FN EXAM command
+;          - Verify the value matches
 ;
-; Phase 4: Two-step REGSEL test. Write an address value via DOA,
-;          then read/write data via DOB/DOC. Tests whether the
-;          FPS-100 uses a two-step register-select mechanism.
+; Phase 4: Find DMA registers (CTL, WC, HMA, APMA).
+;          Write distinctive patterns to remaining DO variants,
+;          then read back via remaining DI variants.
 ;
-; Phase 5: DONE/BUSY flag behavior test.
+; Phase 5: DONE/BUSY flag behavior.
 ;
 ; HOW TO USE
 ; ----------
 ; 1. Load at address 0100, start execution at 0100
 ; 2. At each HALT, examine AC0 (and AC1/AC2/AC3 where noted)
-; 3. Press CONTINUE to proceed
-; 4. Record all values -- the mapping will be clear from the data
+; 3. Record ALL values on paper -- you need the complete picture
+; 4. Press CONTINUE to advance
 ;
-; RESULTS MEMORY MAP (zero page)
-; --------------------------------
-; 050-063: Phase 1 read results (12 words, one per DI variant)
-;   050=DIA  051=DIAS 052=DIAC 053=DIAP
-;   054=DIB  055=DIBS 056=DIBC 057=DIBP
-;   060=DIC  061=DICS 062=DICC 063=DICP
+; IMPORTANT: The test assumes the AP is halted (power-on state).
+; NIOC resets the interface flags, not the AP itself.
 ;
-; NOTE ON DG BIT NUMBERING
-; -------------------------
-; DG bit 0 = MSB (leftmost). PDP-11 bit 0 = LSB (rightmost).
-; A 16-bit value 0x8000 has DG bit 0 set (= PDP-11 bit 15).
+; RESULTS MEMORY MAP (zero page 050-063)
+; ----------------------------------------
+; 050=DIA  051=DIAS 052=DIAC 053=DIAP  (buffer A reads)
+; 054=DIB  055=DIBS 056=DIBC 057=DIBP  (buffer B reads)
+; 060=DIC  061=DICS 062=DICC 063=DICP  (buffer C reads)
 ;
 ; ASSEMBLER (from repository root):
 ;   cd dgasm && mkdir build && cd build && cmake .. && make && cd ../..
@@ -86,21 +93,27 @@
     org 040
 
 zpat_ffff:
-    dw 0xFFFF               ; 040: all bits set
-zpat_0001:
-    dw 0x0001               ; 041: LSB only
+    dw 0xFFFF               ; 040: all bits
 zpat_8000:
-    dw 0x8000               ; 042: MSB only
+    dw 0x8000               ; 041: MSB only (= FN STOP bit)
 zpat_a5:
-    dw 0xA5A5               ; 043: distinctive pattern for readback
+    dw 0xA5A5               ; 042: distinctive readback pattern
 zstart:
-    dw 64                   ; 044: address of phase1 (0100 octal = 64 decimal)
+    dw 64                   ; 043: address of phase1 (0100 octal)
 zone:
-    dw 1                    ; 045: constant 1
+    dw 1                    ; 044: constant 1
 ztwo:
-    dw 2                    ; 046: constant 2
-zthree:
-    dw 3                    ; 047: constant 3
+    dw 2                    ; 045: constant 2
+
+; FN command words (from Processor Handbook encoding)
+; DEP = bit 6 = 0x0200
+; EXAM = bit 5 = 0x0400
+; REG SELECT in bits 12-15 (lowest 4 bits)
+; WORD in bits 10-11
+zfn_dep_psa:
+    dw 0x0200               ; 046: DEP into PSA (REGSEL=0)
+zfn_exam_psa:
+    dw 0x0400               ; 047: EXAM PSA (REGSEL=0)
 
     org 050
     dw 0    ; 050: DIA result
@@ -124,256 +137,368 @@ zthree:
     dev FPS = 055
 
 ;======================================================================
-; PHASE 1: Read all 12 DI variants to find FN register
-;          NIOC before each read to ensure clean interface state
+; PHASE 1: Read all 12 DI variants to find which one reads FN status
+;          After reset, AP should be halted -> FN bit 0 (MSB) set
+;          NIOC before each to ensure clean interface state
 ;======================================================================
 
 phase1:
-    ; Buffer A -- no flag
+    ; --- Buffer A ---
     NIOC FPS
     DIA  0, FPS
     STA  0, 050, 0
     HALT                    ; AC0 = DIA result
 
-    ; Buffer A -- Start
     NIOC FPS
     DIAS 0, FPS
     STA  0, 051, 0
     HALT
 
-    ; Buffer A -- Clear
     NIOC FPS
     DIAC 0, FPS
     STA  0, 052, 0
     HALT
 
-    ; Buffer A -- Pulse
     NIOC FPS
     DIAP 0, FPS
     STA  0, 053, 0
     HALT
 
-    ; Buffer B -- no flag
+    ; --- Buffer B ---
     NIOC FPS
     DIB  0, FPS
     STA  0, 054, 0
     HALT
 
-    ; Buffer B -- Start
     NIOC FPS
     DIBS 0, FPS
     STA  0, 055, 0
     HALT
 
-    ; Buffer B -- Clear
     NIOC FPS
     DIBC 0, FPS
     STA  0, 056, 0
     HALT
 
-    ; Buffer B -- Pulse
     NIOC FPS
     DIBP 0, FPS
     STA  0, 057, 0
     HALT
 
-    ; Buffer C -- no flag
+    ; --- Buffer C ---
     NIOC FPS
     DIC  0, FPS
     STA  0, 060, 0
     HALT
 
-    ; Buffer C -- Start
     NIOC FPS
     DICS 0, FPS
     STA  0, 061, 0
     HALT
 
-    ; Buffer C -- Clear
     NIOC FPS
     DICC 0, FPS
     STA  0, 062, 0
     HALT
 
-    ; Buffer C -- Pulse
     NIOC FPS
     DICP 0, FPS
     STA  0, 063, 0
     HALT
 
 ;======================================================================
-; PHASE 2: Write patterns, watch LITES LEDs on FPS front panel
-;          NIOC before each write. Three passes with different patterns.
+; PHASE 2: Write 0xFFFF to each DO variant, read back with ALL three
+;          DI base instructions. Observe:
+;          - Which DO changes the LITES LEDs? -> writes LITES
+;          - Which DI returns a changed value? -> reads that register
+;          - AC1=DIA, AC2=DIB, AC3=DIC after each write
 ;======================================================================
 
 phase2:
-    ; --- Pass A: all bits (0xFFFF) ---
-    ; Buffer A writes
+    ; --- Buffer A writes ---
     NIOC FPS
     LDA  0, zpat_ffff, 0
     DOA  0, FPS
-    HALT                    ; Watch LEDs -- DOA, no flag, 0xFFFF
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
+    HALT                    ; DOA(no flag): AC1=DIA, AC2=DIB, AC3=DIC
 
     NIOC FPS
     LDA  0, zpat_ffff, 0
     DOAS 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
     HALT                    ; DOA+Start
 
     NIOC FPS
     LDA  0, zpat_ffff, 0
     DOAC 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
     HALT                    ; DOA+Clear
 
     NIOC FPS
     LDA  0, zpat_ffff, 0
     DOAP 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
     HALT                    ; DOA+Pulse
 
-    ; Buffer B writes
+    ; --- Buffer B writes ---
     NIOC FPS
     LDA  0, zpat_ffff, 0
     DOB  0, FPS
-    HALT                    ; DOB, no flag
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
+    HALT                    ; DOB(no flag)
 
     NIOC FPS
     LDA  0, zpat_ffff, 0
     DOBS 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
     HALT                    ; DOB+Start
 
     NIOC FPS
     LDA  0, zpat_ffff, 0
     DOBC 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
     HALT                    ; DOB+Clear
 
     NIOC FPS
     LDA  0, zpat_ffff, 0
     DOBP 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
     HALT                    ; DOB+Pulse
 
-    ; Buffer C writes
+    ; --- Buffer C writes ---
     NIOC FPS
     LDA  0, zpat_ffff, 0
     DOC  0, FPS
-    HALT                    ; DOC, no flag
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
+    HALT                    ; DOC(no flag)
 
     NIOC FPS
     LDA  0, zpat_ffff, 0
     DOCS 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
     HALT                    ; DOC+Start
 
     NIOC FPS
     LDA  0, zpat_ffff, 0
     DOCC 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
     HALT                    ; DOC+Clear
 
     NIOC FPS
     LDA  0, zpat_ffff, 0
     DOCP 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
     HALT                    ; DOC+Pulse
 
-    ; --- Pass B: MSB only (0x8000) -- which LITES instruction lights MSB? ---
-    NIOC FPS
-    LDA  0, zpat_8000, 0
-    DOA  0, FPS
-    HALT                    ; DOA 0x8000
-
-    NIOC FPS
-    LDA  0, zpat_8000, 0
-    DOB  0, FPS
-    HALT                    ; DOB 0x8000
-
-    NIOC FPS
-    LDA  0, zpat_8000, 0
-    DOC  0, FPS
-    HALT                    ; DOC 0x8000
-
 ;======================================================================
-; PHASE 3: Write-readback matrix
-;          Write 0xA5A5 via each base DO (no flag), then read DIA/DIB/DIC
-;          to find which DO/DI pairs access the same register
-;          AC1=DIA result, AC2=DIB result, AC3=DIC result
+; PHASE 3: FN command protocol verification
+;
+; By this point the operator should know from Phase 1 and Phase 2:
+;   - Which DI reads FN (Phase 1: the one with MSB set)
+;   - Which DO writes SWR and which DO writes FN
+;
+; This phase tests ALL 9 DO-pair combinations for the SWR+FN protocol:
+;   DOA+DOA, DOA+DOB, DOA+DOC, DOB+DOA, DOB+DOB, DOB+DOC, etc.
+;
+; For each pair: first DO = write 0xA5A5 to SWR candidate,
+;                second DO = write DEP-into-PSA command to FN candidate,
+;                then read all three DI to see if the deposit happened
+;                (PSA should now contain 0xA5A5, visible via EXAM)
+;
+; After DEP, we write EXAM-PSA command and read back. If the value
+; in LITES (or wherever EXAM output goes) = 0xA5A5, this DO pair
+; is correct: first DO = SWR, second DO = FN.
 ;======================================================================
 
 phase3:
-    ; Write via DOA, read back all three
+    ; --- Test: DOA=SWR, DOB=FN ---
     NIOC FPS
     LDA  0, zpat_a5, 0     ; 0xA5A5
-    DOA  0, FPS
-    DIA  1, FPS             ; Read buffer A
-    DIB  2, FPS             ; Read buffer B
-    DIC  3, FPS             ; Read buffer C
-    HALT                    ; Which AC has 0xA5A5 back?
-
-    ; Write via DOB, read back all three
-    NIOC FPS
-    LDA  0, zpat_a5, 0
-    DOB  0, FPS
+    DOA  0, FPS             ; Candidate SWR write
+    LDA  0, zfn_dep_psa, 0 ; DEP into PSA command (0x0200)
+    DOB  0, FPS             ; Candidate FN write
+    ; Now examine PSA back
+    LDA  0, zfn_exam_psa, 0 ; EXAM PSA command (0x0400)
+    DOB  0, FPS             ; Write EXAM command
+    ; Read all three channels to find the EXAM result
     DIA  1, FPS
     DIB  2, FPS
     DIC  3, FPS
-    HALT
+    HALT                    ; If any AC = 0xA5A5, DOA=SWR DOB=FN works!
 
-    ; Write via DOC, read back all three
+    ; --- Test: DOA=SWR, DOC=FN ---
     NIOC FPS
     LDA  0, zpat_a5, 0
+    DOA  0, FPS
+    LDA  0, zfn_dep_psa, 0
+    DOC  0, FPS
+    LDA  0, zfn_exam_psa, 0
+    DOC  0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
+    HALT                    ; If 0xA5A5 found, DOA=SWR DOC=FN
+
+    ; --- Test: DOB=SWR, DOA=FN ---
+    NIOC FPS
+    LDA  0, zpat_a5, 0
+    DOB  0, FPS
+    LDA  0, zfn_dep_psa, 0
+    DOA  0, FPS
+    LDA  0, zfn_exam_psa, 0
+    DOA  0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
+    HALT                    ; If 0xA5A5 found, DOB=SWR DOA=FN
+
+    ; --- Test: DOB=SWR, DOC=FN ---
+    NIOC FPS
+    LDA  0, zpat_a5, 0
+    DOB  0, FPS
+    LDA  0, zfn_dep_psa, 0
+    DOC  0, FPS
+    LDA  0, zfn_exam_psa, 0
     DOC  0, FPS
     DIA  1, FPS
     DIB  2, FPS
     DIC  3, FPS
     HALT
 
+    ; --- Test: DOC=SWR, DOA=FN ---
+    NIOC FPS
+    LDA  0, zpat_a5, 0
+    DOC  0, FPS
+    LDA  0, zfn_dep_psa, 0
+    DOA  0, FPS
+    LDA  0, zfn_exam_psa, 0
+    DOA  0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
+    HALT
+
+    ; --- Test: DOC=SWR, DOB=FN ---
+    NIOC FPS
+    LDA  0, zpat_a5, 0
+    DOC  0, FPS
+    LDA  0, zfn_dep_psa, 0
+    DOB  0, FPS
+    LDA  0, zfn_exam_psa, 0
+    DOB  0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
+    HALT
+
 ;======================================================================
-; PHASE 4: Two-step REGSEL test (for FPS-100 with 4448 board)
-;          Write address N via DOA, then read/write data via DOB
-;          If two-step works, DOB should access different registers
-;          depending on the DOA value
+; PHASE 4: DMA register discovery
+;          After Phase 3 identifies SWR and FN channels, the remaining
+;          DOx channel(s) likely access CTL and/or DMA registers.
+;          Write distinct patterns and read back to find them.
+;
+;          Also test flag variants of the SWR/FN channels, which may
+;          map to CTL, WC, HMA, APMA.
 ;======================================================================
 
 phase4:
-    ; Address 0 via DOA, then read DOB
-    NIOC FPS
-    SUB  0, 0               ; AC0 = 0 (register address 0)
-    DOA  0, FPS             ; Set REGSEL = 0
-    DIB  1, FPS             ; Read register 0
-    HALT                    ; AC1 = register 0 contents
+    ; Write 0x0001 (= CTL HDMA start bit) to each DO variant
+    ; Then read all DI -- CTL is readable and bit 15 (HDMA) should
+    ; latch or reflect. BE CAREFUL: this might start a DMA transfer
+    ; if it actually hits CTL with the start bit!
+    ;
+    ; Safer: write 0x0008 (= CTL IHHALT bit only, no DMA start)
 
-    ; Address 1 via DOA, then read DOB
-    NIOC FPS
-    LDA  0, zone, 0         ; AC0 = 1
-    DOA  0, FPS             ; Set REGSEL = 1
-    DIB  1, FPS             ; Read register 1
-    HALT                    ; AC1 = register 1 contents
-
-    ; Address 2 via DOA, then read DOB
-    NIOC FPS
-    LDA  0, ztwo, 0         ; AC0 = 2
-    DOA  0, FPS
-    DIB  1, FPS
-    HALT
-
-    ; Address 3 via DOA, then read DOB
-    NIOC FPS
-    LDA  0, zthree, 0       ; AC0 = 3
-    DOA  0, FPS
-    DIB  1, FPS
-    HALT
-
-    ; If these four halts show DIFFERENT values in AC1,
-    ; then DOA sets a register address and DOB reads data.
-    ; If they show the SAME value, two-step is not used.
-
-    ; Also test DOA-then-DOC (in case DOC is the data port)
     NIOC FPS
     SUB  0, 0
-    DOA  0, FPS
-    DIC  1, FPS
-    HALT                    ; AC1 = register 0 via DIC
+    INC  0, 0               ; AC0 = 1... no, INC makes it 1
+    ; Actually we want 0x0008 = IHHALT bit (bit 3 from MSB = bit 12 from LSB)
+    ; 0x0008 = 8 decimal
+    ; Use a smarter approach: just write each DOx with a flag variant
+    ; and see if CTL status changes when read
 
+    ; Use 0xA5A5 (safe pattern -- no HDMA start bit) with flag variants
+    ; to find which DOx+flag accesses DMA registers.
+    ; Read back all DI channels after each write.
+
+    ; DOA+Start
     NIOC FPS
-    LDA  0, zone, 0
-    DOA  0, FPS
-    DIC  1, FPS
-    HALT                    ; AC1 = register 1 via DIC
+    LDA  0, zpat_a5, 0
+    DOAS 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
+    HALT                    ; DOAS 0xA5A5: which DI shows it?
+
+    ; DOB+Start
+    NIOC FPS
+    LDA  0, zpat_a5, 0
+    DOBS 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
+    HALT                    ; DOBS 0xA5A5: which DI shows it?
+
+    ; DOC+Start
+    NIOC FPS
+    LDA  0, zpat_a5, 0
+    DOCS 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
+    HALT                    ; DOCS 0xA5A5: which DI shows it?
+
+    ; Also try Pulse variants
+    ; DOA+Pulse
+    NIOC FPS
+    LDA  0, zpat_a5, 0
+    DOAP 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
+    HALT                    ; DOAP 0xA5A5
+
+    ; DOB+Pulse
+    NIOC FPS
+    LDA  0, zpat_a5, 0
+    DOBP 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
+    HALT                    ; DOBP 0xA5A5
+
+    ; DOC+Pulse
+    NIOC FPS
+    LDA  0, zpat_a5, 0
+    DOCP 0, FPS
+    DIA  1, FPS
+    DIB  2, FPS
+    DIC  3, FPS
+    HALT                    ; DOCP 0xA5A5
 
 ;======================================================================
 ; PHASE 5: DONE/BUSY flag behavior
@@ -385,12 +510,12 @@ phase5:
     SUB  0, 0
     SKPBN FPS
     JMP  p5a
-    LDA  0, zone, 0         ; Bit 0: BUSY is set
+    LDA  0, zone, 0
 p5a:
     SKPDN FPS
     JMP  p5b
     LDA  1, ztwo, 0
-    ADD  1, 0               ; Bit 1: DONE is set
+    ADD  1, 0
 p5b:
     HALT                    ; AC0: 0=both clear, 1=BUSY, 2=DONE, 3=both
 
@@ -406,9 +531,9 @@ p5c:
     LDA  1, ztwo, 0
     ADD  1, 0
 p5d:
-    HALT                    ; AC0: expect 1 (BUSY only)
+    HALT
 
-    ; After NIOP: device-specific, unknown
+    ; After NIOP: device-specific
     NIOP FPS
     SUB  0, 0
     SKPBN FPS
@@ -420,10 +545,10 @@ p5e:
     LDA  1, ztwo, 0
     ADD  1, 0
 p5f:
-    HALT                    ; AC0: what did Pulse do?
+    HALT
 
 ;======================================================================
-; END -- loop back for another run
+; END
 ;======================================================================
 
-    JMP  @zstart, 0          ; Indirect jump through zero page -> phase1
+    JMP  @zstart, 0
