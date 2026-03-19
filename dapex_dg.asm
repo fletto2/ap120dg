@@ -3,227 +3,176 @@
 ; Port of DAPEX.MAC (PDP-11 RSX-11M) to DG Nova assembly.
 ; Register mapping from 280B schematic 512-3280-004 Rev B.
 ;
-; DG Nova addressing: LDA/STA use 8-bit signed displacement from
-; page zero (mode 0) or PC (mode 1). All scratch/constants on page zero.
+; Page-zero optimization: uses a software return stack at 030-037
+; (auto-decrement locations) instead of per-routine save words.
+; Constant deduplication: values that happen to be equal share one word.
 ;
 ; Assembled with dgasm: dgasm/build/dgasm -o dapex_dg.bin dapex_dg.asm
 
     dev FPS = 055
 
 ; ============================================================
-; Page-zero variables and constants (000-077)
+; Page-zero layout (000-0177)
 ; ============================================================
 
     org 000
 
-; --- Saved return addresses ---
-rdwret:
-    dw 0
-sndret:
-    dw 0
-ainret:
-    dw 0
-aotret:
-    dw 0
-rdmret:
-    dw 0
-awdret:
-    dw 0
-wrnret:
-    dw 0
-arsret:
-    dw 0
-rapret:
-    dw 0
-exmret:
-    dw 0
-splret:
-    dw 0
-wdmret:
-    dw 0
-awrret:
-    dw 0
-ienret:
-    dw 0
-hptret:
-    dw 0
-hgtret:
-    dw 0
-htsret:
-    dw 0
-lkyret:
-    dw 0
-asgret:
-    dw 0
-rlsret:
-    dw 0
-supret:
-    dw 0
-stpret:
-    dw 0
+; --- Interrupt vectors (reserved by hardware) ---
+intvec:
+    dw 0                ; 000: interrupt save PC
+intadr:
+    dw 0                ; 001: interrupt handler address
+
+; --- Return stack ---
+; Uses auto-decrement locations 030-037 for pop.
+; rsp points to next free slot. Push: STA val,@rsp / ISZ rsp
+; Pop: use DSZ + JMP@ through auto-dec location.
+; Simpler approach: just use rsp as index, manual inc/dec.
+    org 002
+rsp:
+    dw rstk             ; 002: return stack pointer (init = rstk)
+rsptmp:
+    dw 0                ; 003: temp for stack ops
+
+    org 010
+; --- Return stack storage (8 deep, addresses 010-017) ---
+rstk:
+    dw 0                ; 010
+    dw 0                ; 011
+    dw 0                ; 012
+    dw 0                ; 013
+    dw 0                ; 014
+    dw 0                ; 015
+    dw 0                ; 016
+    dw 0                ; 017
 
 ; --- State variables ---
 runfg:
-    dw 0
+    dw 0                ; 020
 savctl:
-    dw 0
+    dw 0                ; 021
 fpswr:
-    dw 0
+    dw 0                ; 022
 fpfnr:
-    dw 0
+    dw 0                ; 023
 fplit:
-    dw 0
+    dw 0                ; 024
 dmafg:
-    dw 0
+    dw 0                ; 025
 savhma:
-    dw 0
+    dw 0                ; 026
 savwc:
-    dw 0
+    dw 0                ; 027
+
+; --- Auto-decrement locations 030-037 (used by hardware) ---
+; We avoid these for general storage.
+    org 040
 
 ; --- APEX message block ---
 fpopt:
-    dw 0
+    dw 0                ; 040
 fpsct:
-    dw 0
+    dw 0                ; 041
 fpsw2:
-    dw 0
+    dw 0                ; 042
 fpfn2:
-    dw 0
+    dw 0                ; 043
 
 ; --- Supervisor datum storage (8 words) ---
 fpdat:
-    dw 0
-    dw 0
-    dw 0
-    dw 0
-    dw 0
-    dw 0
-    dw 0
-    dw 0
+    dw 0                ; 044
+    dw 0                ; 045
+    dw 0                ; 046
+    dw 0                ; 047
+    dw 0                ; 050
+    dw 0                ; 051
+    dw 0                ; 052
+    dw 0                ; 053
 supvr:
-    dw 0
+    dw 0                ; 054
 fperf:
-    dw 0
+    dw 0                ; 055
 ercode:
-    dw 0
+    dw 0                ; 056
 
-; --- RUNDMA temporaries ---
-rdmha:
-    dw 0
-rdmap:
-    dw 0
-rdmwc:
-    dw 0
-rdmcl:
-    dw 0
-
-; --- Scratch ---
+; --- Temporaries ---
 aoutv:
-    dw 0
+    dw 0                ; 057
+rdmha:
+    dw 0                ; 060
+rdmap:
+    dw 0                ; 061
+rdmwc:
+    dw 0                ; 062
+rdmcl:
+    dw 0                ; 063
 rapcmd:
-    dw 0
-
-; --- Constants ---
-c1:
-    dw 1
-cm1:
-    dw -1
-cm4:
-    dw -4
-cm9:
-    dw -9
-
-    org 040
-
-cm10:
-    dw -10
-ackbit:
-    dw 040000
-rdwtmo:
-    dw -32768
-cihwc:
-    dw 004000
-cihhlt:
-    dw 010000
-cdepps:
-    dw 001000
-cexam:
-    dw 002000
-cpar:
-    dw 000400
-cstk:
-    dw 000200
-c2:
-    dw 2
-pfpopt:
-    dw fpopt
-; --- Additional temporaries ---
+    dw 0                ; 064
 spltmp:
-    dw 0
+    dw 0                ; 065
 splcnt:
-    dw 0
+    dw 0                ; 066
 splpsa:
-    dw 0
+    dw 0                ; 067
 
-; --- Additional constants ---
-cdpspad:
-    dw 001001                  ; FN DEP into SPD (REGSEL=1)
-cfnstrt:
-    dw 040000                  ; FN START
-cdlate:
-    dw 000400                  ; CTL DLATE bit
-cihcb5:
-    dw 002000                  ; CTL IHCB5 bit
+; --- Constants (deduplicated) ---
+cm1:
+    dw -1               ; 070
+cm4:
+    dw -4               ; 071
 cm8:
-    dw -8
-pfpdat:
-    dw fpdat
+    dw -8               ; 072
+rdwtmo:
+    dw -32768           ; 073: RDWAIT timeout
+; Shared constants (same value, multiple uses):
+; 040000 = FN.ACK = FN.START
+k40000:
+    dw 040000           ; 074: ackbit / FN START
+; 004000 = CTL.IHWC
+k04000:
+    dw 004000           ; 075: IHWC
+; 010000 = CTL.IHHALT
+k10000:
+    dw 010000           ; 076: IHHALT
+; 001000 = FN.DEP+PSA
+k01000:
+    dw 001000           ; 077: DEP into PSA
 
-; --- Subroutine address pointers (for indirect JSR/JMP) ---
+    org 0100
+; 002000 = FN.EXAM = CTL.IHCB5 (same bit value!)
+k02000:
+    dw 002000           ; 0100: EXAM / IHCB5
+; 000400 = LITES parity = CTL DLATE (same value!)
+k00400:
+    dw 000400           ; 0101: parity / DLATE
+; 000200 = LITES stack overflow
+k00200:
+    dw 000200           ; 0102: stack overflow
+; 001001 = FN DEP into SPD (REGSEL=1)
+k01001:
+    dw 001001           ; 0103: DEP SPD
+pfpopt:
+    dw fpopt            ; 0104: pointer to APEX block
+pfpdat:
+    dw fpdat            ; 0105: pointer to FPDAT array
+
+; --- Subroutine pointers (only for cross-page indirect calls) ---
 prdwt:
-    dw RDWAIT
+    dw RDWAIT           ; 0106
 papwd:
-    dw APWD
+    dw APWD             ; 0107
 paperr:
-    dw APERR
+    dw APERR            ; 0110
 psndr:
-    dw SENDER
+    dw SENDER           ; 0111
 pwtrun:
-    dw WTRUN
-psplgo:
-    dw SPLDGO
-pwtdma:
-    dw WTDMA
-papwr:
-    dw APWR
-paiena:
-    dw APIENA
-paidis:
-    dw APIDIS
-papwi:
-    dw APWI
-ptstint:
-    dw TSTINT
-psupr:
-    dw APSUPV
-pasgn:
-    dw APASGN
-prlse:
-    dw APRLSE
-pstop:
-    dw APSTOP
-phput:
-    dw HPUT
-phget:
-    dw HGET
+    dw WTRUN            ; 0112
+prunap:
+    dw RUNAP            ; 0113
+preset:
+    dw APRSET           ; 0114
 phtst:
-    dw HTST
-plooky:
-    dw LOOKY
-rapptr:
-    dw RUNAP
-parsrt:
-    dw APRSET
+    dw HTST             ; 0115
 
 ; ============================================================
 ; Code at 0200
@@ -231,38 +180,48 @@ parsrt:
 
     org 0200
 
+; --- PUSH: save AC3 (return addr) onto stack ---
+; Inline macro: STA 3, @rsp, 0 / ISZ rsp, 0
+; --- POP+RET: pop return addr and jump to it ---
+; Inline: DSZ rsp, 0 / JMP @@rsp, 0  (but double-indirect not available)
+; Instead: DSZ rsp, 0 / LDA 3, @rsp, 0 / JMP 0, 3
+
 ; --- RDWAIT: wait for AP SWR acknowledge ---
-; Call: JSR 3,RDWAIT
+; Call: JSR 3,RDWAIT (or JSR @prdwt, 0)
 RDWAIT:
-    STA 3, rdwret, 0
+    STA 3, @rsp, 0             ; push return
+    ISZ rsp, 0
     LDA 1, rdwtmo, 0
 rdwlp:
     DIA 0, FPS
-    LDA 2, ackbit, 0
+    LDA 2, k40000, 0          ; ackbit = 040000
     AND 0, 2
     MOV 2, 2, SNR
     JMP rdnoa
-    JMP @rdwret, 0
+    ; ACK set — pop and return
+    DSZ rsp, 0
+    LDA 3, @rsp, 0
+    JMP 0, 3
 rdnoa:
-    MOVL 0, 0, SNC
+    MOVL 0, 0, SNC            ; test HALTED bit
     JMP rdcnt
-    JMP @paperr, 0
+    JMP @paperr, 0            ; halted without ACK
 rdcnt:
     INC 1, 1, SZR
     JMP rdwlp
-    JMP @paperr, 0
+    JMP @paperr, 0            ; timeout
 
 ; --- SENDER: send datum or APEX message ---
 ; AC0 != 0: single datum. AC0 == 0: 5-word APEX.
-; Call: JSR 3,SENDER
 SENDER:
-    STA 3, sndret, 0
+    STA 3, @rsp, 0
+    ISZ rsp, 0
     MOV 0, 0, SNR
     JMP sndapx
     JSR @prdwt, 0
     DOA 0, FPS
     DOAP 0, FPS
-    JMP @sndret, 0
+    JMP sndpop                 ; pop and return
 sndapx:
     JSR @prdwt, 0
     DOA 0, FPS
@@ -277,77 +236,79 @@ sndlp:
     INC 2, 2
     INC 1, 1, SZR
     JMP sndlp
-    LDA 0, c1, 0
+    SUB 0, 0
+    INC 0, 0                  ; AC0 = 1
     STA 0, runfg, 0
-    JMP @sndret, 0
+sndpop:
+    DSZ rsp, 0
+    LDA 3, @rsp, 0
+    JMP 0, 3
 
 ; --- APIN: read register ---
 ; AC0=NUM(1-9). Returns AC0=value. Call: JSR 3,APIN
 APIN:
-    STA 3, ainret, 0
     LDA 1, cm1, 0
     ADD 1, 0
     MOV 0, 0, SZR
     JMP ain2
     DIAS 0, FPS
-    JMP @ainret, 0
+    JMP 0, 3
 ain2:
     LDA 1, cm1, 0
     ADD 1, 0
     MOV 0, 0, SZR
     JMP ain3
     DIA 0, FPS
-    JMP @ainret, 0
+    JMP 0, 3
 ain3:
     LDA 1, cm1, 0
     ADD 1, 0
     MOV 0, 0, SZR
     JMP ain4
     DIAC 0, FPS
-    JMP @ainret, 0
+    JMP 0, 3
 ain4:
     LDA 1, cm1, 0
     ADD 1, 0
     MOV 0, 0, SZR
     JMP ain5
     DIAP 0, FPS
-    JMP @ainret, 0
+    JMP 0, 3
 ain5:
     LDA 1, cm1, 0
     ADD 1, 0
     MOV 0, 0, SZR
     JMP ain6
     LDA 0, savhma, 0
-    JMP @ainret, 0
+    JMP 0, 3
 ain6:
     LDA 1, cm1, 0
     ADD 1, 0
     MOV 0, 0, SZR
     JMP ain7
     LDA 0, savwc, 0
-    JMP @ainret, 0
+    JMP 0, 3
 ain7:
     LDA 1, cm1, 0
     ADD 1, 0
     MOV 0, 0, SZR
     JMP ain8
     LDA 0, savctl, 0
-    JMP @ainret, 0
+    JMP 0, 3
 ain8:
     LDA 1, cm1, 0
     ADD 1, 0
     MOV 0, 0, SZR
     JMP ain9
     DIB 0, FPS
-    JMP @ainret, 0
+    JMP 0, 3
 ain9:
     DIC 0, FPS
-    JMP @ainret, 0
+    JMP 0, 3
 
 ; --- APOUT: write register ---
 ; AC0=NUM(1-10), AC1=value. Call: JSR 3,APOUT
 APOUT:
-    STA 3, aotret, 0
     STA 1, aoutv, 0
     LDA 2, cm1, 0
     ADD 2, 0
@@ -356,7 +317,7 @@ APOUT:
     LDA 0, aoutv, 0
     DOA 0, FPS
     STA 0, fpswr, 0
-    JMP @aotret, 0
+    JMP 0, 3
 aot2:
     LDA 2, cm1, 0
     ADD 2, 0
@@ -365,13 +326,13 @@ aot2:
     LDA 0, aoutv, 0
     DOAS 0, FPS
     STA 0, fpfnr, 0
-    JMP @aotret, 0
+    JMP 0, 3
 aot3:
     LDA 2, cm1, 0
     ADD 2, 0
     MOV 0, 0, SZR
     JMP aot4
-    JMP @aotret, 0
+    JMP 0, 3                   ; LITES read-only
 aot4:
     LDA 2, cm1, 0
     ADD 2, 0
@@ -379,7 +340,7 @@ aot4:
     JMP aot5
     LDA 0, aoutv, 0
     DOBC 0, FPS
-    JMP @aotret, 0
+    JMP 0, 3
 aot5:
     LDA 2, cm1, 0
     ADD 2, 0
@@ -388,7 +349,7 @@ aot5:
     LDA 0, aoutv, 0
     DOBS 0, FPS
     STA 0, savhma, 0
-    JMP @aotret, 0
+    JMP 0, 3
 aot6:
     LDA 2, cm1, 0
     ADD 2, 0
@@ -397,7 +358,7 @@ aot6:
     LDA 0, aoutv, 0
     DOB 0, FPS
     STA 0, savwc, 0
-    JMP @aotret, 0
+    JMP 0, 3
 aot7:
     LDA 2, cm1, 0
     ADD 2, 0
@@ -406,7 +367,7 @@ aot7:
     LDA 0, aoutv, 0
     DOAC 0, FPS
     STA 0, savctl, 0
-    JMP @aotret, 0
+    JMP 0, 3
 aot8:
     LDA 2, cm1, 0
     ADD 2, 0
@@ -414,7 +375,7 @@ aot8:
     JMP aot9
     LDA 0, aoutv, 0
     DOC 0, FPS
-    JMP @aotret, 0
+    JMP 0, 3
 aot9:
     LDA 2, cm1, 0
     ADD 2, 0
@@ -422,7 +383,7 @@ aot9:
     JMP aot10
     LDA 0, aoutv, 0
     DOCS 0, FPS
-    JMP @aotret, 0
+    JMP 0, 3
 aot10:
     NIOC FPS
     SUB 0, 0
@@ -431,13 +392,13 @@ aot10:
     STA 0, fpswr, 0
     STA 0, fpfnr, 0
     STA 0, fplit, 0
-    JMP @aotret, 0
+    JMP 0, 3
 
 ; --- RUNDMA: start DMA ---
 ; AC0=host addr, AC1=APMA, AC2=WC. Store CTRL at rdmcl first.
-; Call: JSR 3,RUNDMA
 RUNDMA:
-    STA 3, rdmret, 0
+    STA 3, @rsp, 0
+    ISZ rsp, 0
     STA 0, rdmha, 0
     STA 1, rdmap, 0
     STA 2, rdmwc, 0
@@ -452,7 +413,7 @@ RUNDMA:
     STA 0, savhma, 0
     ; CTRL = caller | IHWC (DeMorgan OR)
     LDA 0, rdmcl, 0
-    LDA 1, cihwc, 0
+    LDA 1, k04000, 0          ; IHWC
     COM 0, 0
     COM 1, 2
     AND 2, 0
@@ -460,25 +421,32 @@ RUNDMA:
     DOAC 0, FPS
     STA 0, savctl, 0
     ; Start DMA
-    LDA 0, c1, 0
+    SUB 0, 0
+    INC 0, 0                  ; AC0 = 1
     STA 0, dmafg, 0
     DOBP 0, FPS
-    JMP @rdmret, 0
+    ; pop and return
+    DSZ rsp, 0
+    LDA 3, @rsp, 0
+    JMP 0, 3
 
 ; --- APWD: wait for DMA complete ---
-; Call: JSR 3,APWD
 APWD:
-    STA 3, awdret, 0
+    STA 3, @rsp, 0
+    ISZ rsp, 0
     LDA 0, dmafg, 0
     MOV 0, 0, SNR
-    JMP @awdret, 0
+    JMP awddn                  ; not active
 awdlp:
     SKPDN FPS+1
     JMP awdlp
     NIOC FPS+1
     SUB 0, 0
     STA 0, dmafg, 0
-    JMP @awdret, 0
+awddn:
+    DSZ rsp, 0
+    LDA 3, @rsp, 0
+    JMP 0, 3
 
 ; --- TSTDMA: test DMA. AC0=1(done) or 0(busy). ---
 TSTDMA:
@@ -488,7 +456,8 @@ TSTDMA:
     SUB 0, 0
     JMP 0, 3
 tstd1:
-    LDA 0, c1, 0
+    SUB 0, 0
+    INC 0, 0                  ; AC0 = 1
     JMP 0, 3
 
 ; --- TSTRUN: test AP halted. AC0=1(halted) or 0(running). ---
@@ -496,16 +465,17 @@ TSTRUN:
     DIA 0, FPS
     MOVL 0, 0, SNC
     JMP tstr1
-    LDA 0, c1, 0
+    SUB 0, 0
+    INC 0, 0
     JMP 0, 3
 tstr1:
     SUB 0, 0
     JMP 0, 3
 
 ; --- WTRUN: wait for AP halt. AC0=error code. ---
-; Call: JSR 3,WTRUN
 WTRUN:
-    STA 3, wrnret, 0
+    STA 3, @rsp, 0
+    ISZ rsp, 0
 wrnlp:
     SKPDN FPS
     JMP wrnlp
@@ -514,27 +484,31 @@ wrnlp:
     STA 0, runfg, 0
     DIAC 0, FPS
     STA 0, fplit, 0
-    LDA 1, cpar, 0
+    LDA 1, k00400, 0          ; parity bit
     AND 0, 1
     MOV 1, 1, SNR
     JMP wrn1
-    LDA 0, c1, 0
-    JMP @wrnret, 0
+    SUB 0, 0
+    INC 0, 0                  ; error 1 (parity)
+    JMP wrnpop
 wrn1:
-    LDA 1, cstk, 0
+    LDA 1, k00200, 0          ; stack overflow bit
     AND 0, 1
     MOV 1, 1, SNR
     JMP wrn2
-    LDA 0, c2, 0
-    JMP @wrnret, 0
-wrn2:
     SUB 0, 0
-    JMP @wrnret, 0
+    INC 0, 0
+    INC 0, 0                  ; error 2 (stack)
+    JMP wrnpop
+wrn2:
+    SUB 0, 0                  ; error 0 (ok)
+wrnpop:
+    DSZ rsp, 0
+    LDA 3, @rsp, 0
+    JMP 0, 3
 
 ; --- APRSET: hardware reset ---
-; Call: JSR 3,APRSET
 APRSET:
-    STA 3, arsret, 0
     NIOC FPS
     SUB 0, 0
     STA 0, runfg, 0
@@ -543,37 +517,42 @@ APRSET:
     STA 0, fpfnr, 0
     STA 0, fplit, 0
     STA 0, dmafg, 0
-    JMP @arsret, 0
+    ; Reset stack pointer
+    LDA 1, prstk, 0
+    STA 1, rsp, 0
+    JMP 0, 3
 
 ; --- RUNAP: start AP execution ---
-; AC0=PSA, AC1=FN command. Call: JSR 3,RUNAP
+; AC0=PSA, AC1=FN command.
 RUNAP:
-    STA 3, rapret, 0
+    STA 3, @rsp, 0
+    ISZ rsp, 0
     STA 1, rapcmd, 0
     DOA 0, FPS
-    LDA 0, cdepps, 0
+    LDA 0, k01000, 0          ; DEP into PSA
     DOAS 0, FPS
     LDA 0, rapcmd, 0
     DOAS 0, FPS
-    ; Enable IHHALT (DeMorgan OR)
+    ; Enable IHHALT
     LDA 0, savctl, 0
-    LDA 1, cihhlt, 0
+    LDA 1, k10000, 0
     COM 0, 0
     COM 1, 2
     AND 2, 0
     COM 0, 0
     DOAC 0, FPS
     STA 0, savctl, 0
-    LDA 0, c1, 0
+    SUB 0, 0
+    INC 0, 0
     STA 0, runfg, 0
-    JMP @rapret, 0
+    DSZ rsp, 0
+    LDA 3, @rsp, 0
+    JMP 0, 3
 
 ; --- APEXAM: examine AP register ---
 ; AC0=REGSEL(0-15), AC1=WORD(0-3). Returns AC0=value.
-; Call: JSR 3,APEXAM
 APEXAM:
-    STA 3, exmret, 0
-    LDA 2, cexam, 0
+    LDA 2, k02000, 0          ; EXAM
     ADD 0, 2
     MOVL 1, 1
     MOVL 1, 1
@@ -583,7 +562,200 @@ APEXAM:
     MOV 2, 0
     DOAS 0, FPS
     DIAS 0, FPS
-    JMP @exmret, 0
+    JMP 0, 3
+
+; --- SPLDGO: load s-pad and start ---
+; AC0=list ptr, AC1=count, AC2=start addr.
+SPLDGO:
+    STA 3, @rsp, 0
+    ISZ rsp, 0
+    STA 0, spltmp, 0
+    STA 1, splcnt, 0
+    STA 2, splpsa, 0
+    LDA 2, spltmp, 0
+spllp:
+    LDA 0, splcnt, 0
+    MOV 0, 0, SZR
+    JMP spldo
+    JMP splrn
+spldo:
+    LDA 0, 0, 2
+    DOA 0, FPS
+    LDA 0, k01001, 0          ; DEP into SPD
+    DOAS 0, FPS
+    INC 2, 2
+    LDA 0, splcnt, 0
+    LDA 1, cm1, 0
+    ADD 1, 0
+    STA 0, splcnt, 0
+    JMP spllp
+splrn:
+    LDA 0, splpsa, 0
+    LDA 1, k40000, 0          ; FN START (040000)
+    JSR @prunap, 0
+    DSZ rsp, 0
+    LDA 3, @rsp, 0
+    JMP 0, 3
+
+; --- WTDMA: wait for DMA, return error ---
+WTDMA:
+    STA 3, @rsp, 0
+    ISZ rsp, 0
+    JSR @papwd, 0
+    LDA 0, savctl, 0
+    LDA 1, k00400, 0          ; DLATE bit (same as parity)
+    AND 0, 1
+    MOV 1, 0
+    DSZ rsp, 0
+    LDA 3, @rsp, 0
+    JMP 0, 3
+
+; --- APWR: wait for AP run, error handling ---
+APWR:
+    STA 3, @rsp, 0
+    ISZ rsp, 0
+    JSR @pwtrun, 0
+    ; AC0 has error code from WTRUN
+    DSZ rsp, 0
+    LDA 3, @rsp, 0
+    JMP 0, 3
+
+; --- APIENA: enable CTL5 interrupt ---
+APIENA:
+    LDA 0, savctl, 0
+    LDA 1, k02000, 0          ; IHCB5 (= EXAM value, shared constant)
+    COM 0, 0
+    COM 1, 2
+    AND 2, 0
+    COM 0, 0
+    DOAC 0, FPS
+    STA 0, savctl, 0
+    JMP 0, 3
+
+; --- APIDIS: disable CTL5 interrupt ---
+APIDIS:
+    LDA 0, savctl, 0
+    LDA 1, k02000, 0
+    COM 1, 1
+    AND 1, 0
+    DOAC 0, FPS
+    STA 0, savctl, 0
+    JMP 0, 3
+
+; --- APWI: wait for CTL5 interrupt ---
+APWI:
+apwilp:
+    SKPDN FPS+2
+    JMP apwilp
+    NIOC FPS+2
+    JMP 0, 3
+
+; --- TSTINT: test CTL5 interrupt ---
+; Returns AC0=1(set) or 0(clear).
+TSTINT:
+    SKPDN FPS+2
+    JMP tsti0
+    SUB 0, 0
+    INC 0, 0
+    JMP 0, 3
+tsti0:
+    SUB 0, 0
+    JMP 0, 3
+
+; --- APSUPV: set supervisor mode ---
+; AC0=mode (0=off, nonzero=on)
+APSUPV:
+    STA 0, supvr, 0
+    JMP 0, 3
+
+; --- APASGN: assign FPS processor ---
+; Returns AC0=1 (always succeeds, single device)
+APASGN:
+    STA 3, @rsp, 0
+    ISZ rsp, 0
+    JSR @preset, 0
+    SUB 0, 0
+    INC 0, 0
+    DSZ rsp, 0
+    LDA 3, @rsp, 0
+    JMP 0, 3
+
+; --- APRLSE: release FPS processor ---
+APRLSE:
+    STA 3, @rsp, 0
+    ISZ rsp, 0
+    JSR @papwd, 0
+    NIOC FPS
+    SUB 0, 0
+    STA 0, runfg, 0
+    STA 0, dmafg, 0
+    DSZ rsp, 0
+    LDA 3, @rsp, 0
+    JMP 0, 3
+
+; --- APSTOP: error stop ---
+; AC0=error code. Stores and halts.
+APSTOP:
+    STA 0, ercode, 0
+    HALT
+
+; --- HPUT: send single datum ---
+; AC0=datum.
+HPUT:
+    STA 3, @rsp, 0
+    ISZ rsp, 0
+    JSR @psndr, 0
+    DSZ rsp, 0
+    LDA 3, @rsp, 0
+    JMP 0, 3
+
+; --- HGET: wait for datum ---
+; Returns AC0=datum.
+HGET:
+    STA 3, @rsp, 0
+    ISZ rsp, 0
+hgetlp:
+    JSR @phtst, 0
+    MOV 0, 0, SNR
+    JMP hgetlp
+    DSZ rsp, 0
+    LDA 3, @rsp, 0
+    JMP 0, 3
+
+; --- HTST: test datum available ---
+; Returns AC0=datum if found, 0 if not.
+HTST:
+    LDA 2, pfpdat, 0
+    LDA 1, cm8, 0
+htstlp:
+    LDA 0, 0, 2
+    MOV 0, 0, SNR
+    JMP htstn
+    ; Found: clear entry, return datum
+    SUB 1, 1
+    STA 1, 0, 2
+    JMP 0, 3
+htstn:
+    INC 2, 2
+    INC 1, 1, SZR
+    JMP htstlp
+    SUB 0, 0
+    JMP 0, 3
+
+; --- LOOKY: debug dump ---
+; Returns AC0=FPSWR, AC1=RUNFG, AC2=FN status
+; (AC3 used for return, CTRL available via savctl)
+LOOKY:
+    LDA 0, fpswr, 0
+    LDA 1, runfg, 0
+    DIA 2, FPS
+    JMP 0, 3
+
+; --- VIRP: debug interrupt status ---
+; Returns AC0=SUPVR
+VIRP:
+    LDA 0, supvr, 0
+    JMP 0, 3
 
 ; --- APERR: error handler ---
 APERR:
@@ -593,214 +765,9 @@ APERR:
     STA 0, runfg, 0
     HALT
 
-; --- SPLDGO: load s-pad registers and start execution ---
-; AC0=pointer to SPAD value list, AC1=count, AC2=start addr, AC3=saved
-; Before call: store start addr at rapcmd, breakpoint at rapcmd+1
-; Simplified: loads NSPADS s-pad values via DEP, then starts AP.
-; Call: JSR @psplgo, 0
-SPLDGO:
-    STA 3, splret, 0
-    STA 0, spltmp, 0           ; save list pointer
-    STA 1, splcnt, 0           ; save count
-    STA 2, splpsa, 0           ; save start address
-    ; Load s-pad values: for each, write value to SWR, DEP into SPD(reg 1)
-    LDA 2, spltmp, 0           ; list pointer
-spllp:
-    LDA 0, splcnt, 0
-    MOV 0, 0, SZR              ; skip if count = 0
-    JMP spldo
-    JMP splrn                  ; done loading, go to start
-spldo:
-    LDA 0, 0, 2               ; load s-pad value from list
-    DOA 0, FPS                 ; write SWR
-    ; DEP into SPD: FN = 001001 (DEP + REGSEL=1)
-    LDA 0, cdpspad, 0
-    DOAS 0, FPS                ; write FN
-    INC 2, 2                  ; advance list pointer
-    LDA 0, splcnt, 0
-    LDA 1, cm1, 0
-    ADD 1, 0                  ; decrement count
-    STA 0, splcnt, 0
-    JMP spllp
-splrn:
-    ; Load PSA and start
-    LDA 0, splpsa, 0
-    LDA 1, cfnstrt, 0         ; FN START command (040000)
-    JSR @rapptr, 0             ; call RUNAP
-    JMP @splret, 0
-
-; --- WTDMA: wait for DMA, return error code ---
-; Returns: AC0 = 0 (ok) or nonzero (data late error)
-; Call: JSR @pwtdma, 0
-WTDMA:
-    STA 3, wdmret, 0
-    JSR @papwd, 0              ; wait for DMA
-    ; Check for data late error in saved CTRL
-    LDA 0, savctl, 0
-    LDA 1, cdlate, 0
-    AND 0, 1
-    MOV 1, 0                  ; AC0 = error bits (0 if ok)
-    JMP @wdmret, 0
-
-; --- APWR: wait for AP run, full error handling ---
-; Returns: AC0 = 0(ok), 1(parity), 2(stack overflow)
-; Call: JSR @papwr, 0
-APWR:
-    STA 3, awrret, 0
-    JSR @pwtrun, 0             ; wait for halt
-    ; AC0 already has error code from WTRUN
-    JMP @awrret, 0
-
-; --- APIENA: enable CTL5 (CB5) interrupt ---
-; Call: JSR @paiena, 0
-APIENA:
-    STA 3, ienret, 0
-    ; Set IHCB5 (bit 5 = 002000) in CTRL
-    LDA 0, savctl, 0
-    LDA 1, cihcb5, 0
-    COM 0, 0
-    COM 1, 2
-    AND 2, 0
-    COM 0, 0                  ; OR
-    DOAC 0, FPS
-    STA 0, savctl, 0
-    JMP @ienret, 0
-
-; --- APIDIS: disable CTL5 interrupt ---
-; Call: JSR @paidis, 0
-APIDIS:
-    STA 3, ienret, 0          ; reuse ienret
-    ; Clear IHCB5 in CTRL
-    LDA 0, savctl, 0
-    LDA 1, cihcb5, 0
-    COM 1, 1                  ; ~IHCB5
-    AND 1, 0                  ; clear bit
-    DOAC 0, FPS
-    STA 0, savctl, 0
-    JMP @ienret, 0
-
-; --- APWI: wait for CTL5 interrupt ---
-; Call: JSR @papwi, 0
-APWI:
-    STA 3, ienret, 0
-apwilp:
-    SKPDN FPS+2                ; CTL05 DONE (subdevice 2)
-    JMP apwilp
-    NIOC FPS+2                 ; clear CTL05 flags
-    JMP @ienret, 0
-
-; --- TSTINT: test CTL5 interrupt ---
-; Returns: AC0 = 1 if CTL05 DONE set, 0 otherwise
-; Call: JSR @ptstint, 0
-TSTINT:
-    SKPDN FPS+2
-    JMP tsti0
-    LDA 0, c1, 0
-    JMP 0, 3
-tsti0:
-    SUB 0, 0
-    JMP 0, 3
-
-; --- APSUPV: set supervisor mode ---
-; AC0 = 0 (off) or nonzero (on)
-; Call: JSR @psupr, 0
-APSUPV:
-    STA 3, supret, 0
-    STA 0, supvr, 0
-    JMP @supret, 0
-
-; --- APASGN: assign FPS processor ---
-; On DG Nova, FPS is always device 055. No RSX-11M assignment needed.
-; Returns: AC0 = 1 (success)
-; Call: JSR @pasgn, 0
-APASGN:
-    STA 3, asgret, 0
-    LDA 0, c1, 0
-    STA 0, 040, 0             ; APTS = 1 (but org changed, use direct addr)
-    JSR @parsrt, 0             ; reset device
-    LDA 0, c1, 0
-    JMP @asgret, 0
-
-; --- APRLSE: release FPS processor ---
-; Call: JSR @prlse, 0
-APRLSE:
-    STA 3, rlsret, 0
-    JSR @papwd, 0              ; wait for any DMA
-    NIOC FPS                   ; clear device
-    SUB 0, 0
-    STA 0, runfg, 0
-    STA 0, dmafg, 0
-    JMP @rlsret, 0
-
-; --- APSTOP: error stop with code ---
-; AC0 = error code. Stores code and halts.
-; Call: JSR @pstop, 0
-APSTOP:
-    STA 3, stpret, 0
-    STA 0, ercode, 0
-    HALT
-
-; --- HPUT: send single datum to supervisor ---
-; AC0 = datum value
-; Call: JSR @phput, 0
-HPUT:
-    STA 3, hptret, 0
-    JSR @psndr, 0              ; call SENDER with nonzero AC0
-    JMP @hptret, 0
-
-; --- HGET: wait for datum from supervisor ---
-; Returns: AC0 = datum
-; Call: JSR @phget, 0
-HGET:
-    STA 3, hgtret, 0
-hgetlp:
-    JSR @phtst, 0
-    MOV 0, 0, SNR             ; skip if result ready (nonzero)
-    JMP hgetlp
-    ; AC0 has the datum
-    JMP @hgtret, 0
-
-; --- HTST: test if datum available from supervisor ---
-; Returns: AC0 = datum if available, 0 if not
-; Searches FPDAT array for nonzero entry.
-; Call: JSR @phtst, 0
-HTST:
-    STA 3, htsret, 0
-    LDA 2, pfpdat, 0          ; pointer to FPDAT
-    LDA 1, cm8, 0             ; counter = -8
-htstlp:
-    LDA 0, 0, 2
-    MOV 0, 0, SNR             ; skip if nonzero (found datum)
-    JMP htstn
-    ; Found: clear the entry and return datum
-    SUB 1, 1
-    STA 1, 0, 2
-    JMP @htsret, 0
-htstn:
-    INC 2, 2
-    INC 1, 1, SZR
-    JMP htstlp
-    SUB 0, 0                  ; not found, return 0
-    JMP @htsret, 0
-
-; --- LOOKY: debug register dump ---
-; Returns in AC0-AC3: FPSWR, RUNFG, FN status, CTRL
-; Call: JSR @plooky, 0
-LOOKY:
-    STA 3, lkyret, 0
-    LDA 0, fpswr, 0
-    LDA 1, runfg, 0
-    DIA 2, FPS                 ; read FN
-    LDA 3, savctl, 0
-    ; AC3 is clobbered, can't return via it
-    ; Store results and use indirect return
-    JMP @lkyret, 0
-
-; --- VIRP: debug interrupt status ---
-; Returns: AC0 = SUPVR flag
-; Call: JMP 0, 3 style return
-VIRP:
-    LDA 0, supvr, 0
-    JMP 0, 3
+; --- Additional page-zero constant ---
+    org 0116
+prstk:
+    dw rstk             ; pointer to stack base (for reset)
 
 ; end of dapex_dg.asm
