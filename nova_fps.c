@@ -234,8 +234,8 @@ static t_uint64 fps_inbs;                /* I/O input bus */
 static t_uint64 fps_dpbs;                /* Data Pad bus */
 static t_uint64 fps_cb;                   /* Control Buffer (current instruction) */
 
-/* AP memory (allocated dynamically) */
-static t_uint64 *fps_ps;                  /* Program Store (64-bit words) */
+/* AP memory (allocated dynamically, fps_ps is extern for loader) */
+t_uint64 *fps_ps;                         /* Program Store (64-bit words) */
 static t_uint64 *fps_md;                  /* Main Data (38-bit in 64-bit) */
 
 /* Table Memory ROM */
@@ -259,12 +259,17 @@ static int32 fps_read_reg (int32 regsel);
 static void fps_write_reg (int32 regsel, int32 val);
 static void fps_execute_cycle (void);
 static void fps_init_table_memory (void);
+t_stat fps_attach (UNIT *uptr, CONST char *cptr);
+t_stat fps_detach (UNIT *uptr);
+
+/* External loader function (in nova_fps_load.c) */
+extern t_stat fps_load_apo (FILE *f);
 
 /* FPS data structures */
 
 DIB fps_dib = { DEV_FPS, INT_FPS, PI_FPS, &fps_io };
 
-UNIT fps_unit = { UDATA (&fps_svc, 0, 0) };
+UNIT fps_unit = { UDATA (&fps_svc, UNIT_ATTABLE, 0) };
 
 REG fps_reg[] = {
     { ORDATA (SWR,      fps_swr,        16) },
@@ -297,7 +302,7 @@ DEVICE fps_dev = {
     "FPS", &fps_unit, fps_reg, NULL,
     1, 8, 16, 1, 8, 16,
     NULL, NULL, &fps_reset,
-    NULL, NULL, NULL,
+    NULL, &fps_attach, &fps_detach,
     &fps_dib, DEV_DISABLE | DEV_DEBUG
     };
 
@@ -1501,7 +1506,7 @@ fps_fa = fps_fm = 0;
 fps_a1 = fps_a2 = fps_m1 = fps_m2 = 0;
 fps_inbs = fps_dpbs = fps_cb = 0;
 fps_spcond = fps_facond = 0;
-/* Don't zero PS and MD on reset -- preserve loaded programs */
+/* Don't zero PS and MD on reset -- preserve loaded programs and loaded APOs */
 /* Initialize table memory ROM on first reset */
 fps_init_table_memory ();
 
@@ -1511,4 +1516,36 @@ DEV_UPDATE_INTR;
 sim_cancel (&fps_unit);
 
 return SCPE_OK;
+}
+
+
+/* Attach handler -- loads .APO file into Program Store */
+
+t_stat fps_attach (UNIT *uptr, CONST char *cptr)
+{
+t_stat r;
+FILE *f;
+
+r = attach_unit (uptr, cptr);
+if (r != SCPE_OK) return r;
+
+f = uptr->fileref;
+if (f == NULL) return SCPE_OPENERR;
+
+/* Ensure PS memory is allocated */
+if (fps_ps == NULL) {
+    fps_ps = (t_uint64 *) calloc (PS_SIZE, sizeof (t_uint64));
+    if (fps_ps == NULL) return SCPE_MEM;
+    }
+
+r = fps_load_apo (f);
+return r;
+}
+
+
+/* Detach handler */
+
+t_stat fps_detach (UNIT *uptr)
+{
+return detach_unit (uptr);
 }
