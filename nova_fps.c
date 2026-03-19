@@ -262,6 +262,15 @@ static t_uint64 *fps_tm;               /* Table Memory ROM (allocated in reset) 
 
 /* DMA state */
 static int32 fps_dma_active;            /* DMA transfer in progress */
+static int32 fps_dma_phase;             /* 0=first word, 1=second word */
+static uint16 fps_dma_buf;              /* Buffer for 2-word transfers */
+
+/* Three-subdevice DONE/BUSY model (SimH only provides one pair via dev_busy/dev_done,
+   which we map to subdevice 0 = RUN. Subdevices 1 and 2 are tracked internally.) */
+static int32 fps_dma_busy;              /* Subdevice 1: DMA BUSY */
+static int32 fps_dma_done;              /* Subdevice 1: DMA DONE */
+static int32 fps_ctl05_busy;            /* Subdevice 2: CTL05 BUSY */
+static int32 fps_ctl05_done;            /* Subdevice 2: CTL05 DONE */
 
 /* Execution state */
 static int32 fps_spcond;                 /* S-pad condition code */
@@ -310,6 +319,10 @@ REG fps_reg[] = {
     { FLDATA (RUN,      fps_running,     0) },
     { FLDATA (BUSY,     dev_busy,   INT_V_FPS) },
     { FLDATA (DONE,     dev_done,   INT_V_FPS) },
+    { FLDATA (DMABUSY,  fps_dma_busy,   0) },
+    { FLDATA (DMADONE,  fps_dma_done,   0) },
+    { FLDATA (C05BUSY,  fps_ctl05_busy, 0) },
+    { FLDATA (C05DONE,  fps_ctl05_done, 0) },
     { FLDATA (DISABLE,  dev_disable,INT_V_FPS) },
     { FLDATA (INT,      int_req,    INT_V_FPS) },
     { BRDATA (SPAD,     fps_spad, 8, 16, SP_SIZE) },
@@ -379,7 +392,10 @@ switch (code) {
                 break;
             case iopP:                                  /* DOBP → HDMACLK* → start DMA */
                 fps_dma_active = 1;
+                fps_dma_busy = 1;
+                fps_dma_done = 0;
                 fps_ctl |= CTL_HDMA;
+                fps_ctl &= ~CTL_WC_ZERO;               /* Clear WC=0 status */
                 sim_activate (&fps_unit, 10);           /* Schedule DMA cycles */
                 break;
             }
@@ -544,6 +560,39 @@ switch (regsel) {
 }
 
 
+/* Signal AP halt to host — sets RUN DONE (subdevice 0) and optionally
+   interrupts the host if CTL_IHHALT is enabled. Called from every code
+   path that sets fps_running=0 / fps_fn_status|=FN_HALTED. */
+
+static void fps_signal_halt (void)
+{
+fps_running = 0;
+fps_fn_status |= FN_HALTED;
+DEV_CLR_BUSY( INT_FPS );                               /* Clear RUN BUSY */
+DEV_SET_DONE( INT_FPS );                               /* Set RUN DONE */
+if (fps_ctl & CTL_IHHALT)                              /* If halt interrupt enabled */
+    DEV_UPDATE_INTR;
+}
+
+/* Signal DMA completion — sets DMA DONE (subdevice 1) and optionally
+   interrupts the host if CTL_IHWC is enabled. */
+
+static void fps_signal_dma_done (void)
+{
+fps_dma_active = 0;
+fps_dma_phase = 0;
+fps_dma_busy = 0;
+fps_dma_done = 1;
+fps_ctl &= ~CTL_HDMA;
+fps_ctl |= CTL_WC_ZERO;                                /* Set WC=0 status bit */
+if (fps_ctl & CTL_IHWC) {                              /* If DMA-done interrupt enabled */
+    DEV_CLR_BUSY( INT_FPS );
+    DEV_SET_DONE( INT_FPS );
+    DEV_UPDATE_INTR;
+    }
+}
+
+
 /* Process FN command word */
 
 static void fps_process_fn_command (int32 cmd)
@@ -571,6 +620,10 @@ if (cmd & FN_RESET) {
     fps_ap_status = 0;
     fps_spfn = 0;
     fps_dma_active = 0;
+    fps_dma_busy = 0;
+    fps_dma_done = 0;
+    fps_ctl05_busy = 0;
+    fps_ctl05_done = 0;
     memset (fps_spad, 0, sizeof (fps_spad));
     memset (fps_srs, 0, sizeof (fps_srs));
     fps_fn_status = FN_HALTED;
@@ -578,14 +631,7 @@ if (cmd & FN_RESET) {
     }
 
 if (cmd & FN_STOP) {
-    fps_running = 0;
-    fps_fn_status |= FN_HALTED;
-    /* Interrupt host if IHHALT enabled */
-    if (fps_ctl & CTL_IHHALT) {
-        DEV_CLR_BUSY( INT_FPS );
-        DEV_SET_DONE( INT_FPS );
-        DEV_UPDATE_INTR;
-        }
+    fps_signal_halt ();
     }
 
 if (cmd & FN_START) {
@@ -612,10 +658,10 @@ if (cmd & FN_CONT) {
 
 if (cmd & FN_STEP) {
     /* Execute one instruction then halt */
-    /* TODO: implement when AP execution engine exists */
-    fps_psa++;
-    fps_fn_status |= FN_HALTED;
-    fps_running = 0;
+    fps_running = 1;
+    fps_fn_status &= ~FN_HALTED;
+    fps_execute_cycle ();
+    fps_signal_halt ();
     }
 
 if (cmd & FN_DEP) {
@@ -774,10 +820,6 @@ host32 = (sign << 31) | (hexp << 23) | hmant;
 }
 
 
-/* DMA state machine -- handles multi-word transfers per AP word */
-static int32 fps_dma_phase;                             /* 0=first word, 1=second word */
-static uint16 fps_dma_buf;                              /* Buffer for 2-word transfers */
-
 /* Execute one DMA cycle (transfer one host word) */
 
 static void fps_dma_cycle (void)
@@ -786,14 +828,7 @@ int32 fmt;
 uint16 host_word, hi_word, lo_word;
 
 if (fps_wc == 0 || !fps_dma_active) {
-    fps_dma_active = 0;
-    fps_dma_phase = 0;
-    fps_ctl &= ~CTL_HDMA;
-    if (fps_ctl & CTL_IHWC) {
-        DEV_CLR_BUSY( INT_FPS );
-        DEV_SET_DONE( INT_FPS );
-        DEV_UPDATE_INTR;
-        }
+    fps_signal_dma_done ();
     return;
     }
 
@@ -909,16 +944,8 @@ fps_hma &= 0xFFFF;
 /* Decrement word count */
 fps_wc = (fps_wc - 1) & 0xFFFF;
 
-if (fps_wc == 0) {
-    fps_dma_active = 0;
-    fps_dma_phase = 0;
-    fps_ctl &= ~CTL_HDMA;
-    if (fps_ctl & CTL_IHWC) {
-        DEV_CLR_BUSY( INT_FPS );
-        DEV_SET_DONE( INT_FPS );
-        DEV_UPDATE_INTR;
-        }
-    }
+if (fps_wc == 0)
+    fps_signal_dma_done ();
 }
 
 
@@ -1032,8 +1059,7 @@ int32 signed_disp;
 if (!fps_running || !fps_ps)
     return;
 if (fps_psa >= PS_SIZE) {
-    fps_running = 0;
-    fps_fn_status |= FN_HALTED;
+    fps_signal_halt ();
     return;
     }
 
@@ -1070,13 +1096,7 @@ if (df == 0 && sop == SOP_SPEC && sps < 8) {
             fps_fn_status ^= FN_SWR_ACK;
             break;
         case 5:                                         /* HALT */
-            fps_running = 0;
-            fps_fn_status |= FN_HALTED;
-            if (fps_ctl & CTL_IHHALT) {
-                DEV_CLR_BUSY( INT_FPS );
-                DEV_SET_DONE( INT_FPS );
-                DEV_UPDATE_INTR;
-                }
+            fps_signal_halt ();
             return;
         case 8:                                         /* JMP/JSR */
             {
@@ -1108,13 +1128,7 @@ if (df == 0 && sop == SOP_SPEC && sps < 8) {
 
 /* DF=1 HALT check (early return) */
 if (df == 1 && sop == SOP_SPEC && sps == 5) {
-    fps_running = 0;
-    fps_fn_status |= FN_HALTED;
-    if (fps_ctl & CTL_IHHALT) {
-        DEV_CLR_BUSY( INT_FPS );
-        DEV_SET_DONE( INT_FPS );
-        DEV_UPDATE_INTR;
-        }
+    fps_signal_halt ();
     return;
     }
 
@@ -1250,13 +1264,7 @@ if (df == 0 && sop == SOP_SPEC) {
             return;                                     /* Don't write to SPD */
 
         case 5:                                         /* HALT */
-            fps_running = 0;
-            fps_fn_status |= FN_HALTED;
-            if (fps_ctl & CTL_IHHALT) {
-                DEV_CLR_BUSY( INT_FPS );
-                DEV_SET_DONE( INT_FPS );
-                DEV_UPDATE_INTR;
-                }
+            fps_signal_halt ();
             return;
 
         case 12:                                        /* SETEXIT */
@@ -1273,13 +1281,7 @@ if (df == 1) {
     if (sop == SOP_SPEC) {
         int32 spec = sps;
         if (spec == 5) {                                /* HALT */
-            fps_running = 0;
-            fps_fn_status |= FN_HALTED;
-            if (fps_ctl & CTL_IHHALT) {
-                DEV_CLR_BUSY( INT_FPS );
-                DEV_SET_DONE( INT_FPS );
-                DEV_UPDATE_INTR;
-                }
+            fps_signal_halt ();
             return;
             }
         }
@@ -1609,6 +1611,11 @@ fps_spcond = fps_facond = 0;
 /* Don't zero PS and MD on reset -- preserve loaded programs and loaded APOs */
 /* Initialize table memory ROM on first reset */
 fps_init_table_memory ();
+
+fps_dma_busy = 0;
+fps_dma_done = 0;
+fps_ctl05_busy = 0;
+fps_ctl05_done = 0;
 
 DEV_CLR_BUSY( INT_FPS );
 DEV_CLR_DONE( INT_FPS );
