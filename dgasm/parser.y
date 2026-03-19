@@ -1,0 +1,406 @@
+%{
+#include "ast.h"
+#include <string.h>
+#include <stdlib.h>
+
+
+#include <stdio.h>
+
+int yylex(void);
+void yyerror(program_t*, char const*);
+extern int yylineno;
+
+static void append_constant(program_t *prog, constant_t *c) {
+    c->next = prog->constanttbl;
+    prog->constanttbl = c;
+}
+
+static void append_device(program_t *prog, device_t *d) {
+    d->next = prog->devicetbl;
+    prog->devicetbl = d;
+}
+
+void append_statement(program_t *p, statement_t *stmt) {
+    stmt->next = NULL;
+    stmt->lineno = yylineno - 1;  // By the time we get here, we've moved on already
+
+    if (!p->head) {
+        p->head = p->tail = stmt;
+    } else {
+        p->tail->next = stmt;
+        p->tail = stmt;
+    }
+}
+
+void append_opcode(program_t *p, opcode_t* op) {
+    statement_t *s = malloc(sizeof(statement_t));
+    s->type = STMT_OPCODE;
+    s->opcode = op;
+
+    append_statement(p, s);
+}
+
+void append_label(program_t *p, char* lbl) {
+    statement_t *s = malloc(sizeof(statement_t));
+    s->type = STMT_LABEL;
+    s->label = lbl;
+
+    append_statement(p, s);
+}
+
+void append_variable(program_t *p, variable_t* var) {
+    statement_t *s = malloc(sizeof(statement_t));
+    s->type = STMT_VARIABLE;
+    s->variable = var;
+
+    append_statement(p, s);
+}
+
+void append_dw(program_t* p, expr_list_t* dw) {
+    statement_t* s = malloc(sizeof(statement_t));
+    s->type = STMT_DW;
+    s->dw = dw;
+
+    append_statement(p, s);
+}
+
+void append_directive(program_t *p, directive_t* dir) {
+    statement_t *s = malloc(sizeof(statement_t));
+    s->type = STMT_DIRECTIVE;
+    s->directive = dir;
+
+    append_statement(p, s);
+}
+%}
+
+%parse-param { program_t* prog }
+%define parse.error verbose
+
+%union {
+    char *str;
+    long number;
+    constant_t* constant;
+    device_t* device;
+    variable_t* variable;
+    expression_t* expression;
+    operand_list_t* operand_list;
+    opcode_t* opcode;
+    operand_t* operand;
+    directive_t* directive;
+    expr_list_t* expr_list;
+}
+			
+%token OPEN_SQUARE CLOSE_SQUARE COMMA AT DOT PLUS MINUS MULTIPLY DIVIDE AND OR NOT XOR COLON SECTION CONST VAR ORG DEV DOLLAR SKP SZC SNC SZR SNR SEZ SBN EOL IDENTIFIER STRING INTEGER LPAREN RPAREN EQUALS RESV DW PACKED HASH
+			
+%type	<str>	IDENTIFIER STRING label_stmt
+%type	<number>	INTEGER
+%type	<constant>	constant_stmt;
+%type	<device>	device_stmt;
+%type	<variable>	var_stmt;
+%type	<expression>	expression;
+%type	<program>	program;
+%type	<operand>	operand;
+%type	<opcode>	opcode_stmt;
+%type	<operand_list>	operand_list;
+%type	<directive>	directive_stmt;
+%type	<expr_list>	expr_list dw_stmt;
+			
+%left AND OR NOT XOR
+%left PLUS MINUS
+%left MULTIPLY DIVIDE
+
+%%
+program:
+		{
+		    prog->constanttbl = NULL;
+		    prog->devicetbl = NULL;
+
+		    prog->head = NULL;
+		    prog->tail = NULL;
+		}
+	| 	program constant_stmt {
+		    append_constant(prog, $2);
+		}
+	|	program device_stmt {
+		    append_device(prog, $2);
+		}
+	|	program var_stmt {
+		    append_variable(prog, $2);
+		}
+	|	program opcode_stmt {
+		    append_opcode(prog, $2);
+		}
+	|	program label_stmt {
+		    append_label(prog, $2);
+		}
+	|	program directive_stmt {
+		    append_directive(prog, $2);
+		}
+	|	program dw_stmt {
+		    append_dw(prog, $2);
+		}
+	|	program EOL {}
+	;
+
+constant_stmt:
+		CONST IDENTIFIER EQUALS expression EOL {
+		    $$ = malloc(sizeof(constant_t));
+		    $$->name = strdup($2);
+		    free($2);
+		    $$->value = $4;
+		}
+	;
+
+device_stmt:
+		DEV IDENTIFIER EQUALS INTEGER EOL {
+		    $$ = malloc(sizeof(device_t));
+		    $$->name = strdup($2);
+		    free($2);
+		    $$->value = $4;
+		}
+	;
+
+label_stmt:
+		IDENTIFIER COLON EOL {
+		    $$ = strdup($1);
+		    free($1);
+		}
+	;
+
+directive_stmt:
+		ORG INTEGER EOL {
+		    $$ = malloc(sizeof(directive_t));
+		    $$->type = DIRECTIVE_ORG;
+		    $$->org = $2;
+		}
+	;
+
+var_stmt:
+		VAR IDENTIFIER EQUALS expression EOL {
+		    $$ = malloc(sizeof(variable_t));
+		    $$->type = VARIABLE_NUMBER;
+		    $$->name = strdup($2);
+		    free($2);
+		    $$->value = (variable_value_t){ .number = $4 };
+		}
+	|	VAR IDENTIFIER EQUALS STRING EOL {
+		    $$ = malloc(sizeof(variable_t));
+		    $$->type = VARIABLE_STRING;
+		    $$->name = strdup($2);
+		    free($2);
+		    $$->value = (variable_value_t){ .str = $4 };
+		}
+	|	VAR IDENTIFIER EQUALS STRING PACKED EOL {
+		    $$ = malloc(sizeof(variable_t));
+		    $$->type = VARIABLE_PACKED_STRING;
+		    $$->name = strdup($2);
+		    free($2);
+		    $$->value = (variable_value_t){ .str = $4 };
+		}
+	|	VAR IDENTIFIER RESV INTEGER EOL {
+		    $$ = malloc(sizeof(variable_t));
+		    $$->type = VARIABLE_RESV;
+		    $$->name = strdup($2);
+		    free($2);
+		    $$->value = (variable_value_t){ .resv = $4 };
+		}
+	;
+
+expr_list:
+        expression {
+            $$ = malloc(sizeof(expr_list_t));
+            $$->count = 1;
+            $$->capacity = 4;
+            $$->items = malloc(sizeof(expression_t*) * $$->capacity);
+            $$->items[0] = $1;
+        }
+    |   expr_list COMMA expression {
+            if ($1->count >= $1->capacity) {
+                $1->capacity *= 2;
+                $1->items = realloc($1->items,
+                                    sizeof(expression_t*) * $1->capacity);
+            }
+
+            $1->items[$1->count++] = $3;
+            $$ = $1;
+        }
+;
+
+dw_stmt:
+        DW expr_list EOL {
+	    $$ = $2;
+        }
+;
+
+expression:
+		INTEGER {
+		    $$ = malloc(sizeof(expression_t));
+		    $$->kind = EXPR_INTEGER;
+		    $$->u.number = $1;
+		}
+	|	DOT {
+		    $$ = malloc(sizeof(expression_t));
+		    $$->kind = EXPR_PC;
+		}
+	| 	IDENTIFIER {
+		    $$ = malloc(sizeof(expression_t));
+		    $$->kind = EXPR_IDENTIFIER;
+		    $$->u.identifier = strdup($1);
+		    free($1);
+		}
+	| 	expression PLUS expression {
+		    $$ = malloc(sizeof(expression_t));
+		    $$->kind = EXPR_BINARY;
+		    $$->u.binary.op = OP_PLUS;
+		    $$->u.binary.left = $1;
+		    $$->u.binary.right = $3;
+		}
+	| 	expression MINUS expression {
+		    $$ = malloc(sizeof(expression_t));
+		    $$->kind = EXPR_BINARY;
+		    $$->u.binary.op = OP_MINUS;
+		    $$->u.binary.left = $1;
+		    $$->u.binary.right = $3;
+		}
+	| 	expression MULTIPLY expression {
+		    $$ = malloc(sizeof(expression_t));
+		    $$->kind = EXPR_BINARY;
+		    $$->u.binary.op = OP_MULTIPLY;
+		    $$->u.binary.left = $1;
+		    $$->u.binary.right = $3;
+		}
+	| 	expression DIVIDE expression {
+		    $$ = malloc(sizeof(expression_t));
+		    $$->kind = EXPR_BINARY;
+		    $$->u.binary.op = OP_DIVIDE;
+		    $$->u.binary.left = $1;
+		    $$->u.binary.right = $3;
+		}
+	| 	expression AND expression {
+		    $$ = malloc(sizeof(expression_t));
+		    $$->kind = EXPR_BINARY;
+		    $$->u.binary.op = OP_AND;
+		    $$->u.binary.left = $1;
+		    $$->u.binary.right = $3;
+		}
+	| 	expression OR expression {
+		    $$ = malloc(sizeof(expression_t));
+		    $$->kind = EXPR_BINARY;
+		    $$->u.binary.op = OP_OR;
+		    $$->u.binary.left = $1;
+		    $$->u.binary.right = $3;
+		}
+	| 	expression XOR expression {
+		    $$ = malloc(sizeof(expression_t));
+		    $$->kind = EXPR_BINARY;
+		    $$->u.binary.op = OP_XOR;
+		    $$->u.binary.left = $1;
+		    $$->u.binary.right = $3;
+		}
+	| 	NOT expression {
+		    $$ = malloc(sizeof(expression_t));
+		    $$->kind = EXPR_UNARY;
+		    $$->u.unary.op = OP_NOT;
+		    $$->u.unary.child = $2;
+		}
+	|	MINUS expression {
+		    $$ = malloc(sizeof(expression_t));
+		    $$->kind = EXPR_UNARY;
+		    $$->u.unary.op = OP_MINUS;
+		    $$->u.unary.child = $2;
+		}
+	| 	LPAREN expression RPAREN {
+		    $$ = $2;  /* just return the inner expression */
+		}
+	;
+
+operand:
+	     	SKP {
+		    $$ = malloc(sizeof(operand_t));
+		    $$->kind = OPERAND_SKIP;
+		    $$->u.skip = SKIP_SKP;
+		}
+	|       SZC {
+		    $$ = malloc(sizeof(operand_t));
+		    $$->kind = OPERAND_SKIP;
+		    $$->u.skip = SKIP_SZC;
+		}
+	|       SNC {
+		    $$ = malloc(sizeof(operand_t));
+		    $$->kind = OPERAND_SKIP;
+		    $$->u.skip = SKIP_SNC;
+		}
+	|       SZR {
+		    $$ = malloc(sizeof(operand_t));
+		    $$->kind = OPERAND_SKIP;
+		    $$->u.skip = SKIP_SZR;
+		}
+	|	SNR {
+		    $$ = malloc(sizeof(operand_t));
+		    $$->kind = OPERAND_SKIP;
+		    $$->u.skip = SKIP_SNR;
+		}
+	|       SEZ {
+		    $$ = malloc(sizeof(operand_t));
+		    $$->kind = OPERAND_SKIP;
+		    $$->u.skip = SKIP_SEZ;
+		}
+	|       SBN {
+		    $$ = malloc(sizeof(operand_t));
+		    $$->kind = OPERAND_SKIP;
+		    $$->u.skip = SKIP_SBN;
+		}
+	|	expression {
+		    $$ = malloc(sizeof(operand_t));
+		    $$->kind = OPERAND_EXPR;
+		    $$->u.expr = $1;
+		}
+	| 	AT expression {
+		    $$ = malloc(sizeof(operand_t));
+		    $$->kind = OPERAND_INDIRECT;
+		    $$->u.expr = $2;
+		}
+;
+
+operand_list:
+		operand {
+		    $$ = calloc(1, sizeof(operand_list_t));
+		    $$->count = 1;
+		    $$->items[0] = $1;
+		}
+	| 	operand_list COMMA operand {
+		    if ($1->count >= MAX_OPERANDS) {
+			yyerror(prog, "Too many operands");
+		    } else {
+			$1->items[$1->count++] = $3;
+		    }
+
+		    $$ = $1;
+		}
+;
+
+opcode_stmt:
+		IDENTIFIER EOL {
+		    $$ = malloc(sizeof(opcode_t));
+		    $$->ignoreresult = 0;
+		    $$->mnemonic = strdup($1);
+		    $$->operands = NULL;
+		    free($1);
+		}
+	| 	IDENTIFIER operand_list EOL {
+		    $$ = malloc(sizeof(opcode_t));
+		    $$->ignoreresult = 0;
+		    $$->mnemonic = strdup($1);
+		    $$->operands = $2;
+		    free($1);
+		}
+	|	 IDENTIFIER HASH operand_list EOL {
+		    $$ = malloc(sizeof(opcode_t));
+		    $$->ignoreresult = 1;
+		    $$->mnemonic = strdup($1);
+		    $$->operands = $3;
+		    free($1);
+		}
+		    
+;
+%%

@@ -1,0 +1,7 @@
+#ifndef __EVAL_H__
+#define __EVAL_H__
+
+uint16_t eval(expression_t* expr, symboltbl_t* symbols, int offset);
+void free_eval(expression_t* expr);
+
+#endif
