@@ -158,7 +158,7 @@ Results from all 12 Phase 1 reads are also stored at zero-page addresses
 | FPS device code | 055 (octal) on DG Nova I/O bus |
 | AP-120B / FPS-100 | Architecturally identical (same instruction set) |
 | Interface type | PDP-11 uses Unibus memory-mapped I/O; Nova uses DOA/DOB/DOC programmed I/O |
-| Register mapping | **UNKNOWN** -- this is what the test program discovers |
+| Register mapping | **Derived from 280B schematics**, verified in SimH emulator |
 | FPS-100 interface | Has REGSEL00-05 (6-bit register select bus) |
 | AP-120B interface | Uses direct strobes + HD2REG/REG2HD (no REGSEL) |
 
@@ -178,31 +178,40 @@ Requires: C compiler, cmake, flex, bison.
 
 ## SimH AP-120B Emulator (`nova_fps.c`)
 
-A 1500-line SimH device plugin that emulates the FPS AP-120B / FPS-100
-array processor. Runs as device 055 on the SimH Nova simulator.
+A SimH device plugin that emulates the FPS AP-120B / FPS-100 array processor.
+Runs as device 055 on the SimH Nova simulator.
 
 **Working features:**
-- Schematic-derived I/O mapping: DOA+flag→SWR/FN/CTRL/INT,
-  DOB+flag→WC/HMA/APMA/DMA, DOC+flag→FMTH/FMTL,
-  DIA+flag→FN/SWR/LITES/APMA, DIB→FMTH, DIC→FMTL
+- Schematic-derived I/O mapping: DOA+flag->SWR/FN/CTRL/INT,
+  DOB+flag->WC/HMA/APMA/DMA, DOC+flag->FMTH/FMTL,
+  DIA+flag->FN/SWR/LITES/APMA, DIB->FMTH, DIC->FMTL
 - All host interface registers (SWR, FN, LITES, CTL, WC, HMA, APMA, FMTH, FMTL)
 - FN command protocol (DEP, EXAM, START, STOP, CONT, STEP, RESET)
 - Program Store loading via panel DEP (4 x 16-bit words per 64-bit instruction)
-- Three-subdevice DONE/BUSY model (RUN, DMA, CTL05)
+- Three-subdevice DONE/BUSY model: RUN (dev 055), DMA (dev 056), CTL05 (dev 057)
+- SKPDN/SKPBN skip instructions work on all three subdevices
 - AP instruction execution: 24-field 64-bit microinstruction decode
 - S-pad operations: ADD, SUB, MOV, AND, OR, EQV, CLR, INC, DEC, COM, LDSPI
 - Branch conditions: all 16 types (integer and float)
 - JMP/JSR/RET with subroutine return stack
 - HALT (both DF=0 and DF=1)
+- SPEC ops: HALT, JMP, JSR, SETEXIT, SWDB
 - 38-bit FPS floating point: ADD, SUB, MUL with normalization
 - Floating adder (FADD/FSUB/FSUBR/FEQV/FAND/FOR) with A1/A2 input selection
 - Floating multiplier with M1/M2 input selection
 - Data Pad X/Y: 32 entries each, DPA+index addressing
 - Main Data memory: 64K x 64-bit, read/write via MI field
 - Table Memory ROM: 2K sin/cos tables (generated mathematically)
-- DMA engine with format conversion (38-bit float <-> 32-bit host)
+- DMA engine with format conversion (38-bit float <-> IEEE 32-bit, 32-bit int, 16-bit int)
 - Bit reversal (FFT address scrambling)
 - I/O operations: LDDA, OUT, IN, LDOMA, LDDPA, SWDB
+
+**Bug fixes (March 2026):**
+- DOBP now properly clears DMA DONE on subdevice 1 when starting a new transfer
+- 38-bit float <-> IEEE 32-bit conversion corrected: mantissa shift was <<4/>>4,
+  fixed to <<3/>>3; exponent bias correction from 384 to 387
+- Flag side-effect ordering fixed: flags processed before data transfer to prevent
+  DOAS+START from clearing DONE after halt
 
 **To use:** Copy `nova_fps.c` to `simh/NOVA/`, add to makefile NOVA sources
 and `nova_sys.c` device list, rebuild SimH. Enable with `set fps enabled`.
@@ -210,7 +219,25 @@ and `nova_sys.c` device list, rebuild SimH. Enable with `set fps enabled`.
 **Tested:** All 12 register read/write paths verified in SimH. S-pad arithmetic
 (LDSPI, ADD, SUB, MOV) verified correct. Panel DEP/EXAM protocol verified.
 Synchronous execution on START. DONE/BUSY flag scoping verified (DOA S/C
-affects RUN only, DOB S/C does not affect RUN).
+affects RUN only, DOB S/C does not affect RUN). Full VADD pipeline test
+passes (see below).
+
+## Test Harness (`gen_vadd_test.py`)
+
+Python script that generates SimH command files exercising the full AP pipeline.
+The generated test (`test_vadd.simh`) performs:
+
+1. **FN DEP protocol** -- loads hand-crafted FADD microcode into Program Store
+   and sets up scratch pad registers via the SWR/FN deposit sequence
+2. **DMA Host->AP** -- transfers IEEE 32-bit float data from host memory to AP
+   Main Data with automatic IEEE-to-FPS 38-bit float conversion
+3. **AP microcode execution** -- runs the FADD program on the AP
+4. **DMA AP->Host** -- transfers results back with FPS 38-bit-to-IEEE 32-bit
+   float conversion
+5. **Verification** -- checks that 1.5 + 2.5 = 4.0
+
+Additional test script: `test_subdev.simh` verifies SKPDN behavior on all
+three subdevices (RUN, DMA, CTL05).
 
 ## Community Links
 

@@ -58,10 +58,16 @@
 
 /* Device code */
 #define DEV_FPS         055
+#define DEV_FPS_DMA     056                     /* Subdevice 1: DMA */
+#define DEV_FPS_CTL5    057                     /* Subdevice 2: CTL05 */
 
-/* Interrupt vector */
-#define INT_V_FPS       1
+/* Interrupt vectors — one bit per subdevice in dev_busy/dev_done */
+#define INT_V_FPS       1                       /* Subdevice 0: RUN */
 #define INT_FPS         (1 << INT_V_FPS)
+#define INT_V_FPSDMA    2                       /* Subdevice 1: DMA */
+#define INT_FPSDMA      (1 << INT_V_FPSDMA)
+#define INT_V_FPSCTL5   3                       /* Subdevice 2: CTL05 */
+#define INT_FPSCTL5     (1 << INT_V_FPSCTL5)
 #define PI_FPS          0000020
 
 /* FN command bits (bit 0 = MSB) */
@@ -278,6 +284,8 @@ static int32 fps_facond;                 /* Float adder condition */
 
 /* Function prototypes */
 int32  fps_io (int32 pulse, int32 code, int32 AC);
+int32  fps_dma_io (int32 pulse, int32 code, int32 AC);
+int32  fps_ctl5_io (int32 pulse, int32 code, int32 AC);
 t_stat fps_reset (DEVICE *dptr);
 t_stat fps_svc (UNIT *uptr);
 
@@ -296,6 +304,8 @@ extern t_stat fps_load_apo (FILE *f);
 /* FPS data structures */
 
 DIB fps_dib = { DEV_FPS, INT_FPS, PI_FPS, &fps_io };
+DIB fps_dma_dib = { DEV_FPS_DMA, INT_FPSDMA, 0, &fps_dma_io };
+DIB fps_ctl5_dib = { DEV_FPS_CTL5, INT_FPSCTL5, 0, &fps_ctl5_io };
 
 UNIT fps_unit = { UDATA (&fps_svc, UNIT_ATTABLE, 0) };
 
@@ -338,6 +348,26 @@ DEVICE fps_dev = {
     &fps_dib, DEV_DISABLE | DEV_DEBUG
     };
 
+/* Subdevice 1: DMA DONE/BUSY at device code 056 */
+static UNIT fps_dma_unit = { UDATA (NULL, 0, 0) };
+DEVICE fps_dma_dev = {
+    "FPSDMA", &fps_dma_unit, NULL, NULL,
+    1, 8, 16, 1, 8, 16,
+    NULL, NULL, NULL,
+    NULL, NULL, NULL,
+    &fps_dma_dib, DEV_DISABLE | DEV_DEBUG
+    };
+
+/* Subdevice 2: CTL05 DONE/BUSY at device code 057 */
+static UNIT fps_ctl5_unit = { UDATA (NULL, 0, 0) };
+DEVICE fps_ctl5_dev = {
+    "FPSCTL5", &fps_ctl5_unit, NULL, NULL,
+    1, 8, 16, 1, 8, 16,
+    NULL, NULL, NULL,
+    NULL, NULL, NULL,
+    &fps_ctl5_dib, DEV_DISABLE | DEV_DEBUG
+    };
+
 
 /* I/O dispatch routine
 
@@ -358,6 +388,37 @@ DEVICE fps_dev = {
 int32 fps_io (int32 pulse, int32 code, int32 AC)
 {
 int32 rval = 0;
+
+/* Handle flag side-effects FIRST, before data transfer.
+   On real hardware these fire simultaneously, but in our synchronous
+   emulation the data transfer (e.g. FN START) may run the AP to
+   completion and set DONE. If we processed flags after, the S flag
+   would clear DONE again. Processing flags first avoids this. */
+
+switch (code) {
+    case ioDOA:
+    case ioDIA:
+    case 0:                                             /* NIO */
+        switch (pulse) {
+            case iopS:
+                DEV_SET_BUSY( INT_FPS );
+                DEV_CLR_DONE( INT_FPS );
+                DEV_UPDATE_INTR;
+                break;
+            case iopC:
+                DEV_CLR_BUSY( INT_FPS );
+                DEV_CLR_DONE( INT_FPS );
+                DEV_UPDATE_INTR;
+                break;
+            case iopP:
+                if (code == 0)
+                    fps_fn_status |= FN_SWR_ACK;
+                break;
+            }
+        break;
+    default:
+        break;
+    }
 
 /* Handle data transfers with flag-based register decode */
 switch (code) {
@@ -394,8 +455,12 @@ switch (code) {
                 fps_dma_active = 1;
                 fps_dma_busy = 1;
                 fps_dma_done = 0;
+                DEV_SET_BUSY( INT_FPSDMA );
+                DEV_CLR_DONE( INT_FPSDMA );
+                DEV_UPDATE_INTR;
                 fps_ctl |= CTL_HDMA;
                 fps_ctl &= ~CTL_WC_ZERO;               /* Clear WC=0 status */
+                fps_dma_phase = 0;                      /* Reset phase for new transfer */
                 sim_activate (&fps_unit, 10);           /* Schedule DMA cycles */
                 break;
             }
@@ -441,57 +506,6 @@ switch (code) {
         break;
 
     default:                                            /* NIO: flag-only, no data transfer */
-        break;
-    }
-
-/* Handle flag side-effects on DONE/BUSY.
-
-   On the real 280B, three independent DONE/BUSY pairs exist:
-     Subdevice 0 (RUN):   set by NIOS dev,0 / cleared by NIOC dev,0
-     Subdevice 1 (DMA):   set by DOBP (DMA start) / cleared by DMA complete
-     Subdevice 2 (CTL05): set by NICS dev,2 / cleared by NIOC dev,2
-
-   The flag side-effect (S/C/P) on DOx/DIx instructions affects the
-   subdevice associated with that DOx channel:
-     DOA S/C → subdevice 0 (RUN)  — writing FN with Start starts the AP
-     DOB S/C → no subdevice effect (DMA setup only; DMA start is via P)
-     DOC S/C → no subdevice effect (formatter)
-     DIA/DIB/DIC S/C → subdevice 0 (RUN) for reads
-
-   SimH only supports one DONE/BUSY pair per device, mapped to subdevice 0
-   (RUN). DMA DONE/BUSY is tracked in fps_dma_active. */
-
-switch (code) {
-    case ioDOA:                                         /* DOA: subdevice 0 (RUN) */
-    case ioDIA:                                         /* DIA: subdevice 0 (RUN) */
-    case 0:                                             /* NIO: subdevice 0 (RUN) */
-        switch (pulse) {
-            case iopS:
-                DEV_SET_BUSY( INT_FPS );
-                DEV_CLR_DONE( INT_FPS );
-                DEV_UPDATE_INTR;
-                break;
-            case iopC:
-                DEV_CLR_BUSY( INT_FPS );
-                DEV_CLR_DONE( INT_FPS );
-                DEV_UPDATE_INTR;
-                break;
-            case iopP:
-                /* DOAP handles INTCLK* in the data transfer switch above.
-                   For NIOP, also interrupt the AP. */
-                if (code == 0)
-                    fps_fn_status |= FN_SWR_ACK;
-                break;
-            }
-        break;
-
-    case ioDOB:                                         /* DOB: DMA channel */
-        /* DOB flag side-effects: P starts DMA (handled in data transfer).
-           S/C on DOB do NOT affect RUN DONE/BUSY — they are for DMA
-           subdevice 1, which we track separately via fps_dma_active. */
-        break;
-
-    default:                                            /* DOC, DIB, DIC: no flag effect */
         break;
     }
 
@@ -560,6 +574,55 @@ switch (regsel) {
 }
 
 
+/* Subdevice 1 I/O handler (DMA DONE/BUSY at device code 056)
+   Only handles NIO flag operations. SKPDN/SKPBN handled by SimH
+   directly via dev_done/dev_busy and INT_FPSDMA mask bit. */
+
+int32 fps_dma_io (int32 pulse, int32 code, int32 AC)
+{
+(void)code; (void)AC;
+switch (pulse) {
+    case iopS:
+        DEV_SET_BUSY( INT_FPSDMA );
+        DEV_CLR_DONE( INT_FPSDMA );
+        DEV_UPDATE_INTR;
+        break;
+    case iopC:
+        DEV_CLR_BUSY( INT_FPSDMA );
+        DEV_CLR_DONE( INT_FPSDMA );
+        DEV_UPDATE_INTR;
+        fps_dma_busy = 0;
+        fps_dma_done = 0;
+        break;
+    }
+return 0;
+}
+
+/* Subdevice 2 I/O handler (CTL05 DONE/BUSY at device code 057) */
+
+int32 fps_ctl5_io (int32 pulse, int32 code, int32 AC)
+{
+(void)code; (void)AC;
+switch (pulse) {
+    case iopS:
+        DEV_SET_BUSY( INT_FPSCTL5 );
+        DEV_CLR_DONE( INT_FPSCTL5 );
+        DEV_UPDATE_INTR;
+        fps_ctl05_busy = 1;
+        fps_ctl05_done = 0;
+        break;
+    case iopC:
+        DEV_CLR_BUSY( INT_FPSCTL5 );
+        DEV_CLR_DONE( INT_FPSCTL5 );
+        DEV_UPDATE_INTR;
+        fps_ctl05_busy = 0;
+        fps_ctl05_done = 0;
+        break;
+    }
+return 0;
+}
+
+
 /* Signal AP halt to host — sets RUN DONE (subdevice 0) and optionally
    interrupts the host if CTL_IHHALT is enabled. Called from every code
    path that sets fps_running=0 / fps_fn_status|=FN_HALTED. */
@@ -585,11 +648,11 @@ fps_dma_busy = 0;
 fps_dma_done = 1;
 fps_ctl &= ~CTL_HDMA;
 fps_ctl |= CTL_WC_ZERO;                                /* Set WC=0 status bit */
-if (fps_ctl & CTL_IHWC) {                              /* If DMA-done interrupt enabled */
-    DEV_CLR_BUSY( INT_FPS );
-    DEV_SET_DONE( INT_FPS );
+/* Set DMA DONE on subdevice 1 (device code 056) */
+DEV_CLR_BUSY( INT_FPSDMA );
+DEV_SET_DONE( INT_FPSDMA );
+if (fps_ctl & CTL_IHWC)                                /* If DMA-done interrupt enabled */
     DEV_UPDATE_INTR;
-    }
 }
 
 
@@ -781,11 +844,16 @@ hmant = host32 & 0x7FFFFF;
 /* Restore hidden bit */
 hmant |= 0x800000;
 
-/* Convert exponent: AP bias 512, host bias 128 */
-aexp = hexp + (512 - 128);
+/* Convert exponent: AP bias 512, host bias 127.
+   IEEE: value = hmant × 2^(hexp-150)  [hmant is 24-bit with hidden 1]
+   AP:   value = amant × 2^(aexp-540)  [amant is 28-bit 2's complement]
+   With amant = hmant << 3: aexp = hexp + 387.
+   The <<3 shift puts 24-bit hmant into [2^26, 2^27), keeping bit 27
+   clear so the 28-bit 2's complement sign is correct for positive values. */
+aexp = hexp + (512 - 125);
 
-/* Shift 24-bit mantissa to 28-bit position */
-amant = hmant << 4;
+/* Shift 24-bit mantissa to 28-bit: <<3 keeps bit 27 (sign) clear */
+amant = hmant << 3;
 
 /* Apply sign (2's complement for AP) */
 if (sign)
@@ -807,12 +875,12 @@ amant = fp_get_mant (ap_val);
 sign = (amant < 0) ? 1 : 0;
 if (sign) amant = -amant;
 
-/* Convert exponent */
-hexp = aexp - (512 - 128);
+/* Convert exponent (inverse of host-to-AP: aexp = hexp + 387) */
+hexp = aexp - (512 - 125);
 if (hexp <= 0 || hexp >= 255) { *hi = 0; *lo = 0; return; }
 
-/* Shift 28-bit mantissa to 24-bit, remove hidden bit */
-hmant = (amant >> 4) & 0x7FFFFF;
+/* Shift 28-bit mantissa to 24-bit (>>3, inverse of <<3), strip hidden bit */
+hmant = (amant >> 3) & 0x7FFFFF;
 
 host32 = (sign << 31) | (hexp << 23) | hmant;
 *hi = (uint16)(host32 >> 16);
@@ -899,8 +967,9 @@ else {
                 fps_dma_phase = 1;
                 }
             else {
-                if (fps_md && fps_apma < MD_SIZE)
+                if (fps_md && fps_apma < MD_SIZE) {
                     fps_md[fps_apma] = fps_host_to_ap_float (fps_dma_buf, host_word);
+                    }
                 fps_dma_phase = 0;
                 if (fps_ctl & CTL_APDMA) {
                     fps_apma += (fps_ctl & CTL_DECAPMA) ? -1 : 1;
@@ -1066,6 +1135,7 @@ if (fps_psa >= PS_SIZE) {
 /* Fetch instruction from Program Store */
 instr = fps_ps[fps_psa];
 fps_cb = instr;
+
 
 /* Decode fields */
 df      = FPS_DF(instr);
@@ -1618,7 +1688,11 @@ fps_ctl05_busy = 0;
 fps_ctl05_done = 0;
 
 DEV_CLR_BUSY( INT_FPS );
-DEV_CLR_DONE( INT_FPS );
+DEV_SET_DONE( INT_FPS );                               /* AP halted on reset = RUN DONE */
+DEV_CLR_BUSY( INT_FPSDMA );
+DEV_CLR_DONE( INT_FPSDMA );
+DEV_CLR_BUSY( INT_FPSCTL5 );
+DEV_CLR_DONE( INT_FPSCTL5 );
 DEV_UPDATE_INTR;
 sim_cancel (&fps_unit);
 

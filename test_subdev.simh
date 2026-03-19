@@ -1,0 +1,112 @@
+; Test subdevice DONE/BUSY via SKPDN on device codes 055, 056, 057
+set cpu 32K
+set fps enabled
+set fpsdma enabled
+set fpsctl5 enabled
+
+; --- Test 1: AP halt sets RUN DONE (subdevice 0, dev 055) ---
+; Load a HALT instruction at PS[0], start AP at PSA=0
+; Use FN panel protocol to DEP a halt into PS then START
+
+; Page-zero data constants
+deposit 070 0
+deposit 071 001003
+deposit 072 010500
+deposit 073 0
+deposit 074 0
+deposit 075 0
+deposit 076 001010
+deposit 077 001030
+deposit 060 001050
+deposit 061 001370
+deposit 062 040000
+deposit 063 001004
+
+; Program at 100: DEP TMA=0, DEP HALT into PS[0], DEP PSA=0, START, poll SKPDN
+; SWR=0: DOA 0,FPS
+deposit 100 020070
+deposit 101 061055
+; FN=001003 (DEP + REGSEL=3=TMA): DOAS 0,FPS
+deposit 102 020071
+deposit 103 061155
+
+; DEP word 0 into PS: SWR=010500, FN=001010 (DEP PS(TMA) WORD=0)
+deposit 104 020072
+deposit 105 061055
+deposit 106 020076
+deposit 107 061155
+; DEP word 1: SWR=0, FN=001030 (DEP PS(TMA) WORD=1)
+deposit 110 020073
+deposit 111 061055
+deposit 112 020077
+deposit 113 061155
+; DEP word 2: SWR=0, FN=001050 (DEP PS(TMA) WORD=2)
+deposit 114 020074
+deposit 115 061055
+deposit 116 020060
+deposit 117 061155
+; DEP word 3+INC TMA: SWR=0, FN=001370 (DEP PS(TMA) WORD=3 INC=TMA)
+deposit 120 020075
+deposit 121 061055
+deposit 122 020061
+deposit 123 061155
+
+; DEP PSA=0: SWR=0, FN=001004 (DEP + REGSEL=4=PSA)
+deposit 124 020070
+deposit 125 061055
+deposit 126 020063
+deposit 127 061155
+
+; START: FN = 040000 (bit 1 = START)
+deposit 130 020062
+deposit 131 061155
+
+; Poll SKPDN 055 (RUN DONE)
+; SKPDN 055: SKP(7) pulse=C(2) dev=055 = 063655
+deposit 132 063655
+; JMP PC-relative -1 (back to SKPDN): 000777
+deposit 133 000777
+; HALT (reached if SKPDN skips)
+deposit 134 063077
+
+go 100
+echo "Test 1 - SKPDN 055 (RUN DONE after HALT):"
+echo "Should reach HALT at PC 135:"
+examine PC
+
+; --- Test 2: Check SKPDN 056 (DMA DONE) ---
+; Set up a 1-word DMA transfer (WC=1, HMA=070, APMA=0)
+deposit 063 1
+deposit 064 070
+deposit 065 004040
+
+deposit 200 020063
+deposit 201 062055
+; DOBS 0,FPS (HMA): 062155
+deposit 202 020064
+deposit 203 062155
+; DOBC 0,FPS (APMA): 062255
+deposit 204 020070
+deposit 205 062255
+; DOAC 0,FPS (CTRL): 061255
+deposit 206 020065
+deposit 207 061255
+; DOBP 0,FPS (start DMA): 062355
+deposit 210 062355
+; Poll SKPDN 056 (DMA DONE)
+; SKPDN 056: SKP(7) pulse=C(2) dev=056 = 063656
+deposit 211 063656
+; JMP PC-relative -1: 000777
+deposit 212 000777
+; HALT
+deposit 213 063077
+
+go 200
+echo ""
+echo "Test 2 - SKPDN 056 (DMA DONE):"
+echo "Should reach HALT at PC 214:"
+examine PC
+
+echo ""
+echo "Subdevice tests complete"
+quit

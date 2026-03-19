@@ -456,10 +456,17 @@ The complete mapping is derived from three independent lines of evidence:
 4. Cross-checked with DeepSeek-R1 reasoner, which independently reached
    the same mapping
 
+**Verified in SimH emulator (March 2026):** The complete mapping has been
+implemented in `nova_fps.c` and verified end-to-end. The `test_vadd.simh`
+test exercises FN DEP protocol (microcode loading into PS, s-pad setup),
+DMA with IEEE 32-bit <-> FPS 38-bit float conversion, AP microcode execution,
+and DMA result readback. The test confirms 1.5 + 2.5 = 4.0 through the
+full pipeline. All three subdevices (RUN, DMA, CTL05) tested for correct
+SKPDN/SKPBN behavior via `test_subdev.simh`.
+
 **To verify on hardware:** A single test confirms the entire mapping:
 write 0xA5A5 via `DOA 0,FPS` then issue DEP-into-PSA via `DOAS 0,FPS`.
 If EXAM-PSA returns 0xA5A5, the DOA none=SWR / S=FN assignment is correct.
-- Whether DOC uses none+S, none+P, S+C, or some other pair
 
 ### DMA Setup Sequence
 
