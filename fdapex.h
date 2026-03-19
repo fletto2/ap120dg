@@ -1,13 +1,16 @@
 /* fdapex.h -- FPS AP-120B / FPS-100 Host Driver API
  *
  * C translation of the FDAPEX.FTN + DAPEX.MAC driver stack.
- * All functions that the host-independent IAPEX layer calls.
+ * Platform provides a single function: fps_io(pulse, code, data)
  */
 
 #ifndef FDAPEX_H
 #define FDAPEX_H
 
 #include <stdint.h>
+
+/* ---- Platform interface (one function) ---- */
+extern uint16_t fps_io(int pulse, int code, uint16_t data);
 
 /* ---- DAPEX layer (host-dependent, was assembly) ---- */
 
@@ -58,26 +61,5 @@ void     apgsei(uint16_t *host, uint16_t ap, int n);
 void     apexc(void);
 void     apmode(int m);
 int      apgmod(void);
-
-/* ---- Hardware abstraction (platform provides these) ---- */
-
-extern void     hw_doa(uint16_t val);
-extern void     hw_doas(uint16_t val);
-extern void     hw_doac(uint16_t val);
-extern void     hw_doap(uint16_t val);
-extern void     hw_dob(uint16_t val);
-extern void     hw_dobs(uint16_t val);
-extern void     hw_dobc(uint16_t val);
-extern void     hw_dobp(uint16_t val);
-extern void     hw_doc(uint16_t val);
-extern void     hw_docs(uint16_t val);
-extern uint16_t hw_dia(void);
-extern uint16_t hw_dias(void);
-extern uint16_t hw_diac(void);
-extern uint16_t hw_diap(void);
-extern uint16_t hw_dib(void);
-extern uint16_t hw_dic(void);
-extern void     hw_nioc(int subdev);
-extern int      hw_skpdn(int subdev);
 
 #endif /* FDAPEX_H */

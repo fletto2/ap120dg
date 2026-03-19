@@ -21,11 +21,11 @@
 #include <stdint.h>
 
 /* ============================================================
- * Hardware abstraction layer
+ * I/O interface
  *
- * On real hardware, these would be inline DG Nova I/O instructions.
- * On the SimH emulator, these call the fps_io() handler.
- * On a modern test harness, these can be stubbed/mocked.
+ * Single function: fps_io(pulse, code, data) -> result
+ * On SimH, this calls the device handler directly.
+ * On real hardware, this would be replaced with inline I/O instructions.
  * ============================================================ */
 
 /* Forward declarations */
@@ -34,25 +34,43 @@ void     apstop(int ernum);
 uint16_t htst(void);
 int      apwr(void);
 
-/* Forward declarations -- platform provides these */
-extern void    hw_doa(uint16_t val);           /* DOA: write SWR */
-extern void    hw_doas(uint16_t val);          /* DOAS: write FN */
-extern void    hw_doac(uint16_t val);          /* DOAC: write CTRL */
-extern void    hw_doap(uint16_t val);          /* DOAP: pulse INT */
-extern void    hw_dob(uint16_t val);           /* DOB: write WC */
-extern void    hw_dobs(uint16_t val);          /* DOBS: write HMA */
-extern void    hw_dobc(uint16_t val);          /* DOBC: write APMA */
-extern void    hw_dobp(uint16_t val);          /* DOBP: start DMA */
-extern void    hw_doc(uint16_t val);           /* DOC: write FMTH */
-extern void    hw_docs(uint16_t val);          /* DOCS: write FMTL */
-extern uint16_t hw_dia(void);                  /* DIA: read FN status */
-extern uint16_t hw_dias(void);                 /* DIAS: read SWR */
-extern uint16_t hw_diac(void);                 /* DIAC: read LITES */
-extern uint16_t hw_diap(void);                 /* DIAP: read APMA */
-extern uint16_t hw_dib(void);                  /* DIB: read FMTH */
-extern uint16_t hw_dic(void);                  /* DIC: read FMTL */
-extern void    hw_nioc(int subdev);            /* NIOC: clear flags */
-extern int     hw_skpdn(int subdev);           /* SKPDN: test DONE */
+/* Platform provides this single function */
+extern uint16_t fps_io(int pulse, int code, uint16_t data);
+
+/* I/O codes (SimH Nova convention) */
+#define ioNIO  0
+#define ioDIA  1
+#define ioDOA  2
+#define ioDIB  3
+#define ioDOB  4
+#define ioDIC  5
+#define ioDOC  6
+
+/* Flag pulses */
+#define iopN   0      /* none */
+#define iopS   1      /* Start */
+#define iopC   2      /* Clear */
+#define iopP   3      /* Pulse */
+
+/* Inline I/O helpers — map to fps_io() calls */
+static inline void     io_doa(uint16_t v)  { fps_io(iopN, ioDOA, v); }
+static inline void     io_doas(uint16_t v) { fps_io(iopS, ioDOA, v); }
+static inline void     io_doac(uint16_t v) { fps_io(iopC, ioDOA, v); }
+static inline void     io_doap(uint16_t v) { fps_io(iopP, ioDOA, v); }
+static inline void     io_dob(uint16_t v)  { fps_io(iopN, ioDOB, v); }
+static inline void     io_dobs(uint16_t v) { fps_io(iopS, ioDOB, v); }
+static inline void     io_dobc(uint16_t v) { fps_io(iopC, ioDOB, v); }
+static inline void     io_dobp(uint16_t v) { fps_io(iopP, ioDOB, v); }
+static inline void     io_doc(uint16_t v)  { fps_io(iopN, ioDOC, v); }
+static inline void     io_docs(uint16_t v) { fps_io(iopS, ioDOC, v); }
+static inline uint16_t io_dia(void)        { return fps_io(iopN, ioDIA, 0); }
+static inline uint16_t io_dias(void)       { return fps_io(iopS, ioDIA, 0); }
+static inline uint16_t io_diac(void)       { return fps_io(iopC, ioDIA, 0); }
+static inline uint16_t io_diap(void)       { return fps_io(iopP, ioDIA, 0); }
+static inline uint16_t io_dib(void)        { return fps_io(iopN, ioDIB, 0); }
+static inline uint16_t io_dic(void)        { return fps_io(iopN, ioDIC, 0); }
+static inline void     io_nioc(int sd)     { fps_io(iopC, ioNIO, (uint16_t)sd); }
+static inline int      io_skpdn(int sd)    { (void)sd; return 0; /* TODO: subdevice skip */ }
 
 /* ============================================================
  * FN register bit definitions (bit 0 = MSB, DG convention)
@@ -134,18 +152,18 @@ int rdwait(void)
 {
     int timeout = 100000;
     while (timeout-- > 0) {
-        uint16_t fn = hw_dia();
+        uint16_t fn = io_dia();
         if (fn & FN_ACK)
             return 0;                      /* ACK set */
         if (!(fn & FN_HALTED))
             continue;                      /* running, retry */
         /* halted without ACK */
-        fps.lites = hw_diac();
+        fps.lites = io_diac();
         fps.running = 0;
         return -1;
     }
     /* timeout */
-    fps.lites = hw_diac();
+    fps.lites = io_diac();
     fps.running = 0;
     return -1;
 }
@@ -158,19 +176,19 @@ int sender(uint16_t datum)
     if (datum != 0) {
         /* Single datum */
         if (rdwait() < 0) return -1;
-        hw_doa(datum);
-        hw_doap(datum);                    /* pulse INT */
+        io_doa(datum);
+        io_doap(datum);                    /* pulse INT */
         return 0;
     }
     /* APEX 5-word message */
     uint16_t *msg = &apex_msg.opt;
     if (rdwait() < 0) return -1;
-    hw_doa(0);                             /* SWR = 0 (datum) */
-    hw_doap(0);                            /* pulse INT */
+    io_doa(0);                             /* SWR = 0 (datum) */
+    io_doap(0);                            /* pulse INT */
     for (int i = 0; i < 4; i++) {
         if (rdwait() < 0) return -1;
-        hw_doa(msg[i]);
-        hw_doap(msg[i]);
+        io_doa(msg[i]);
+        io_doap(msg[i]);
     }
     fps.running = 1;
     return 0;
@@ -182,15 +200,15 @@ int sender(uint16_t datum)
 uint16_t apin(int num)
 {
     switch (num) {
-    case 1:  return hw_dias();              /* read SWR */
-    case 2:  return hw_dia();               /* read FN */
-    case 3:  return hw_diac();              /* read LITES */
-    case 4:  return hw_diap();              /* read APMA */
+    case 1:  return io_dias();              /* read SWR */
+    case 2:  return io_dia();               /* read FN */
+    case 3:  return io_diac();              /* read LITES */
+    case 4:  return io_diap();              /* read APMA */
     case 5:  return fps.savhma;             /* HMA: write-only */
     case 6:  return fps.savwc;              /* WC: write-only */
     case 7:  return fps.savctl;             /* CTRL: write-only */
-    case 8:  return hw_dib();               /* read FMTH */
-    case 9:  return hw_dic();               /* read FMTL */
+    case 8:  return io_dib();               /* read FMTH */
+    case 9:  return io_dic();               /* read FMTL */
     default: return 0;
     }
 }
@@ -201,17 +219,17 @@ uint16_t apin(int num)
 void apout(int num, uint16_t val)
 {
     switch (num) {
-    case 1:  hw_doa(val);  fps.swr = val;    break;
-    case 2:  hw_doas(val); fps.fnr = val;    break;
+    case 1:  io_doa(val);  fps.swr = val;    break;
+    case 2:  io_doas(val); fps.fnr = val;    break;
     case 3:  /* LITES is read-only */        break;
-    case 4:  hw_dobc(val);                   break;
-    case 5:  hw_dobs(val); fps.savhma = val; break;
-    case 6:  hw_dob(val);  fps.savwc = val;  break;
-    case 7:  hw_doac(val); fps.savctl = val; break;
-    case 8:  hw_doc(val);                    break;
-    case 9:  hw_docs(val);                   break;
+    case 4:  io_dobc(val);                   break;
+    case 5:  io_dobs(val); fps.savhma = val; break;
+    case 6:  io_dob(val);  fps.savwc = val;  break;
+    case 7:  io_doac(val); fps.savctl = val; break;
+    case 8:  io_doc(val);                    break;
+    case 9:  io_docs(val);                   break;
     case 10: /* RESET */
-        hw_nioc(0);
+        io_nioc(0);
         memset(&fps, 0, sizeof(fps));
         break;
     }
@@ -223,24 +241,24 @@ void apout(int num, uint16_t val)
 void rundma(uint16_t host_addr, uint16_t apma, uint16_t wc, uint16_t ctl)
 {
     apwd();                                /* wait for previous DMA */
-    hw_dobc(apma);                         /* write APMA */
-    hw_dob(wc);                            /* write WC */
+    io_dobc(apma);                         /* write APMA */
+    io_dob(wc);                            /* write WC */
     fps.savwc = wc;
-    hw_dobs(host_addr);                    /* write HMA */
+    io_dobs(host_addr);                    /* write HMA */
     fps.savhma = host_addr;
     fps.savctl = ctl | CTL_IHWC;           /* enable DMA-done interrupt */
-    hw_doac(fps.savctl);                   /* write CTRL */
+    io_doac(fps.savctl);                   /* write CTRL */
     fps.dma_active = 1;
-    hw_dobp(0);                            /* start DMA */
+    io_dobp(0);                            /* start DMA */
 }
 
 /* APWD -- wait for DMA to complete. */
 void apwd(void)
 {
     if (!fps.dma_active) return;
-    while (!hw_skpdn(1))                   /* poll DMA DONE (subdevice 1) */
+    while (!io_skpdn(1))                   /* poll DMA DONE (subdevice 1) */
         ;
-    hw_nioc(1);                            /* clear DMA flags */
+    io_nioc(1);                            /* clear DMA flags */
     fps.dma_active = 0;
 }
 
@@ -263,7 +281,7 @@ int wtdma(void)
  * Returns 1 if halted, 0 if running. */
 int tstrun(void)
 {
-    uint16_t fn = hw_dia();
+    uint16_t fn = io_dia();
     return (fn & FN_HALTED) ? 1 : 0;
 }
 
@@ -271,11 +289,11 @@ int tstrun(void)
  * Returns error code: 0=ok, 1=parity, 2=stack overflow. */
 int wtrun(void)
 {
-    while (!hw_skpdn(0))                   /* poll RUN DONE (subdevice 0) */
+    while (!io_skpdn(0))                   /* poll RUN DONE (subdevice 0) */
         ;
-    hw_nioc(0);                            /* clear RUN flags */
+    io_nioc(0);                            /* clear RUN flags */
     fps.running = 0;
-    fps.lites = hw_diac();
+    fps.lites = io_diac();
     if (fps.lites & LITES_PARITY)  return 1;
     if (fps.lites & LITES_STKOVF) return 2;
     return 0;
@@ -294,7 +312,7 @@ int apwr(void)
 /* APRSET -- hardware reset. */
 void aprset(void)
 {
-    hw_nioc(0);
+    io_nioc(0);
     memset(&fps, 0, sizeof(fps));
 }
 
@@ -303,13 +321,13 @@ void aprset(void)
 void runap(uint16_t psa, int noload, uint16_t swr_val, uint16_t fn_cmd)
 {
     if (!noload) {
-        hw_doa(psa);                       /* SWR = PSA */
-        hw_doas(FN_DEP | REG_PSA);         /* DEP into PSA */
+        io_doa(psa);                       /* SWR = PSA */
+        io_doas(FN_DEP | REG_PSA);         /* DEP into PSA */
     }
-    hw_doa(swr_val);                       /* SWR = switch value */
-    hw_doas(fn_cmd);                       /* issue command (START) */
+    io_doa(swr_val);                       /* SWR = switch value */
+    io_doas(fn_cmd);                       /* issue command (START) */
     fps.savctl |= CTL_IHHALT;
-    hw_doac(fps.savctl);                   /* enable halt interrupt */
+    io_doac(fps.savctl);                   /* enable halt interrupt */
     fps.running = 1;
 }
 
@@ -319,8 +337,8 @@ void runap(uint16_t psa, int noload, uint16_t swr_val, uint16_t fn_cmd)
 uint16_t apexam(int regsel, int word)
 {
     uint16_t cmd = FN_EXAM | (word << 4) | regsel;
-    hw_doas(cmd);
-    return hw_dias();                      /* result appears in SWR */
+    io_doas(cmd);
+    return io_dias();                      /* result appears in SWR */
 }
 
 /* SPLDGO -- load scratch pad registers and start execution.
@@ -331,8 +349,8 @@ void spldgo(const uint16_t *slist, int nspads, uint16_t start, uint16_t brkloc)
     (void)brkloc;  /* breakpoint not yet implemented */
     /* Load s-pad values via DEP into SPD (register 1) */
     for (int i = 0; i < nspads; i++) {
-        hw_doa(slist[i]);                  /* SWR = s-pad value */
-        hw_doas(FN_DEP | REG_SPD);         /* DEP into SPD */
+        io_doa(slist[i]);                  /* SWR = s-pad value */
+        io_doas(FN_DEP | REG_SPD);         /* DEP into SPD */
     }
     /* Load PSA and start */
     runap(start, 0, 0, FN_START);
@@ -342,29 +360,29 @@ void spldgo(const uint16_t *slist, int nspads, uint16_t start, uint16_t brkloc)
 void apiena(void)
 {
     fps.savctl |= CTL_IHCB5;
-    hw_doac(fps.savctl);
+    io_doac(fps.savctl);
 }
 
 /* APIDIS -- disable CTL5 interrupt. */
 void apidis(void)
 {
     fps.savctl &= ~CTL_IHCB5;
-    hw_doac(fps.savctl);
+    io_doac(fps.savctl);
 }
 
 /* APWI -- wait for CTL5 interrupt. */
 void apwi(void)
 {
-    while (!hw_skpdn(2))                   /* CTL05 DONE (subdevice 2) */
+    while (!io_skpdn(2))                   /* CTL05 DONE (subdevice 2) */
         ;
-    hw_nioc(2);
+    io_nioc(2);
 }
 
 /* TSTINT -- test if CTL5 interrupt occurred.
  * Returns 1 if CTL05 DONE set, 0 otherwise. */
 int tstint(void)
 {
-    return hw_skpdn(2);
+    return io_skpdn(2);
 }
 
 /* APSUPV -- set supervisor mode.
@@ -388,7 +406,7 @@ int apasgn(int apno, int action)
 void aprlse(void)
 {
     apwd();
-    hw_nioc(0);
+    io_nioc(0);
     fps.running = 0;
     fps.dma_active = 0;
     fps.assigned = 0;
@@ -431,7 +449,7 @@ void looky(uint16_t *swr, int *runfg, uint16_t *fn, uint16_t *ctl)
 {
     *swr = fps.swr;
     *runfg = fps.running;
-    *fn = hw_dia();
+    *fn = io_dia();
     *ctl = fps.savctl;
 }
 
@@ -510,16 +528,16 @@ void apstop(int ernum)
 void loadps(const uint16_t *host, uint16_t ps_addr, int nwords)
 {
     /* Set TMA to starting PS address */
-    hw_doa(ps_addr);
-    hw_doas(FN_DEP | REG_TMA);             /* DEP into TMA */
+    io_doa(ps_addr);
+    io_doas(FN_DEP | REG_TMA);             /* DEP into TMA */
 
     for (int i = 0; i < nwords; i++) {
         /* Write 4 x 16-bit words per PS instruction */
         for (int w = 0; w < 4; w++) {
-            hw_doa(host[i * 4 + w]);        /* SWR = word */
+            io_doa(host[i * 4 + w]);        /* SWR = word */
             uint16_t cmd = FN_DEP | REG_PS_TMA | (w << 4);
             if (w == 3) cmd |= (3 << 6);    /* INC=TMA on last word */
-            hw_doas(cmd);
+            io_doas(cmd);
         }
     }
 }
@@ -561,8 +579,8 @@ void apget(uint16_t *host, uint16_t ap, int n, int fmt)
  * Writes the page select value via DEP into DPA register. */
 void oapme(int page)
 {
-    hw_doa((uint16_t)page);
-    hw_doas(FN_DEP | REG_DPA);
+    io_doa((uint16_t)page);
+    io_doas(FN_DEP | REG_DPA);
 }
 
 /* APRUN -- start an AP program (from FDAPEX.FTN).
