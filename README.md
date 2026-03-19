@@ -107,11 +107,20 @@ Results from all 12 Phase 1 reads are also stored at zero-page addresses
   - `CTL10`, `CLT08*`, `CTL5INTR*` (individual CTRL register bits)
   - `WC=0*` (DMA word count zero = transfer complete)
 
+### Processor Handbook (OCR'd)
+- `860-7259-003_procHbkFeb79_ocr.pdf` -- AP-120B Processor Handbook with
+  searchable OCR text. **Critical**: Section 4.2 describes SWR/FN/LITES
+  registers, Section 4.4 describes DMA registers, Section 4.7 shows the
+  exact loading procedure (alternating SWR and FN writes). Contains complete
+  FN command encoding and CTL register bit layout.
+
 ### PDP-11 Reference Source Code
 - `DAPEX.MAC` -- The PDP-11 driver that must be rewritten for DG. Contains the
   complete register map, SWR/FN handshake protocol, DMA setup, and SENDER routine.
 - `DRIVER.MAC` -- PDP-11 RSX-11M device driver (lower level).
 - `FDAPEX.FTN` -- FORTRAN driver layer (mostly host-independent).
+- `ADUTIL.MAC` -- PDP-11 host utility functions (IOR16, INOT16, etc.)
+  called by the FORTRAN layer.
 
 ## Analysis Document
 

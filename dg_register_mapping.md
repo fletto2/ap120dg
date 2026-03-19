@@ -138,6 +138,109 @@ Both the 4421 and 4448 share the same interface to the rest of the FPS:
 - FN2HD\*, SR2HD\*, LT2HD\*, HADR2HD\*: Register read strobes
 - Various DMA control signals
 
+## Processor Handbook Findings (Key Discovery)
+
+The OCR'd AP-120B Processor Handbook (860-7259-003, Feb 1979) reveals that the
+FPS host interface is fundamentally a **two-register command protocol**, not a
+register file:
+
+### FN Register is a Command Register
+
+The FN register is **writable** by the host for commands AND **readable** for
+status. When written, it triggers panel operations (START, STOP, DEP, EXAM,
+etc.). When read, it returns AP status (halted, SWR acknowledge, etc.).
+
+FN register bit layout (bit 0 = MSB, DG/FPS convention):
+
+| Bit | Name | Function |
+|---|---|---|
+| 0 | STOP/HALTED | Write: stop AP. Read: 1 if AP halted. |
+| 1 | START | Start execution at address in SWR |
+| 2 | CONT | Continue from current PSA |
+| 3 | STEP | Single-step one instruction |
+| 4 | RESET | Hard reset AP |
+| 5 | EXAM | Examine register selected by REG SELECT |
+| 6 | DEP | Deposit SWR contents into selected register |
+| 7 | BREAK | Set breakpoint at SWR address |
+| 8-9 | INC | Post-increment: 0=none, 1=MA, 2=DPA, 3=TMA |
+| 10-11 | WORD | Which 16-bit portion of 38/64-bit register (0-3) |
+| 12-15 | REG SELECT | Which register to examine/deposit (0-17 octal) |
+
+REG SELECT values: 0=PSA, 1=SPD, 2=MA, 3=TA(TMA), 4=DPA, 5=SPFN,
+6=AP STATUS, 7=DA, 10=PS(by TMA), 11=CB, 12=DPX, 13=DPY, 14=DPZ,
+15=MD(by MA), 16=SPFN(exam), 17=TM(by TMA)
+
+### Loading Procedure Uses Only SWR + FN
+
+The handbook's program loading example (section 4.7) writes ONLY to SWR
+and FN. No direct register writes to CTL, WC, HMA, or APMA during loading:
+
+```
+0 -> SWR              ; Put 0 in switches
+001003 -> FN           ; DEP into register 3 (TMA): sets TMA=0
+(bits 0-15) -> SWR    ; Program word bits 0-15
+001010 -> FN           ; DEP into PS(by TMA), WORD=0: write PS bits 0-15
+(bits 16-31) -> SWR
+001030 -> FN           ; DEP into PS(by TMA), WORD=1: write PS bits 16-31
+(bits 32-47) -> SWR
+001050 -> FN           ; DEP into PS(by TMA), WORD=2: write PS bits 32-47
+(bits 48-63) -> SWR
+001370 -> FN           ; DEP into PS(by TMA), WORD=3, INC=TMA: write bits 48-63 + advance TMA
+```
+
+This means the host alternates SWR and FN writes rapidly. **Both must be
+directly accessible via single I/O instructions.**
+
+### CTL Register Complete Bit Layout
+
+| Bit | Name | Function |
+|---|---|---|
+| 0 | WC=0 | Word count zero (READ ONLY) |
+| 1 | INTR AP | Interrupt the AP (= APIRT in DAPEX) |
+| 2 | TAPWC | Interrupt AP when DMA done |
+| 3 | IHHALT | Enable host interrupt on AP halt |
+| 4 | IHWC | Enable host interrupt when DMA done |
+| 5 | IHENB | Interrupt Host Enable (host-only writable) |
+| 6 | FERR | Format error (READ ONLY) |
+| 7 | DLATE | Data late (READ ONLY) |
+| 8 | CC | Consecutive cycle (block DMA) |
+| 9 | APDMA | Enable AP-side DMA |
+| 10 | WRTHOST | Direction: 1=AP->host, 0=host->AP |
+| 11 | DECAPMA | 1=decrement APMA, 0=increment |
+| 12 | DECHMA | 1=decrement HMA, 0=increment |
+| 13-14 | FMT | Format control |
+| 15 | HDMA | Start DMA (write) / DMA active (read) |
+
+Cross-reference with DAPEX.MAC confirms bit numbering:
+- DAPEX APIRT=040000 (PDP-11 bit 14) = Handbook bit 1 (MSB convention)
+- DAPEX IHHALT=010000 (PDP-11 bit 12) = Handbook bit 3
+- DAPEX HDMAGO=000001 (PDP-11 bit 0) = Handbook bit 15
+
+### Bit Numbering Convention
+
+The handbook uses **bit 0 = MSB** throughout, matching the DG Nova convention.
+This is opposite to PDP-11 (bit 0 = LSB). The same physical wire carries
+the MSB in both systems -- the only difference is naming.
+
+### Implications for Nova Mapping
+
+The host interface is fundamentally a **command/data protocol over SWR and FN**:
+1. Host writes data to SWR (the "data" register)
+2. Host writes commands to FN (the "command" register)
+3. Host reads status from FN (the "status" register)
+4. For DMA, host also writes CTL, WC, HMA, APMA directly
+
+The most likely Nova mapping:
+- **DOA -> SWR** (data writes, most frequent)
+- **DOB -> FN** (command writes)
+- **DIA -> FN** (status reads)
+- **DIB -> LITES** (diagnostic reads)
+- DOC / flag variants -> CTL, WC, HMA, APMA for DMA setup
+
+This explains why the loading procedure only needs two registers: everything
+is accessed through the SWR/FN panel command mechanism. DMA registers are
+only needed when setting up block transfers.
+
 ## Architecture: Hybrid — Model-Dependent (Revised)
 
 Critical review (including adversarial analysis with multiple LLMs)
@@ -470,6 +573,8 @@ Other potential sources:
 
 ## Files In This Repository
 
+- `860-7259-003_procHbkFeb79_ocr.pdf` -- AP-120B Processor Handbook (OCR'd,
+  searchable). Contains FN command encoding, CTL bit layout, loading procedure.
 - `4448_APIF_netlist.txt` -- FPS-100 AP Interface (Nova version) netlist
 - `4421_PDPIF_netlist.txt` -- FPS-100 PDP-11 Interface netlist (comparison)
 - `4429_FMT_netlist.txt` -- Formatter board netlist (shared)
@@ -477,6 +582,7 @@ Other potential sources:
 - `DAPEX.MAC` -- PDP-11 RSX-11M host-dependent driver (to be rewritten)
 - `DRIVER.MAC` -- PDP-11 RSX-11M device driver
 - `FDAPEX.FTN` -- FORTRAN driver layer (mostly portable)
+- `ADUTIL.MAC` -- PDP-11 host utility functions (bit manipulation)
 - `fps_probe.asm` -- DG Nova test program to discover register mapping
 - `dgasm/` -- Modified DG Nova assembler
 
