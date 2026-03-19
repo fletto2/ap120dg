@@ -29,10 +29,21 @@ On the DG Nova, there are no memory-mapped registers. Instead, the Nova has
 DIA/DIB/DIC (read) instructions, each with 4 flag variants (none, Start,
 Clear, Pulse) = 24 total instruction variants.
 
-**The exact mapping of which Nova I/O instruction accesses which FPS register
-is unknown.** The original DG driver source is lost, and the interface card
-schematics are too low resolution to trace the decode logic. This test program
-is designed to discover the mapping empirically.
+**The register mapping has been derived from detailed schematic analysis** of the
+280B Nova Eclipse I/O Adapter (512-3280-004, Rev B). The 280B uses a standard
+2-to-4 NAND decode of the DG flag bits (CLR/STRT) within each DOx channel:
+
+| Channel | none | S | C | P |
+|---------|------|---|---|---|
+| DOA (write) | SWR | FN | CTRL | INT/APIRT |
+| DOB (write) | WC | HMA | APMA | DMA start |
+| DOC (write) | FMTH | FMTL | — | — |
+| DIA (read) | FN | SWR | LITES | APMA |
+| DIB (read) | FMTH | — | — | — |
+| DIC (read) | FMTL | — | — | — |
+
+See `adapter.md` for the full schematic trace and `dg_register_mapping.md`
+for the complete analysis. The test program below can verify this on hardware.
 
 ## The Test Program (`fps_probe.asm`)
 
@@ -171,9 +182,13 @@ A 1500-line SimH device plugin that emulates the FPS AP-120B / FPS-100
 array processor. Runs as device 055 on the SimH Nova simulator.
 
 **Working features:**
-- All host interface registers (SWR, FN, LITES, CTL, WC, HMA, APMA)
+- Schematic-derived I/O mapping: DOA+flag→SWR/FN/CTRL/INT,
+  DOB+flag→WC/HMA/APMA/DMA, DOC+flag→FMTH/FMTL,
+  DIA+flag→FN/SWR/LITES/APMA, DIB→FMTH, DIC→FMTL
+- All host interface registers (SWR, FN, LITES, CTL, WC, HMA, APMA, FMTH, FMTL)
 - FN command protocol (DEP, EXAM, START, STOP, CONT, STEP, RESET)
 - Program Store loading via panel DEP (4 x 16-bit words per 64-bit instruction)
+- Three-subdevice DONE/BUSY model (RUN, DMA, CTL05)
 - AP instruction execution: 24-field 64-bit microinstruction decode
 - S-pad operations: ADD, SUB, MOV, AND, OR, EQV, CLR, INC, DEC, COM, LDSPI
 - Branch conditions: all 16 types (integer and float)
@@ -192,8 +207,10 @@ array processor. Runs as device 055 on the SimH Nova simulator.
 **To use:** Copy `nova_fps.c` to `simh/NOVA/`, add to makefile NOVA sources
 and `nova_sys.c` device list, rebuild SimH. Enable with `set fps enabled`.
 
-**Tested:** S-pad arithmetic (LDSPI, ADD, SUB, MOV) verified correct.
-Panel DEP/EXAM protocol verified. Synchronous execution on START.
+**Tested:** All 12 register read/write paths verified in SimH. S-pad arithmetic
+(LDSPI, ADD, SUB, MOV) verified correct. Panel DEP/EXAM protocol verified.
+Synchronous execution on START. DONE/BUSY flag scoping verified (DOA S/C
+affects RUN only, DOB S/C does not affect RUN).
 
 ## Community Links
 

@@ -18,13 +18,32 @@
    No AP microcode execution yet (AP always halted unless START issued,
    then runs until explicit STOP).
 
-   I/O mapping (Hypothesis A):
-     DOA ac,055       Write SWR (switch register -- data)
-     DOB ac,055       Write FN  (function register -- commands)
-     DOC ac,055       Write CTL (control register -- DMA/interrupt)
-     DIA ac,055       Read FN status
-     DIB ac,055       Read LITES (panel display / EXAM output)
-     DIC ac,055       Read CTL status
+   I/O mapping (derived from 280B schematic 512-3280-004 Rev B):
+
+     Writes — flag selects register within DOx channel:
+     DOA  ac,FPS (none) → LDSR*    → write SWR
+     DOAS ac,FPS (S)    → LDFN*    → write FN (command)
+     DOAC ac,FPS (C)    → HCTLCLK* → write CTRL
+     DOAP ac,FPS (P)    → INTCLK*  → interrupt AP (APIRT)
+     DOB  ac,FPS (none) → HWCCLK*  → write WC
+     DOBS ac,FPS (S)    → HMACLK*  → write HMA
+     DOBC ac,FPS (C)    → HADRCLK* → write APMA
+     DOBP ac,FPS (P)    → HDMACLK* → start DMA
+     DOC  ac,FPS (none) → B0CLK*   → write FMTH
+     DOCS ac,FPS (S)    → B2CLK*   → write FMTL
+
+     Reads — flag selects register via HOSTRS mux:
+     DIA  ac,FPS (none) → FN2HD    → read FN status
+     DIAS ac,FPS (S)    → SR2HD    → read SWR
+     DIAC ac,FPS (C)    → LT2HD    → read LITES
+     DIAP ac,FPS (P)    → HADR2HD* → read APMA
+     DIB  ac,FPS        → BH2HD*   → read FMTH
+     DIC  ac,FPS        → BL2HD*   → read FMTL
+
+     Three DONE/BUSY pairs (subdevice address):
+     Subdevice 0: RUN DONE / RUN BUSY  (AP execution status)
+     Subdevice 1: DMA DONE / DMA BUSY  (DMA transfer status)
+     Subdevice 2: CTL05 DONE / CTL05 BUSY (programmed interrupt)
 
    APIN/APOUT register numbering (from DAPEX.MAC TABLE):
      1=SWR, 2=FN, 3=LITES, 4=APMA, 5=HMA, 6=WC, 7=CTL,
@@ -307,75 +326,156 @@ DEVICE fps_dev = {
     };
 
 
-/* I/O dispatch routine */
+/* I/O dispatch routine
+
+   The 280B decodes DOx+flag as a 2-to-4 NAND decode of latched CLR/STRT:
+     DOA + none=SWR, S=FN, C=CTRL, P=INT
+     DOB + none=WC,  S=HMA, C=APMA, P=DMA start
+     DOC + none=FMTH, S=FMTL
+     DIA + none=FN,  S=SWR, C=LITES, P=APMA
+     DIB = FMTH,  DIC = FMTL
+
+   The flag (S/C/P) also affects DONE/BUSY for the addressed subdevice,
+   but on the 280B this is per-subdevice (0=RUN, 1=DMA, 2=CTL05) and
+   handled by NIO instructions, not by DOx flag side-effects. So the
+   DOx handler only does the register access; DONE/BUSY is handled
+   separately by NIO S/C/P instructions (which SimH dispatches as
+   code=0 with pulse=S/C/P). */
 
 int32 fps_io (int32 pulse, int32 code, int32 AC)
 {
 int32 rval = 0;
 
-/* Handle data transfers */
+/* Handle data transfers with flag-based register decode */
 switch (code) {
 
-    case ioDOA:                                         /* DOA: write SWR */
-        fps_swr = AC & 0xFFFF;
-        break;
-
-    case ioDOB:                                         /* DOB: write FN (command) */
-        fps_process_fn_command (AC & 0xFFFF);
-        break;
-
-    case ioDOC:                                         /* DOC: write CTL */
-        fps_ctl = (AC & ~CTL_RO_MASK) | (fps_ctl & CTL_RO_MASK);
-        if (AC & CTL_INTR_AP) {
-            fps_fn_status |= FN_SWR_ACK;                /* Simulate AP reading SWR */
-            }
-        if (AC & CTL_HDMA) {                            /* Start DMA */
-            fps_dma_active = 1;
-            fps_ctl |= CTL_HDMA;
-            sim_activate (&fps_unit, 10);               /* Schedule DMA cycles */
+    case ioDOA:                                         /* DOA: write register */
+        switch (pulse) {
+            case iopN:                                  /* DOA none → LDSR* → SWR */
+                fps_swr = AC & 0xFFFF;
+                break;
+            case iopS:                                  /* DOAS → LDFN* → FN command */
+                fps_process_fn_command (AC & 0xFFFF);
+                break;
+            case iopC:                                  /* DOAC → HCTLCLK* → CTRL */
+                fps_ctl = (AC & ~CTL_RO_MASK) | (fps_ctl & CTL_RO_MASK);
+                break;
+            case iopP:                                  /* DOAP → INTCLK* → interrupt AP */
+                fps_fn_status |= FN_SWR_ACK;           /* Simulate AP reading SWR (APIRT) */
+                break;
             }
         break;
 
-    case ioDIA:                                         /* DIA: read FN status */
-        rval = fps_fn_status;
-        fps_fn_status &= ~FN_SWR_ACK;                  /* Clear ack after read */
+    case ioDOB:                                         /* DOB: DMA registers */
+        switch (pulse) {
+            case iopN:                                  /* DOB none → HWCCLK* → WC */
+                fps_wc = AC & 0xFFFF;
+                break;
+            case iopS:                                  /* DOBS → HMACLK* → HMA */
+                fps_hma = AC & 0xFFFF;
+                break;
+            case iopC:                                  /* DOBC → HADRCLK* → APMA */
+                fps_apma = AC & 0xFFFF;
+                break;
+            case iopP:                                  /* DOBP → HDMACLK* → start DMA */
+                fps_dma_active = 1;
+                fps_ctl |= CTL_HDMA;
+                sim_activate (&fps_unit, 10);           /* Schedule DMA cycles */
+                break;
+            }
         break;
 
-    case ioDIB:                                         /* DIB: read LITES */
-        rval = fps_lites;
+    case ioDOC:                                         /* DOC: formatter registers */
+        switch (pulse) {
+            case iopN:                                  /* DOC none → B0CLK* → FMTH */
+                fps_fmth = AC & 0xFFFF;
+                break;
+            case iopS:                                  /* DOCS → B2CLK* → FMTL */
+                fps_fmtl = AC & 0xFFFF;
+                break;
+            default:                                    /* C, P: no strobe (unused) */
+                break;
+            }
         break;
 
-    case ioDIC:                                         /* DIC: read CTL */
-        rval = fps_ctl;
-        if (fps_wc == 0)
-            rval |= CTL_WC_ZERO;
-        if (fps_dma_active)
-            rval |= CTL_HDMA;
-        else
-            rval &= ~CTL_HDMA;
+    case ioDIA:                                         /* DIA: read register via HOSTRS mux */
+        switch (pulse) {
+            case iopN:                                  /* DIA none → FN2HD → FN status */
+                rval = fps_fn_status;
+                fps_fn_status &= ~FN_SWR_ACK;          /* Clear ack after read */
+                break;
+            case iopS:                                  /* DIAS → SR2HD → SWR readback */
+                rval = fps_swr;
+                break;
+            case iopC:                                  /* DIAC → LT2HD → LITES */
+                rval = fps_lites;
+                break;
+            case iopP:                                  /* DIAP → HADR2HD* → APMA readback */
+                rval = fps_apma;
+                break;
+            }
         break;
 
-    default:
+    case ioDIB:                                         /* DIB: read FMTH (BH2HD*) */
+        rval = fps_fmth;
+        break;
+
+    case ioDIC:                                         /* DIC: read FMTL (BL2HD*) */
+        rval = fps_fmtl;
+        break;
+
+    default:                                            /* NIO: flag-only, no data transfer */
         break;
     }
 
-/* Handle flag pulses */
-switch (pulse) {
+/* Handle flag side-effects on DONE/BUSY.
 
-    case iopS:                                          /* Start */
-        DEV_SET_BUSY( INT_FPS );
-        DEV_CLR_DONE( INT_FPS );
-        DEV_UPDATE_INTR;
+   On the real 280B, three independent DONE/BUSY pairs exist:
+     Subdevice 0 (RUN):   set by NIOS dev,0 / cleared by NIOC dev,0
+     Subdevice 1 (DMA):   set by DOBP (DMA start) / cleared by DMA complete
+     Subdevice 2 (CTL05): set by NICS dev,2 / cleared by NIOC dev,2
+
+   The flag side-effect (S/C/P) on DOx/DIx instructions affects the
+   subdevice associated with that DOx channel:
+     DOA S/C → subdevice 0 (RUN)  — writing FN with Start starts the AP
+     DOB S/C → no subdevice effect (DMA setup only; DMA start is via P)
+     DOC S/C → no subdevice effect (formatter)
+     DIA/DIB/DIC S/C → subdevice 0 (RUN) for reads
+
+   SimH only supports one DONE/BUSY pair per device, mapped to subdevice 0
+   (RUN). DMA DONE/BUSY is tracked in fps_dma_active. */
+
+switch (code) {
+    case ioDOA:                                         /* DOA: subdevice 0 (RUN) */
+    case ioDIA:                                         /* DIA: subdevice 0 (RUN) */
+    case 0:                                             /* NIO: subdevice 0 (RUN) */
+        switch (pulse) {
+            case iopS:
+                DEV_SET_BUSY( INT_FPS );
+                DEV_CLR_DONE( INT_FPS );
+                DEV_UPDATE_INTR;
+                break;
+            case iopC:
+                DEV_CLR_BUSY( INT_FPS );
+                DEV_CLR_DONE( INT_FPS );
+                DEV_UPDATE_INTR;
+                break;
+            case iopP:
+                /* DOAP handles INTCLK* in the data transfer switch above.
+                   For NIOP, also interrupt the AP. */
+                if (code == 0)
+                    fps_fn_status |= FN_SWR_ACK;
+                break;
+            }
         break;
 
-    case iopC:                                          /* Clear */
-        DEV_CLR_BUSY( INT_FPS );
-        DEV_CLR_DONE( INT_FPS );
-        DEV_UPDATE_INTR;
+    case ioDOB:                                         /* DOB: DMA channel */
+        /* DOB flag side-effects: P starts DMA (handled in data transfer).
+           S/C on DOB do NOT affect RUN DONE/BUSY — they are for DMA
+           subdevice 1, which we track separately via fps_dma_active. */
         break;
 
-    case iopP:                                          /* Pulse = APIRT */
-        fps_fn_status |= FN_SWR_ACK;
+    default:                                            /* DOC, DIB, DIC: no flag effect */
         break;
     }
 

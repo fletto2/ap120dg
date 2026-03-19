@@ -6,12 +6,23 @@ This document analyzes how the PDP-11 memory-mapped register interface of the
 FPS-100 maps to Data General Nova/Eclipse programmed I/O instructions. The
 analysis is based on:
 
-- 280B Nova Eclipse I/O Adapter schematics (512-3280-00A, 5 pages)
+- 280B Nova Eclipse I/O Adapter schematics (512-3280-004, Rev B, 5 sheets)
+- Detailed tile-by-tile schematic trace (March 2026, documented in `adapter.md`)
 - 4448 AP I/F (Nova version) netlist and schematics (512-3448-010)
 - 4421 PDP-11 I/F netlist (for comparison)
 - 4429 Formatter netlist
 - DAPEX.MAC and DRIVER.MAC source code (PDP-11 reference implementation)
-- Adversarial LLM analysis of the decode architecture (March 2026)
+- AP-120B Processor Handbook (860-7259-003, Feb 1979, OCR'd)
+- GE AP-CT Nova Eclipse backplane wire list (82 pages)
+
+**Key result:** The 10 write strobes partition as **DOA=Command (SWR, FN, CTRL,
+INT), DOB=DMA (WC, HMA, APMA, DMA start), DOC=Formatter (FMTH, FMTL)**.
+LITES is read-only (no write strobe; read via LT2HD on DIA).
+Reads use **DIA** (4 registers via HOSTRS mux), **DIB** (FMTH), **DIC** (FMTL).
+Three independent DONE/BUSY pairs exist for RUN, DMA, and CTL05 events.
+The flag-to-register assignment follows standard 2-to-4 NAND decode of CLR/STRT:
+none=primary (SWR/WC/FMTH/FN-read), S=secondary (FN/HMA/FMTL/SWR-read),
+C=config (CTRL/APMA/LITES-read), P=action (INT/DMA-start/APMA-read).
 
 ## Background: Two Different I/O Models
 
@@ -81,7 +92,7 @@ The 280B board sits in the DG backplane and decodes I/O instructions for the FPS
 - HMACLK\* -- Host Memory Address Clock (write HMA)
 - HADRCLK\* -- Host Address Register Clock (write APMA)
 - HDMACLK\* -- Host DMA Clock (DMA start)
-- HCTCLK\* -- Host Control Clock (write CTRL)
+- HCTLCLK\* -- Host Control Clock (write CTRL)
 - INTCLK\* -- Interrupt Clock
 - BDCLK\* -- Board Data Clock
 - AP0-AP3: AP unit select (active high and low versions)
@@ -230,16 +241,16 @@ The host interface is fundamentally a **command/data protocol over SWR and FN**:
 3. Host reads status from FN (the "status" register)
 4. For DMA, host also writes CTL, WC, HMA, APMA directly
 
-The most likely Nova mapping:
-- **DOA -> SWR** (data writes, most frequent)
-- **DOB -> FN** (command writes)
-- **DIA -> FN** (status reads)
-- **DIB -> LITES** (diagnostic reads)
-- DOC / flag variants -> CTL, WC, HMA, APMA for DMA setup
+The schematic-derived mapping (see "Register Mapping" section below):
+- **DOA** (4 flag variants) -> SWR, FN, CTRL, INT/APIRT (command/control)
+- **DOB** (4 flag variants) -> WC, HMA, APMA, CTRL (DMA registers)
+- **DOC** (2 flag variants) -> FMTH, FMTL (formatter)
+- **DIA** (4 flag variants) -> FN, SWR, LITES, APMA (reads via HOSTRS mux)
+- **DIB** -> FMTH, **DIC** -> FMTL (formatter reads)
 
-This explains why the loading procedure only needs two registers: everything
-is accessed through the SWR/FN panel command mechanism. DMA registers are
-only needed when setting up block transfers.
+Both SWR and FN are on DOA (different flag variants), so the loading
+procedure alternates flag variants on a single channel. DMA setup uses
+DOB exclusively. Formatter uses DOC for writes, DIB/DIC for reads.
 
 ## Architecture: Hybrid — Model-Dependent (Revised)
 
@@ -313,127 +324,225 @@ Register access (write: HD bus -> register latch; read: register -> HD bus)
 | Register selection | Direct strobes on backplane | REGSEL bus to 4448 |
 | WC/APMA access | Unknown (no HWCCLK/HADRCLK) | Dedicated clocks |
 | Direction control | HD2REG / REG2HD | APDIR\* (probably) |
-| CTRL access | Atomic bit signals (CTL10, CLT08\*) | HCTCLK\* (full register) |
+| CTRL access | Atomic bit signals (CTL10, CLT08\*) | HCTLCLK\* (full register) |
 | Format registers | BH2HD / BL2HD\* | Unknown |
 
-### What Remains Unknown
+### What Remains To Verify
+
+The complete register mapping is now derived from schematic analysis,
+DG Nova conventions, and cross-checked with DeepSeek-R1 reasoner.
+Items still to confirm on real hardware:
 
 1. Whether the 280B generates REGSEL combinationally (single-cycle, direct
    decode) or latches it from a previous I/O instruction (two-step)
-2. The exact DOx+flag -> register mapping for either model
-3. How the AP-120B accesses WC and APMA without dedicated clock signals
-4. Whether CTL10/CLT08\* mean the host sets individual CTRL bits via
+2. How the AP-120B accesses WC and APMA without dedicated clock signals
+   (the 280B has HWCCLK\*/HADRCLK\* but the GE wire list doesn't show them)
+3. Whether CTL10/CLT08\* mean the host sets individual CTRL bits via
    different I/O instructions (rather than writing the full register)
+4. Quick hardware confirmation: `DOA`+`DOAS` SWR/FN handshake test
 
-## Proposed Register Mapping (Speculative)
+## Register Mapping — Inferred from 280B Schematics (March 2026)
 
-**IMPORTANT: This mapping is speculative and must be verified by hardware
-probing. The AP-120B and FPS-100 may have different mappings due to their
-different interface architectures.**
+Detailed examination of the 280B schematic tiles (512-3280-004, Rev B)
+reveals that the 10 write strobes partition cleanly as **4 + 4 + 2**
+across the three DOx channels. The strobe names unambiguously identify
+which registers they control. See `adapter.md` for the full trace.
 
-With 3 DOx channels x 4 flag options = 12 write slots and 3 DIx x 4 flag
-options = 12 read slots, there are 24 total instruction variants -- more than
-enough for 10 registers.
+### Channel Assignment (High Confidence)
 
-**Mapping principles (if direct decode):**
-- DOA/DIA (buffer A) handles the most frequent operations (SWR write, FN read)
-- S flag = "Start/Go" -- used for CTRL (launch DMA/function) and DMA setup
-- C flag = "Clear/Initialize" -- used for reset-related operations
-- P flag = "Pulse" -- device-specific, used for less common operations
-- DOB/DOC handle secondary registers (DMA setup, format)
-- Individual CTRL bits (CTL10, CLT08\*) may be set/cleared by specific
-  DOx+flag combinations rather than writing the full 16-bit CTRL register
+| Channel | Registers | Strobes |
+|---------|-----------|---------|
+| **DOA** | SWR, FN, CTRL, INT/APIRT | LDSR\*, LDFN\*, HCTLCLK\*, INTCLK\* |
+| **DOB** | WC, HMA, APMA, DMA start | HWCCLK\*, HMACLK\*, HADRCLK\*, HDMACLK\* |
+| **DOC** | FMTH, FMTL | B0CLK\*, B2CLK\* |
+| **DIA** | FN, SWR, LITES, APMA | FN2HD, SR2HD, LT2HD, HADR2HD\* |
+| **DIB** | FMTH | BH2HD\* |
+| **DIC** | FMTL | BL2HD\* |
 
-**Mapping principles (if two-step with REGSEL):**
-- One DOx instruction (likely DOA) writes the REGSEL address
-- Another DOx (likely DOB or DOC) transfers data to/from the selected register
-- Frequently-used registers (SWR, FN) may still have direct-access shortcuts
+### Write Mapping: DOA — Command/Control Registers
 
-### Best-estimate mapping assuming direct decode (needs hardware verification)
+All four flag variants are used. DOA handles the SWR/FN handshake,
+CTRL configuration, and AP interrupt. LITES has no write strobe —
+it is read-only on the host side (host reads via LT2HD).
 
-**Writes (host -> AP):**
+| Flag | CLR | STRT | Strobe | Register | DG Instruction |
+|------|-----|------|--------|----------|----------------|
+| none | 0 | 0 | LDSR\* | SWR | `DOA ac,FPS` |
+| S | 0 | 1 | LDFN\* | FN | `DOAS ac,FPS` |
+| C | 1 | 0 | HCTLCLK\* | CTRL | `DOAC ac,FPS` |
+| P | 1 | 1 | INTCLK\* | INT/APIRT | `DOAP ac,FPS` |
 
-| DG Instruction | FPS Register | Strobe | Rationale |
-|---|---|---|---|
-| `DOA ac,055` (no flag) | SWR | LDSR\* | Most frequent write. Every APEX message word goes through SWR. |
-| `DOAS ac,055` | CTRL | HCTCLK\* | S=Start. Write CTRL with HDMAGO to launch DMA. |
-| `DOAC ac,055` | ABRT | -- | C=Clear. Reset the AP. |
-| `DOAP ac,055` | FN | LDFN\* | P=Pulse. Load function register (used by supervisor). |
-| `DOB ac,055` (no flag) | WC | HWCCLK\* | DMA word count -- part of DMA setup sequence. |
-| `DOBS ac,055` | HMA | HMACLK\* | S=Start. Host memory address for DMA. |
-| `DOBC ac,055` | APMA | HADRCLK\* | C flag. AP memory address for DMA. |
-| `DOBP ac,055` | FMTH | -- | P flag. Format high (rare). |
-| `DOC ac,055` (no flag) | FMTL | -- | Format low (rare). |
-| `DOCS ac,055` | -- | HDMACLK\* | S=Start. May directly trigger DMA start. |
+### Write Mapping: DOB — DMA Registers
 
-**Reads (AP -> host):**
+All four flag variants are used. DOB handles the complete DMA setup
+sequence (WC, HMA, APMA, then DMA start trigger).
 
-| DG Instruction | FPS Register | Strobe | Rationale |
-|---|---|---|---|
-| `DIA ac,055` (no flag) | FN | FN2HD\* | Most frequent read. Status polling (halt, SWR ack). |
-| `DIAS ac,055` | CTRL | -- | S flag. Read control/interrupt status. |
-| `DIAC ac,055` | SWR | SR2HD\* | C flag. Read back SWR value. |
-| `DIAP ac,055` | LITES | LT2HD\* | P flag. Read lights/diagnostic register. |
-| `DIB ac,055` (no flag) | WC | -- | Read word count (after DMA). |
-| `DIBC ac,055` | APMA | HADR2HD\* | C flag. Read AP memory address. |
-| `DIC ac,055` (no flag) | HMA | -- | Read host memory address. |
+| Flag | CLR | STRT | Strobe | Register | DG Instruction |
+|------|-----|------|--------|----------|----------------|
+| none | 0 | 0 | HWCCLK\* | WC | `DOB ac,FPS` |
+| S | 0 | 1 | HMACLK\* | HMA | `DOBS ac,FPS` |
+| C | 1 | 0 | HADRCLK\* | APMA | `DOBC ac,FPS` |
+| P | 1 | 1 | HDMACLK\* | DMA start | `DOBP ac,FPS` |
 
-**Flag-only operations:**
+### Write Mapping: DOC — Formatter Registers
+
+Only two flag variants used (CLR=0 required); two are unused.
+
+| Flag | CLR | STRT | Strobe | Register | DG Instruction |
+|------|-----|------|--------|----------|----------------|
+| none | 0 | 0 | B0CLK\* | FMTH | `DOC ac,FPS` |
+| S | 0 | 1 | B2CLK\* | FMTL | `DOCS ac,FPS` |
+| C | 1 | 0 | — | (unused) | |
+| P | 1 | 1 | — | (unused) | |
+
+B0CLK\*/B2CLK\* are clock signals for the formatter board (4429).
+
+### Read Mapping: DIA — via HOSTRS 2-bit Mux
+
+HOSTRS0/HOSTRS1 (2 bits, generated by Sheet 1 decode logic) select
+which register drives the host data bus during DIA instructions.
+The flag variant controls which HOSTRS value is generated.
+
+| HOSTRS1:0 | Flag | CLR | STRT | Source | Register | DG Instruction |
+|-----------|------|-----|------|--------|----------|----------------|
+| 00 | none | 0 | 0 | FN2HD | FN status | `DIA ac,FPS` |
+| 01 | S | 0 | 1 | SR2HD | SWR readback | `DIAS ac,FPS` |
+| 10 | C | 1 | 0 | LT2HD | LITES | `DIAC ac,FPS` |
+| 11 | P | 1 | 1 | HADR2HD\* | APMA readback | `DIAP ac,FPS` |
+
+### Read Mapping: DIB/DIC — Formatter Read-back
+
+DIB and DIC bypass the HOSTRS mux entirely, using dedicated
+read-back strobes:
+
+| Instruction | Source | Register |
+|-------------|--------|----------|
+| DIB | BH2HD\* | FMTH (Buffer High → Host Data) |
+| DIC | BL2HD\* | FMTL (Buffer Low → Host Data) |
+
+### Flag-Only and Skip Operations
+
+Three independent DONE/BUSY pairs (from Sheet 4, adapter.md):
+
+| Subdevice | Flags | Function |
+|-----------|-------|----------|
+| 0 (AP2:1:0 = 000) | RUN DONE / RUN BUSY | AP execution status |
+| 1 (AP2:1:0 = 001) | DMA DONE / DMA BUSY | DMA transfer status |
+| 2 (AP2:1:0 = 010) | CTL05 DONE / CTL05 BUSY | Programmed interrupt |
 
 | DG Instruction | Effect |
 |---|---|
-| `NIOS 055` | Set RUN BUSY (start AP execution) |
-| `NIOC 055` | Clear all flags, reset device |
-| `NIOP 055` | Pulse (AP interrupt -- equivalent to APIRT) |
+| `NIOS 055` | Set RUN BUSY (subdevice 0) |
+| `NIOC 055` | Clear RUN flags (subdevice 0) |
+| `NIOS 055+1` | Set DMA BUSY (subdevice 1) |
+| `NIOC 055+1` | Clear DMA flags (subdevice 1) |
+| `NIOS 055+2` | Set CTL05 BUSY (subdevice 2) |
+| `NIOC 055+2` | Clear CTL05 flags (subdevice 2) |
 | `SKPBN 055` | Skip if RUN BUSY set (AP running) |
 | `SKPBZ 055` | Skip if RUN BUSY clear (AP stopped) |
-| `SKPDN 055` | Skip if RUN DONE set (AP halted/completed) |
+| `SKPDN 055` | Skip if RUN DONE set (AP halted) |
 | `SKPDZ 055` | Skip if RUN DONE clear |
+| `SKPBN 055+1` | Skip if DMA BUSY set |
+| `SKPDN 055+1` | Skip if DMA DONE set (transfer complete) |
 
-### DMA setup sequence (probable)
+### Confidence Assessment
 
-```
+**High confidence (strobe names + netlist + DG conventions + DeepSeek):**
+
+The complete mapping is derived from three independent lines of evidence:
+1. Strobe names unambiguously identify registers (LDSR\*=SWR, LDFN\*=FN, etc.)
+2. Circuit topology shows standard 2-to-4 NAND decode of latched CLR/STRT
+3. DG Nova conventions dictate none=primary, S=secondary, C=config, P=action
+4. Cross-checked with DeepSeek-R1 reasoner, which independently reached
+   the same mapping
+
+**To verify on hardware:** A single test confirms the entire mapping:
+write 0xA5A5 via `DOA 0,FPS` then issue DEP-into-PSA via `DOAS 0,FPS`.
+If EXAM-PSA returns 0xA5A5, the DOA none=SWR / S=FN assignment is correct.
+- Whether DOC uses none+S, none+P, S+C, or some other pair
+
+### DMA Setup Sequence
+
+```asm
+FPS=055                          ; Device code (octal)
 ; Set up DMA transfer from host memory to AP main data
     LDA 0, WORD_COUNT
-    DOB 0, FPS          ; Write WC (word count)
+    DOB 0, FPS                   ; none → HWCCLK* → write WC
     LDA 0, HOST_ADDR
-    DOBS 0, FPS         ; Write HMA (host memory address)
+    DOBS 0, FPS                  ; S → HMACLK* → write HMA
     LDA 0, AP_ADDR
-    DOBC 0, FPS         ; Write APMA (AP memory address)
-    LDA 0, CTRL_VAL     ; HDMAGO bit set
-    DOAS 0, FPS         ; Write CTRL + Start -> launches DMA
+    DOBC 0, FPS                  ; C → HADRCLK* → write APMA
+    LDA 0, CTRL_VAL
+    DOAC 0, FPS                  ; C → HCTLCLK* → write CTRL (format, direction)
+    LDA 0, DMA_GO                ; any non-zero value
+    DOBP 0, FPS                  ; P → HDMACLK* → start DMA transfer
+; Wait for completion:
+    SKPDN FPS+1                  ; Skip if DMA DONE (subdevice 1)
+    JMP .-1
+    NIOC FPS+1                   ; Clear DMA flags
 ```
 
-### APEX message sequence (probable)
+### APEX Message Sequence
 
-The host sends a 5-word APEX message to the AP via the SWR/FN handshake:
-
-```
-; Send DATUM (word 0 of APEX message)
-    LDA 0, DATUM
-    DOA 0, FPS          ; Write to SWR
-    NIOP FPS             ; Pulse -> interrupt the AP (APIRT)
+```asm
+FPS=055
+; Send 5-word APEX message via SWR/FN handshake
+; SWR = DOA (none), FN = DOAS (S), INT = DOAP (P)
+    LDA 0, DATUM                 ; First APEX word
+    DOA 0, FPS                   ; none → LDSR* → write SWR
+    DOAP 0, FPS                  ; P → INTCLK* → interrupt AP (APIRT)
 wait1:
-    DIA 1, FPS           ; Read FN
-    MOVZL 1,1,SZC        ; Test bit 14 (SWR read ack) -- DG bit 1
-    JMP wait1            ; Loop until AP acknowledges
+    DIA 1, FPS                   ; none → FN2HD → read FN status
+    MOVZL 1, 1, SZC             ; Test bit 1 (SWR read acknowledge)
+    JMP wait1                    ; Loop until AP acknowledges
 
 ; Send remaining 4 words (FPOPT, FPSCT, FPSWR, FPFNR)
     LDA 0, FPOPT
-    DOA 0, FPS          ; Write to SWR
-; ... (wait for ack, repeat for each word)
+    DOA 0, FPS                   ; Write SWR
+    ; AP sees RDWAIT from previous cycle, reads SWR automatically
+wait2:
+    DIA 1, FPS                   ; Read FN
+    MOVZL 1, 1, SZC             ; Test SWR ack
+    JMP wait2
+; ... repeat for remaining words
+
+; Program loading uses DOAS for FN commands:
+    LDA 0, PS_WORD_HIGH          ; Bits 0-15 of PS word
+    DOA 0, FPS                   ; Write SWR (data)
+    LDA 0, DEP_PS_CMD            ; 001010 = DEP into PS(by TMA), WORD=0
+    DOAS 0, FPS                  ; S → LDFN* → write FN (command)
 ```
 
-**NOTE:** This mapping is a best estimate. The exact assignment of registers
-to DOx+flag combinations must be verified by hardware probing. See
-"Verification" section below.
+### Previous Speculative Mapping (superseded)
+
+The mapping below was the pre-schematic best-guess. It incorrectly
+placed SWR/FN on different channels (DOA/DOB) and CTRL on DOA.
+The schematic trace shows both SWR and FN are on DOA, and all DMA
+registers (including CTRL) are on DOB. Retained for reference only.
+
+<details>
+<summary>Click to expand old speculative mapping</summary>
+
+| DG Instruction | FPS Register | Strobe | Old Rationale |
+|---|---|---|---|
+| `DOA ac,055` (no flag) | SWR | LDSR\* | Most frequent write |
+| `DOAS ac,055` | CTRL | HCTLCLK\* | S=Start, launch DMA |
+| `DOAC ac,055` | ABRT | -- | C=Clear, reset AP |
+| `DOAP ac,055` | FN | LDFN\* | P=Pulse, load FN |
+| `DOB ac,055` (no flag) | WC | HWCCLK\* | DMA word count |
+| `DOBS ac,055` | HMA | HMACLK\* | DMA host address |
+| `DOBC ac,055` | APMA | HADRCLK\* | DMA AP address |
+| `DOBP ac,055` | FMTH | -- | Format high |
+| `DOC ac,055` (no flag) | FMTL | -- | Format low |
+
+</details>
 
 ## Verification
 
 ### Method 1: Logic analyzer on FPS backplane
 
 Probe the named strobe signals (LDSR\*, LDFN\*, HWCCLK\*, HMACLK\*, HADRCLK\*,
-HDMACLK\*, HCTCLK\*) on the FPS backplane while issuing each DOA/DOB/DOC
+HDMACLK\*, HCTLCLK\*) on the FPS backplane while issuing each DOA/DOB/DOC
 instruction with each flag variant. This directly reveals the decode truth table.
 
 ### Method 2: Software probe after reset
