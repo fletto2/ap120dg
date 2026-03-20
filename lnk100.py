@@ -35,7 +35,7 @@ Usage:
   -S FILE   Write SimH deposit script for direct loading
 """
 
-import sys, os, re, struct, argparse
+import sys, struct, argparse
 
 # ── APO Parser ──────────────────────────────────────────────────────
 
@@ -56,11 +56,15 @@ class Module:
 
 
 def parse_octal(s):
-    """Parse an octal string, handling negative values."""
+    """Parse an octal string."""
     s = s.strip()
     if not s:
         return 0
-    return int(s, 8)
+    neg = s.startswith('-')
+    if neg:
+        s = s[1:]
+    val = int(s, 8)
+    return -val if neg else val
 
 
 def parse_apo(filename):
@@ -104,7 +108,6 @@ def parse_apo(filename):
         if state == 'title':
             name = stripped
             current = Module(name)
-            # Check if module with this name already exists (from another lib)
             modules.append(current)
             state = 'module'
             continue
@@ -178,8 +181,11 @@ def parse_apo(filename):
             fields = stripped.split()
             if len(fields) >= 2:
                 name = fields[0]
-                offset = parse_octal(fields[1])
-                current.entries[name] = offset
+                try:
+                    offset = parse_octal(fields[1])
+                    current.entries[name] = offset
+                except ValueError:
+                    pass
             entry_remaining -= 1
             if entry_remaining <= 0:
                 state = 'module'
@@ -240,8 +246,12 @@ def parse_apo(filename):
             continue
 
         if state == 'ext':
+            if '***' in line:
+                state = 'module'
+                i -= 1  # re-process this line
+                continue
             name = stripped
-            if name and not name.startswith('*'):
+            if name:
                 current.externs.append(name)
                 ext_count -= 1
             if ext_count <= 0:
@@ -299,6 +309,10 @@ class Linker:
 
             for name, offset in mod.entries.items():
                 abs_addr = mod.base_addr + offset
+                if name in self.entry_points and self.entry_points[name] != abs_addr:
+                    self.warnings.append(
+                        f"Duplicate entry '{name}': {self.entry_points[name]} "
+                        f"and {abs_addr} (module {mod.name})")
                 self.entry_points[name] = abs_addr
                 if name not in self.symbol_table:
                     self.symbol_table[name] = (idx, offset, abs_addr)
@@ -352,8 +366,11 @@ class Linker:
 
     def get_entry_address(self, name):
         """Get the absolute PS address for an entry point."""
-        return self.entry_points.get(name) or \
-               (self.symbol_table[name][2] if name in self.symbol_table else None)
+        if name in self.entry_points:
+            return self.entry_points[name]
+        if name in self.symbol_table:
+            return self.symbol_table[name][2]
+        return None
 
     def print_map(self, f=sys.stderr):
         """Print linker map."""
@@ -445,10 +462,14 @@ def write_load_module(linker, filename):
     """Write linked load module in FSLMLD format.
 
     FSLMLD format: array of 16-bit integers, processed as 8-word records.
-    Record header: [TYPE-1, COUNT, ADDR, PAGE+1, DEST, 0, 0, 0]
+    Record header: [LMBUF(IPTR), COUNT, ADDR, PAGE+1, DEST, 0, 0, 0]
     Followed by data words.
 
-    TYPE-1 values: -1=code(PS), 0=data(MD), 1=info, 2=end
+    FSLMLD computes TTYPE = LMBUF(IPTR) + 1, then dispatches:
+      LMBUF=0 → TTYPE=1 → code/integer values (to PS if DEST=0, MD if DEST=1)
+      LMBUF=1 → TTYPE=2 → data block values
+      LMBUF=2 → TTYPE=3 → info record (PPA, LMID)
+      LMBUF=3 → TTYPE=4 → end record
     """
     words = []
 
