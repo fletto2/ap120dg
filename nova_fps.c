@@ -302,6 +302,7 @@ static int32 fps_read_reg (int32 regsel);
 static void fps_write_reg (int32 regsel, int32 val);
 static void fps_execute_cycle (void);
 static void fps_init_table_memory (void);
+static t_uint64 fps_double_to_38bit (double val);
 t_stat fps_attach (UNIT *uptr, CONST char *cptr);
 t_stat fps_detach (UNIT *uptr);
 
@@ -1198,7 +1199,7 @@ if (df == 0 && sop == SOP_SPEC && sps < 8) {
             int32 target = 0;
             switch (ps_mode) {
                 case 0: target = FPS_VALUE(instr) & 0xFFF; break;
-                case 1: target = (fps_psa + 1 + (int16_t)FPS_VALUE(instr)) & 0xFFF; break;
+                case 1: target = (fps_psa + (int16_t)FPS_VALUE(instr)) & 0xFFF; break;
                 case 2: target = fps_tma & 0xFFF; break;
                 case 3: target = fps_swr & 0xFFF; break;
                 }
@@ -1343,7 +1344,7 @@ if (df == 0 && sop == SOP_SPEC) {
             int32 target = 0;
             switch (ps_mode) {
                 case 0: target = FPS_VALUE(instr) & 0xFFF; break;   /* Absolute from VALUE */
-                case 1: target = (fps_psa + 1 + (int16_t)FPS_VALUE(instr)) & 0xFFF; break; /* PC-relative */
+                case 1: target = (fps_psa + (int16_t)FPS_VALUE(instr)) & 0xFFF; break; /* PC-relative */
                 case 2: target = fps_tma & 0xFFF; break;            /* TMA */
                 case 3: target = fps_swr & 0xFFF; break;            /* SWR (host panel) */
                 }
@@ -1495,27 +1496,15 @@ if (fadd_op != 0 && fadd_op != 7) {                    /* Not NOP or I/O group *
         case 3: a2_val = dpy_val; break;                /* DPY */
         case 4: a2_val = md_val; break;                 /* MD */
         case 5: a2_val = 0; break;                      /* ZERO */
-        case 6: {                                       /* MDPX: modify DPX */
-            /* Integer-to-float conversion (SIM100 line 35206):
-               Copy DPX mantissa, set exponent = SPFN + 512.
-               DPX holds a 16-bit integer from DPBS=6 (SPFN bus).
-               The integer is in the low 16 bits of the mantissa.
-               FPADD then normalizes the result into a proper float.
-               Exponent from SPFN provides the scale (e.g., 27 for
-               16-bit unsigned integers: 2^27 positions the MSB). */
-            int32 mant = (int32)(dpx_val & FP_MANT_MASK);
-            int32 exp = (fps_spfn + FP_EXP_BIAS) & FP_EXP_MASK;
-            a2_val = fp_pack(exp, mant);
+        case 6:                                         /* MDPX: modify DPX */
+            /* On real hardware: copies DPX mantissa and applies exponent
+               from SPFN+512, then FPADD normalizes. Since DPBS=6 already
+               produces a normalized float in DPX, MDPX passes it through. */
+            a2_val = dpx_val;
             break;
-            }
-        case 7: {                                       /* MDPY: modify DPX high */
-            /* SIM100 line 35207: takes DPX exponent bytes as mantissa,
-               exponent bits from SPFN low 2 bits. */
-            int32 hi = (int32)((dpx_val >> 16) & 0xFFFF);
-            int32 exp_bits = (fps_spfn & 3) << 26;
-            a2_val = ((t_uint64)hi << 0) | exp_bits;
+        case 7:                                         /* MDPY */
+            a2_val = dpx_val;
             break;
-            }
         }
 
     /* Floating adder pipeline: FPADD→FAB1, shift FAB1→FAB2.
@@ -1558,17 +1547,12 @@ switch (dpbs) {
     case 3: dpbs_val = dpx_val; break;                  /* DPX */
     case 4: dpbs_val = dpy_val; break;                  /* DPY */
     case 5: dpbs_val = md_val; break;                   /* MD */
-    case 6: {                                           /* SPFN bus (SIM100 line 23306) */
-        /* Creates a float: exp = SPFN+512, mantissa = SPFN value.
-           The integer from SPFN goes into mantissa bits 15-0.
-           Sign-extended to 28 bits if bit 15 is set. */
-        int32 exp = (fps_spfn + FP_EXP_BIAS) & FP_EXP_MASK;
-        int32 mant = fps_spfn & 0xFFFF;
-        if (mant & 0x8000)                              /* Sign extend */
-            mant |= 0x0FFF0000;
-        dpbs_val = fp_pack(exp, mant);
+    case 6:                                             /* SPFN bus (SIM100 line 23306) */
+        /* Produces a normalized float from the SPFN integer value.
+           On real hardware this goes through DPBS→DPX→MDPX→FPADD normalize.
+           We produce the normalized result directly. */
+        dpbs_val = fps_double_to_38bit((double)(int16_t)(fps_spfn & 0xFFFF));
         break;
-        }
     case 7: dpbs_val = (fps_tm && fps_tma < TM_SIZE) ? fps_tm[fps_tma] : 0; break;
     }
 
