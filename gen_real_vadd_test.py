@@ -87,28 +87,35 @@ code = [
     # PS[2]: MA ← SP[1] (base_B)
     pack_instr(sop=SOP_NOP, spd=1, ma_op=MA_SET),
 
-    # PS[3]: FADD A1=DPX + A2=MD[MA], FA→DPX. MA ← SP[2] (base_C)
-    pack_instr(fadd=FADD_FADD, a1=A_DPX, a2=A_MD, dpx_src=1, spd=2, ma_op=MA_SET),
+    # PS[3]: FADD A1=DPX + A2=MD[MA]. Result enters FAB1.
+    # Pipeline: FAB1→FAB2→FA requires 2 FADD-active cycles to propagate.
+    pack_instr(fadd=FADD_FADD, a1=A_DPX, a2=A_MD),
 
-    # PS[4]: DPBS=DPX, MI=DPBS→MD (store result to MD[MA=base_C])
-    pack_instr(dpbs=DPBS_DPX, mi=MI_DPBS),
+    # PS[4]: FADD NOP (FAND with zero inputs) to push pipeline.
+    # FAB1→FAB2 (result moves to stage 2). Set MA ← SP[2] (base_C).
+    pack_instr(fadd=5, a1=0, a2=0, spd=2, ma_op=MA_SET),  # FAND 0,0 = NOP push
 
-    # PS[5]: SP[0]++, SP[1]++, SP[2]++ (increment all base addresses)
-    # Can only do one s-pad op per cycle. Use INC on SP[0].
+    # PS[5]: FADD NOP to push pipeline again. FAB2→FA, result now in FA.
+    pack_instr(fadd=5, a1=0, a2=0),  # FAND 0,0
+
+    # PS[6]: MI=1 writes FA to MD[MA=base_C]
+    pack_instr(mi=1),
+
+    # PS[7]: SP[0]++
     pack_instr(sop=SOP_SPEC, sps=SPS_INC, spd=0),
 
-    # PS[6]: INC SP[1]
+    # PS[8]: INC SP[1]
     pack_instr(sop=SOP_SPEC, sps=SPS_INC, spd=1),
 
-    # PS[7]: INC SP[2]
+    # PS[9]: INC SP[2]
     pack_instr(sop=SOP_SPEC, sps=SPS_INC, spd=2),
 
-    # PS[8]: DEC SP[3] (N--). Branch if s-pad > 0 back to PS[0].
+    # PS[10]: DEC SP[3] (N--). Branch if s-pad > 0 back to PS[0].
     # Branch formula: target = PSA + 1 + DISPF - 17
-    # Want target=0 from PSA=8: 0 = 8 + 1 + DISPF - 17, DISPF = 8
-    pack_instr(sop=SOP_SPEC, sps=SPS_DEC, spd=3, cond=COND_BGT, disp=8),
+    # Want target=0 from PSA=10: 0 = 10 + 1 + DISPF - 17, DISPF = 6
+    pack_instr(sop=SOP_SPEC, sps=SPS_DEC, spd=3, cond=COND_BGT, disp=6),
 
-    # PS[9]: HALT
+    # PS[11]: HALT
     pack_instr(sop=SOP_SPEC, sps=SPS_HALT),
 ]
 

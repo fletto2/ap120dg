@@ -251,9 +251,15 @@ static int32 fps_srs[SRS_SIZE];         /* Subroutine Return Stack */
 static t_uint64 fps_dpx[DPX_SIZE];        /* Data Pad X */
 static t_uint64 fps_dpy[DPY_SIZE];        /* Data Pad Y */
 
-/* Pipeline registers (38-bit in 64-bit) */
-static t_uint64 fps_fa;                   /* Floating Adder output */
+/* Pipeline registers (38-bit in 64-bit)
+   Real AP-120B has 2-stage pipeline: FPADD→FAB1→FAB2→FA.
+   FADD result enters FAB1, shifts to FAB2 next cycle, then to FA.
+   So FA reflects the FADD from 2 cycles ago. */
+static t_uint64 fps_fa;                   /* Floating Adder output (delayed) */
+static t_uint64 fps_fab1;                 /* Adder pipeline stage 1 */
+static t_uint64 fps_fab2;                 /* Adder pipeline stage 2 */
 static t_uint64 fps_fm;                   /* Floating Multiplier output */
+static t_uint64 fps_fmb1, fps_fmb2, fps_fmb3; /* Multiplier pipeline */
 static t_uint64 fps_a1, fps_a2;           /* Adder inputs */
 static t_uint64 fps_m1, fps_m2;           /* Multiplier inputs */
 static t_uint64 fps_inbs;                /* I/O input bus */
@@ -1142,6 +1148,17 @@ instr = fps_ps[fps_psa];
 fps_cb = instr;
 
 
+/* Pipeline shift: FAB2→FA every cycle (unconditional, per SIM100 line 1338).
+   This must happen before any early returns (HALT, JMP, RETURN, etc.)
+   so that the pipeline advances even on control flow instructions. */
+fps_fa = fps_fab2;
+if (fps_fab2 == 0)
+    fps_facond = 0;
+else if (fp_get_mant(fps_fab2) < 0)
+    fps_facond = -1;
+else
+    fps_facond = 1;
+
 
 
 /* Decode fields */
@@ -1219,7 +1236,7 @@ switch (cond) {
             fps_sra--;
             fps_psa = fps_srs[fps_sra & 0xF];
             }
-        return;                                         /* Don't increment PSA */
+        return;                                         /* Pipeline already shifted above */
     case 3:  branch = 1; break;                          /* BINTRQ - interrupt request */
     case 4:  branch = 1; break;                          /* BION - I/O ready (stub: always) */
     case 5:  branch = 0; break;                          /* BIOZ - I/O not ready */
@@ -1475,7 +1492,11 @@ if (fadd_op != 0 && fadd_op != 7) {                    /* Not NOP or I/O group *
         default: a2_val = 0; break;
         }
 
-    /* Floating adder operation */
+    /* Floating adder pipeline: FPADD→FAB1, shift FAB1→FAB2.
+       FAB2→FA shift already done above (unconditional). */
+    fps_fab2 = fps_fab1;
+
+    /* Compute new result into FAB1 */
     switch (fadd_op) {
         case 1: fa_new = fps_38bit_sub (a2_val, a1_val); break; /* FSUBR */
         case 2: fa_new = fps_38bit_sub (a1_val, a2_val); break; /* FSUB */
@@ -1484,15 +1505,7 @@ if (fadd_op != 0 && fadd_op != 7) {                    /* Not NOP or I/O group *
         case 5: fa_new = a1_val & a2_val; break;        /* FAND */
         case 6: fa_new = a1_val | a2_val; break;        /* FOR */
         }
-    fps_fa = fa_new;
-
-    /* Update float adder condition code */
-    if (fps_fa == 0)
-        fps_facond = 0;
-    else if (fp_get_mant(fps_fa) < 0)
-        fps_facond = -1;
-    else
-        fps_facond = 1;
+    fps_fab1 = fa_new;
     }
 
 /* Multiplier */
@@ -1543,11 +1556,13 @@ if (fadd_op != 0 && fadd_op != 7) {
         fps_dpy[dpy_widx] = fps_fm;
     }
 
-/* Memory input (MI field) - write to main data */
+/* Memory input (MI field) - write to main data
+   From SIM100.FTN line 2236: MI=1→FA, MI=2→FM, MI=3→DPBS */
 if (mi_field != 0 && fps_md && fps_ma < MD_SIZE) {
     switch (mi_field) {
-        case 1: fps_md[fps_ma] = fps_inbs; break;      /* INBS */
-        case 2: fps_md[fps_ma] = (t_uint64)FPS_VALUE(instr); break; /* VALUE */
+        case 1: fps_md[fps_ma] = fps_fa;                 /* FA (float adder) */
+                break;
+        case 2: fps_md[fps_ma] = fps_fm; break;        /* FM (float multiplier) */
         case 3: fps_md[fps_ma] = dpbs_val; break;      /* From DPBS */
         }
     }
@@ -1679,7 +1694,7 @@ fps_dma_buf = 0;
 /* Preserve s-pad and SRS across reset (host deposits before go) */
 memset (fps_dpx, 0, sizeof (fps_dpx));
 memset (fps_dpy, 0, sizeof (fps_dpy));
-fps_fa = fps_fm = 0;
+fps_fa = fps_fab1 = fps_fab2 = fps_fm = fps_fmb1 = fps_fmb2 = fps_fmb3 = 0;
 fps_a1 = fps_a2 = fps_m1 = fps_m2 = 0;
 fps_inbs = fps_dpbs = fps_cb = 0;
 fps_spcond = fps_facond = 0;
