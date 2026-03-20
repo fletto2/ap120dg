@@ -90,6 +90,7 @@ static inline int      io_skpdn(int sd)    { (void)sd; return 0; /* TODO: subdev
 #define REG_PSA      0
 #define REG_SPD      1
 #define REG_MA       2
+#define REG_SPFN     5
 #define REG_TMA      3
 #define REG_DPA      4
 #define REG_STATUS   6
@@ -347,10 +348,14 @@ uint16_t apexam(int regsel, int word)
 void spldgo(const uint16_t *slist, int nspads, uint16_t start, uint16_t brkloc)
 {
     (void)brkloc;  /* breakpoint not yet implemented */
-    /* Load s-pad values via DEP into SPD (register 1) */
+    /* Load s-pad values using two-step DEP protocol (from DAPEX.MAC):
+       Step 1: DEP address into SPD pointer (REGSEL 1)
+       Step 2: DEP value into SPFN (REGSEL 5) → writes to spad[SPD] */
     for (int i = 0; i < nspads; i++) {
+        io_doa((uint16_t)i);               /* SWR = s-pad address */
+        io_doas(FN_DEP | REG_SPD);         /* DEP into SPD pointer */
         io_doa(slist[i]);                  /* SWR = s-pad value */
-        io_doas(FN_DEP | REG_SPD);         /* DEP into SPD */
+        io_doas(FN_DEP | REG_SPFN);       /* DEP into SPFN → spad[SPD] */
     }
     /* Load PSA and start */
     runap(start, 0, 0, FN_START);

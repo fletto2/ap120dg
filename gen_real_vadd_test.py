@@ -174,6 +174,15 @@ pz_const("apma_six", 6)
 pz_const("host_in", HOST_DATA)
 pz_const("host_out", HOST_RESULT)
 pz_const("entry", 0)
+pz_const("fn_dep_spd", FN_DEP | 1)   # DEP into SPD pointer (REGSEL 1)
+pz_const("fn_dep_spfn", FN_DEP | 5)  # DEP into SPFN → spad[SPD] (REGSEL 5)
+
+# S-pad values as page-zero constants
+for i, val in enumerate(spad_vals):
+    pz_const(f"sp{i}", val)
+# S-pad addresses
+for i in range(len(spad_vals)):
+    pz_const(f"spa{i}", i)
 
 # Microcode words
 for i, word in enumerate(code):
@@ -182,9 +191,7 @@ for i, word in enumerate(code):
         pz_const(f"mc{i}_w{w}", val)
 
 emit("")
-emit("; S-pad via SimH deposit")
-for i, val in enumerate(spad_vals):
-    emit(f"deposit fps SPAD[{i}] {val:06o}")
+emit("; S-pad loaded via two-step DEP protocol in Nova program")
 
 emit("")
 emit(f"; Float data at {HOST_DATA:03o}")
@@ -222,6 +229,17 @@ for i in range(len(code)):
         fn = "fn_dep_ps_w3_inc" if w == 3 else f"fn_dep_ps_w{w}"
         inst(dg_lda(0, 0, pz[fn]))
         inst(dg_doa(0, PULSE_S, DEV_FPS))
+
+# Load s-pad via two-step DEP protocol (matches real DAPEX.MAC)
+for i in range(len(spad_vals)):
+    inst(dg_lda(0, 0, pz[f"spa{i}"]))    # SWR = s-pad address
+    inst(dg_doa(0, PULSE_N, DEV_FPS))     # DOA SWR
+    inst(dg_lda(0, 0, pz["fn_dep_spd"])) # FN = DEP SPD
+    inst(dg_doa(0, PULSE_S, DEV_FPS))     # DOAS FN
+    inst(dg_lda(0, 0, pz[f"sp{i}"]))     # SWR = s-pad value
+    inst(dg_doa(0, PULSE_N, DEV_FPS))     # DOA SWR
+    inst(dg_lda(0, 0, pz["fn_dep_spfn"]))# FN = DEP SPFN → spad[SPD]
+    inst(dg_doa(0, PULSE_S, DEV_FPS))     # DOAS FN
 
 # DMA Host→AP
 inst(dg_lda(0, 0, pz["apma_zero"]))

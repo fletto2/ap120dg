@@ -242,6 +242,7 @@ static int32 fps_dpa;                   /* Data Pad Address */
 static int32 fps_da;                    /* Device Address */
 static int32 fps_ap_status;             /* AP internal status register */
 static int32 fps_spfn;                  /* S-Pad Function output */
+static int32 fps_spd_ptr;              /* S-Pad Destination pointer (host DEP) */
 
 static int32 fps_spad[SP_SIZE];         /* Scratch Pad registers */
 static int32 fps_srs[SRS_SIZE];         /* Subroutine Return Stack */
@@ -519,7 +520,7 @@ static int32 fps_read_reg (int32 regsel)
 {
 switch (regsel) {
     case REGSEL_PSA:     return fps_psa;
-    case REGSEL_SPD:     return fps_spad[0];            /* SPD = s-pad destination */
+    case REGSEL_SPD:     return fps_spd_ptr;             /* SPD pointer */
     case REGSEL_MA:      return fps_ma;
     case REGSEL_TMA:     return fps_tma;
     case REGSEL_DPA:     return fps_dpa;
@@ -550,11 +551,15 @@ static void fps_write_reg (int32 regsel, int32 val)
 {
 switch (regsel) {
     case REGSEL_PSA:     fps_psa = val & 0xFFF; break;
-    case REGSEL_SPD:     fps_spad[0] = val & 0xFFFF; break;
+    case REGSEL_SPD:     fps_spd_ptr = val & 0xF; break;    /* Set SPD pointer */
     case REGSEL_MA:      fps_ma = val & 0xFFFF; break;
     case REGSEL_TMA:     fps_tma = val & 0xFFF; break;
     case REGSEL_DPA:     fps_dpa = val & 0xFF; break;
-    case REGSEL_SPFN:    fps_spfn = val & 0xFFFF; break;
+    case REGSEL_SPFN:                                      /* DEP into SPFN → write to spad[SPD] */
+        fps_spfn = val & 0xFFFF;
+        if (fps_spd_ptr < SP_SIZE)
+            fps_spad[fps_spd_ptr] = val & 0xFFFF;
+        break;
     case REGSEL_STATUS:  fps_ap_status = val & 0xFFFF; break;
     case REGSEL_DA:      fps_da = val & 0xFF; break;
     case REGSEL_PS_TMA:                                 /* Write to PS by TMA */
