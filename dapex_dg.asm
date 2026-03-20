@@ -151,6 +151,9 @@ k00200:
 ; 001001 = FN DEP into SPD (REGSEL=1)
 k01001:
     dw 001001           ; 0103: DEP SPD
+; 001005 = FN DEP into SPFN (REGSEL=5) → writes to spad[SPD]
+k01005:
+    dw 001005           ; 0104: DEP SPFN
 pfpopt:
     dw fpopt            ; 0104: pointer to APEX block
 pfpdat:
@@ -573,17 +576,27 @@ SPLDGO:
     STA 1, splcnt, 0
     STA 2, splpsa, 0
     LDA 2, spltmp, 0
+    SUB 0, 0                   ; AC0 = 0 (s-pad address counter)
+    STA 0, aoutv, 0            ; aoutv reused as spladdr
 spllp:
     LDA 0, splcnt, 0
     MOV 0, 0, SZR
     JMP spldo
     JMP splrn
 spldo:
-    LDA 0, 0, 2
-    DOA 0, FPS
-    LDA 0, k01001, 0          ; DEP into SPD
+    ; Step 1: DEP s-pad address into SPD pointer
+    LDA 0, aoutv, 0            ; s-pad address (0, 1, 2, ...)
+    DOA 0, FPS                  ; SWR = address
+    LDA 0, k01001, 0           ; DEP into SPD (REGSEL 1)
     DOAS 0, FPS
-    INC 2, 2
+    ; Step 2: DEP value into SPFN → writes to spad[SPD]
+    LDA 0, 0, 2                ; load s-pad value from list
+    DOA 0, FPS                  ; SWR = value
+    LDA 0, k01005, 0           ; DEP into SPFN (REGSEL 5)
+    DOAS 0, FPS
+    ; Advance counters
+    INC 2, 2                    ; next list entry
+    ISZ aoutv, 0                ; s-pad address++
     LDA 0, splcnt, 0
     LDA 1, cm1, 0
     ADD 1, 0
