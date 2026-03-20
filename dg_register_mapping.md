@@ -329,8 +329,11 @@ Register access (write: HD bus -> register latch; read: register -> HD bus)
 
 ### What Remains To Verify
 
-The complete register mapping is now derived from schematic analysis,
-DG Nova conventions, and cross-checked with DeepSeek-R1 reasoner.
+The complete register mapping is derived from schematic analysis, DG Nova
+conventions, cross-checked with DeepSeek-R1 reasoner, and verified in the
+SimH emulator with a complete DG DAPEX driver (`dapex_dg.asm`, all 25
+routines) and ANSI C driver (`fdapex.c`/`iapex.c`).
+
 Items still to confirm on real hardware:
 
 1. Whether the 280B generates REGSEL combinationally (single-cycle, direct
@@ -457,12 +460,23 @@ The complete mapping is derived from three independent lines of evidence:
    the same mapping
 
 **Verified in SimH emulator (March 2026):** The complete mapping has been
-implemented in `nova_fps.c` and verified end-to-end. The `test_vadd.simh`
-test exercises FN DEP protocol (microcode loading into PS, s-pad setup),
-DMA with IEEE 32-bit <-> FPS 38-bit float conversion, AP microcode execution,
-and DMA result readback. The test confirms 1.5 + 2.5 = 4.0 through the
-full pipeline. All three subdevices (RUN, DMA, CTL05) tested for correct
-SKPDN/SKPBN behavior via `test_subdev.simh`.
+implemented in `nova_fps.c` and verified end-to-end with multiple test levels:
+
+- `test_vadd.simh` (gen_vadd_test.py): Exercises FN DEP protocol (microcode
+  loading into PS, s-pad setup via two-step SPD+SPFN protocol), DMA with
+  IEEE 32-bit <-> FPS 38-bit float conversion (mantissa <<3/>>3, exponent
+  bias 387), AP microcode execution, and DMA result readback. Confirms
+  1.5 + 2.5 = 4.0 through the full pipeline. **PASSES.**
+- `test_subdev.simh`: All three subdevices (RUN, DMA, CTL05) tested for
+  correct SKPDN/SKPBN behavior.
+- `gen_hsr_vadd_test.py`: Production 20-instruction VADD from BAAHSR.MAC.
+  Produces non-zero results but values not yet correct due to missing
+  memory/TM read pipelines (MDB1->MDB2->MDB3->MDR, TMB1->TMB2->TMR).
+
+The emulator also implements: FADD pipeline (FAB1->FAB2->FA with unconditional
+shift), A1 sources (1=FM, 4=TMR), MI field (1=FA, 2=FM, 3=DPBS), DPBS=6
+SPFN bus, MDPX, branch displacement (PSA+1+DISPF-17), JMP/JSR (PSA+VALUE,
+no +1 bias), all from SIM100.FTN reference.
 
 **To verify on hardware:** A single test confirms the entire mapping:
 write 0xA5A5 via `DOA 0,FPS` then issue DEP-into-PSA via `DOAS 0,FPS`.
