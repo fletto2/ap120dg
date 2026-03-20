@@ -1,0 +1,587 @@
+#!/usr/bin/env python3
+"""lnk100.py — FPS AP-120B / FPS-100 APO Linker
+
+Replacement for the lost LNK100 utility. Reads APO text files (produced by
+ASM100 or from the FPS library archives), resolves external symbols, applies
+relocations, and outputs a linked load module.
+
+APO text format (all numbers are octal):
+  6      ***LSB           Library start block
+  3      ***TITLE          Module title follows
+  NAME                     Module name
+  12 N   ***PB/***FPB      Parameter block (N s-pad params)
+  [PB data]
+  13 C   ***AENTRY         Abstract entry: C entries follow
+  NAME  ADDR LEN SCOPE     Entry definition
+  4  C   ***ENTRY           Exported entry: C entries
+  NAME  ADDR CNT SCOPE     Entry definition
+  0  WC  RC  ***CODE        Code block: WC words, RC relocs
+  [4 octal words per line; * prefix = relocation record]
+  5  C   ***EXT             External references: C names follow
+  NAME                     External symbol name
+  1      ***END             Module end
+  NAME                     Module name
+
+Relocation record format (lines starting with *):
+  * W0 W1 W2 W3  0  TYPE  ARG
+  W0-W3: code words (same as normal)
+  TYPE: relocation type (5 = external reference)
+  ARG: 1-based index into module's EXT table
+
+Usage:
+  python3 lnk100.py [-o output.lm] [-s] input1.APO [input2.APO ...]
+  -o FILE   Write linked load module (default: stdout as hex dump)
+  -s        Print symbol table
+  -S FILE   Write SimH deposit script for direct loading
+"""
+
+import sys, os, re, struct, argparse
+
+# ── APO Parser ──────────────────────────────────────────────────────
+
+class Module:
+    def __init__(self, name):
+        self.name = name
+        self.entries = {}       # name → offset within module
+        self.aentries = {}      # name → (offset, length, scope)
+        self.code = []          # list of 64-bit words (int)
+        self.relocs = []        # list of (word_index, type, ext_index)
+        self.externs = []       # list of external symbol names
+        self.pb_nspads = 0      # number of s-pad parameters
+        self.pb_data = []       # parameter block data
+        self.base_addr = 0      # assigned by linker
+
+    def __repr__(self):
+        return f"Module({self.name}, {len(self.code)} words, {len(self.externs)} exts)"
+
+
+def parse_octal(s):
+    """Parse an octal string, handling negative values."""
+    s = s.strip()
+    if not s:
+        return 0
+    return int(s, 8)
+
+
+def parse_apo(filename):
+    """Parse an APO text file, return list of Modules."""
+    modules = []
+    current = None
+    state = 'idle'
+    ext_count = 0
+    code_count = 0
+    pb_count = 0
+    pb_items = 0
+    word_idx = 0
+
+    # Handle both text and binary-with-text files
+    try:
+        with open(filename, 'r', errors='replace') as f:
+            lines = f.readlines()
+    except Exception as e:
+        print(f"Error reading {filename}: {e}", file=sys.stderr)
+        return []
+
+    i = 0
+    while i < len(lines):
+        line = lines[i].rstrip('\n\r')
+        i += 1
+
+        # Strip leading whitespace for field parsing
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        # Check for record markers
+        if '***LSB' in line:
+            state = 'idle'
+            continue
+
+        if '***TITLE' in line:
+            state = 'title'
+            continue
+
+        if state == 'title':
+            name = stripped
+            current = Module(name)
+            # Check if module with this name already exists (from another lib)
+            modules.append(current)
+            state = 'module'
+            continue
+
+        if '***PB' in line or '***FPB' in line:
+            # Parameter block: first field is item count, second is nspads
+            fields = stripped.split()
+            pb_items = parse_octal(fields[0]) if len(fields) > 0 else 0
+            current.pb_nspads = parse_octal(fields[1]) if len(fields) > 1 else 0
+            pb_count = 0
+            state = 'pb'
+            continue
+
+        if state == 'pb':
+            # Read PB data lines until we have pb_items worth
+            fields = stripped.split()
+            for f in fields:
+                if f.startswith('*'):
+                    break
+                try:
+                    current.pb_data.append(parse_octal(f))
+                except ValueError:
+                    pass
+                pb_count += 1
+            if pb_count >= pb_items:
+                state = 'module'
+            continue
+
+        if '***AENTRY' in line:
+            fields = stripped.split()
+            aentry_count = parse_octal(fields[0]) if fields else 1
+            state = 'aentry'
+            aentry_remaining = aentry_count
+            continue
+
+        if state == 'aentry':
+            if '***' in line:
+                state = 'module'
+                i -= 1
+                continue
+            fields = stripped.split()
+            if len(fields) >= 4:
+                name = fields[0]
+                try:
+                    offset = parse_octal(fields[1])
+                    length = parse_octal(fields[2])
+                    scope = parse_octal(fields[3])
+                    current.aentries[name] = (offset, length, scope)
+                except ValueError:
+                    pass
+            aentry_remaining -= 1
+            if aentry_remaining <= 0:
+                state = 'module'
+            continue
+
+        if '***ENTRY' in line:
+            fields = stripped.split()
+            entry_count = parse_octal(fields[0]) if fields else 1
+            state = 'entry'
+            entry_remaining = entry_count
+            continue
+
+        if state == 'entry':
+            if '***' in line:
+                state = 'module'
+                i -= 1  # re-process this line in module state
+                entry_remaining = 0
+                continue
+            fields = stripped.split()
+            if len(fields) >= 2:
+                name = fields[0]
+                offset = parse_octal(fields[1])
+                current.entries[name] = offset
+            entry_remaining -= 1
+            if entry_remaining <= 0:
+                state = 'module'
+            continue
+
+        if '***CODE' in line:
+            fields = stripped.split()
+            # fields[0]=type(0), fields[1]=word_count, fields[2]=reloc_count
+            code_count = parse_octal(fields[1]) if len(fields) > 1 else 0
+            word_idx = 0
+            state = 'code'
+            continue
+
+        if state == 'code':
+            if '***' in line:
+                # Unexpected marker — back to module state
+                state = 'module'
+                i -= 1  # re-process this line
+                continue
+
+            is_reloc = stripped.startswith('*')
+            if is_reloc:
+                stripped = stripped[1:].strip()
+
+            fields = stripped.split()
+            if len(fields) >= 4:
+                # Parse 4 octal 16-bit words
+                try:
+                    w0 = parse_octal(fields[0])
+                    w1 = parse_octal(fields[1])
+                    w2 = parse_octal(fields[2])
+                    w3 = parse_octal(fields[3])
+                except ValueError:
+                    continue
+
+                # Pack into 64-bit word
+                word64 = ((w0 & 0xFFFF) << 48) | ((w1 & 0xFFFF) << 32) | \
+                         ((w2 & 0xFFFF) << 16) | (w3 & 0xFFFF)
+                current.code.append(word64)
+
+                if is_reloc and len(fields) >= 7:
+                    # Relocation: fields[4]=0, fields[5]=type, fields[6]=arg
+                    rtype = parse_octal(fields[5])
+                    rarg = parse_octal(fields[6])
+                    current.relocs.append((word_idx, rtype, rarg))
+
+                word_idx += 1
+
+            if word_idx >= code_count:
+                state = 'module'
+            continue
+
+        if '***EXT' in line:
+            fields = stripped.split()
+            ext_count = parse_octal(fields[0]) if fields else 0
+            state = 'ext'
+            continue
+
+        if state == 'ext':
+            name = stripped
+            if name and not name.startswith('*'):
+                current.externs.append(name)
+                ext_count -= 1
+            if ext_count <= 0:
+                state = 'module'
+            continue
+
+        if '***END' in line:
+            state = 'end_name'
+            continue
+
+        if state == 'end_name':
+            # Module name after END marker — just skip
+            state = 'idle'
+            continue
+
+    return modules
+
+
+# ── Linker ──────────────────────────────────────────────────────────
+
+class Linker:
+    def __init__(self):
+        self.modules = []
+        self.symbol_table = {}  # name → (module_index, offset, abs_addr)
+        self.linked_code = []   # final list of 64-bit words
+        self.entry_points = {}  # name → absolute PS address
+        self.warnings = []
+
+    def add_modules(self, modules):
+        """Add parsed modules to the linker."""
+        for mod in modules:
+            self.modules.append(mod)
+
+    def link(self):
+        """Resolve symbols and produce linked output."""
+        # Phase 1: Assign base addresses (sequential in PS)
+        addr = 0
+        for mod in self.modules:
+            mod.base_addr = addr
+            addr += len(mod.code)
+
+        # Phase 2: Build symbol table from AENTRY and ENTRY records
+        for idx, mod in enumerate(self.modules):
+            for name, (offset, length, scope) in mod.aentries.items():
+                abs_addr = mod.base_addr + offset
+                if name in self.symbol_table:
+                    prev = self.symbol_table[name]
+                    # Allow duplicate if same address (from library)
+                    if prev[2] != abs_addr:
+                        self.warnings.append(
+                            f"Duplicate symbol '{name}': "
+                            f"module {self.modules[prev[0]].name} @ {prev[2]} "
+                            f"and {mod.name} @ {abs_addr}")
+                self.symbol_table[name] = (idx, offset, abs_addr)
+
+            for name, offset in mod.entries.items():
+                abs_addr = mod.base_addr + offset
+                self.entry_points[name] = abs_addr
+                if name not in self.symbol_table:
+                    self.symbol_table[name] = (idx, offset, abs_addr)
+
+        # Phase 3: Resolve external references and apply relocations
+        unresolved = []
+        for mod in self.modules:
+            for word_idx, rtype, rarg in mod.relocs:
+                if rtype == 5:  # External reference
+                    if rarg < 1 or rarg > len(mod.externs):
+                        self.warnings.append(
+                            f"Module {mod.name}: bad EXT index {rarg}")
+                        continue
+                    ext_name = mod.externs[rarg - 1]  # 1-based
+                    if ext_name not in self.symbol_table:
+                        unresolved.append((mod.name, ext_name))
+                        continue
+
+                    _, _, target_addr = self.symbol_table[ext_name]
+
+                    # Apply relocation: patch the code word
+                    # The relocation typically patches an address field in the
+                    # 64-bit microword. For AP-120B, relocatable references
+                    # are typically in the low 16 bits (VALUE field, bits 48-63)
+                    # or in the branch displacement field.
+                    #
+                    # Looking at actual relocatable words like:
+                    #   * 11014 0 0 0  0 5 2
+                    # The word 11014,0,0,0 = 0x1208000000000000
+                    # This encodes a JMP/JSR with target = 0 (to be patched).
+                    # The VALUE field (low 16 bits) gets the target address.
+                    #
+                    # Similarly: * 40177 103000 2000 0  0 5 1
+                    # The low 16 bits = 0, patched with target addr.
+                    old_word = mod.code[word_idx]
+                    # Patch low 16 bits with target address
+                    new_word = (old_word & ~0xFFFF) | (target_addr & 0xFFFF)
+                    mod.code[word_idx] = new_word
+
+        if unresolved:
+            for mod_name, ext_name in unresolved:
+                self.warnings.append(
+                    f"Unresolved: {ext_name} (referenced by {mod_name})")
+
+        # Phase 4: Concatenate all code
+        self.linked_code = []
+        for mod in self.modules:
+            self.linked_code.extend(mod.code)
+
+        return len(unresolved) == 0
+
+    def get_entry_address(self, name):
+        """Get the absolute PS address for an entry point."""
+        return self.entry_points.get(name) or \
+               (self.symbol_table[name][2] if name in self.symbol_table else None)
+
+    def print_map(self, f=sys.stderr):
+        """Print linker map."""
+        print(f"\n{'='*60}", file=f)
+        print(f"LNK100 Link Map — {len(self.linked_code)} total words", file=f)
+        print(f"{'='*60}", file=f)
+
+        print(f"\nModules:", file=f)
+        for mod in self.modules:
+            print(f"  {mod.name:12s}  base={mod.base_addr:04o}  "
+                  f"size={len(mod.code):3d}  "
+                  f"exts={len(mod.externs)}  "
+                  f"relocs={len(mod.relocs)}", file=f)
+
+        print(f"\nEntry Points:", file=f)
+        for name, addr in sorted(self.entry_points.items(),
+                                  key=lambda x: x[1]):
+            print(f"  {name:12s}  = {addr:04o} ({addr})", file=f)
+
+        print(f"\nSymbol Table ({len(self.symbol_table)} symbols):", file=f)
+        for name, (midx, off, addr) in sorted(self.symbol_table.items(),
+                                               key=lambda x: x[1][2]):
+            print(f"  {name:12s}  = {addr:04o}  "
+                  f"(module {self.modules[midx].name}, offset {off:04o})",
+                  file=f)
+
+        if self.warnings:
+            print(f"\nWarnings:", file=f)
+            for w in self.warnings:
+                print(f"  {w}", file=f)
+
+        print(f"{'='*60}\n", file=f)
+
+
+# ── Output Formats ──────────────────────────────────────────────────
+
+def write_simh_script(linker, filename, entry_name=None):
+    """Write a SimH deposit script that loads linked code into PS."""
+    with open(filename, 'w') as f:
+        f.write("; Linked AP microcode — generated by lnk100.py\n")
+        f.write(f"; {len(linker.linked_code)} instructions\n")
+        f.write(f"; Modules: {', '.join(m.name for m in linker.modules)}\n")
+        f.write("\n")
+
+        # Write parameter block info for the first module's entry
+        if entry_name and entry_name in linker.symbol_table:
+            addr = linker.get_entry_address(entry_name)
+            f.write(f"; Entry point: {entry_name} = PS[{addr:04o}]\n\n")
+
+        # Deposit code using FN DEP protocol (SimH deposits into page-zero
+        # data, then a Nova program loads via DOA/DOAS)
+        # For simplicity, write as raw PS deposits using examine/deposit
+        # (requires the emulator to support direct PS access)
+        #
+        # Alternative: generate the Nova program to load via FN DEP.
+        # For now, write a helper that sets up TMA and deposits directly.
+
+        f.write("; Load microcode via FN DEP protocol\n")
+        f.write("; This script assumes FPS device is enabled and uses\n")
+        f.write("; a small Nova program at 0o100 to load PS.\n\n")
+
+        # Page-zero data: FN command values
+        f.write("; FN command constants\n")
+        f.write("deposit 040 0\n")       # zero
+        f.write("deposit 041 001003\n")  # FN_DEP | REGSEL_TMA
+        f.write("deposit 042 000410\n")  # FN_DEP | PS(TMA) WORD=0
+        f.write("deposit 043 000420\n")  # FN_DEP | PS(TMA) WORD=1
+        f.write("deposit 044 000430\n")  # FN_DEP | PS(TMA) WORD=2
+        f.write("deposit 045 000470\n")  # FN_DEP | PS(TMA) WORD=3 + INC TMA
+        f.write("\n")
+
+        # Deposit all microcode words into page-zero staging area
+        # and generate the loader program
+        # This is complex, so for now just output the raw 64-bit words
+        # as comments for manual verification, plus a binary format.
+
+        f.write("; Raw microcode (for reference):\n")
+        for i, word in enumerate(linker.linked_code):
+            w0 = (word >> 48) & 0xFFFF
+            w1 = (word >> 32) & 0xFFFF
+            w2 = (word >> 16) & 0xFFFF
+            w3 = word & 0xFFFF
+            f.write(f";   PS[{i:04o}]: {w0:06o},{w1:06o},{w2:06o},{w3:06o}\n")
+
+        f.write(f"\n; Total: {len(linker.linked_code)} instructions\n")
+
+
+def write_load_module(linker, filename):
+    """Write linked load module in FSLMLD format.
+
+    FSLMLD format: array of 16-bit integers, processed as 8-word records.
+    Record header: [TYPE-1, COUNT, ADDR, PAGE+1, DEST, 0, 0, 0]
+    Followed by data words.
+
+    TYPE-1 values: -1=code(PS), 0=data(MD), 1=info, 2=end
+    """
+    words = []
+
+    # Code record: load all linked code to PS starting at address 0
+    # TYPE-1 = -1 (code to PS), but FSLMLD uses TYPE=TTYPE=LMBUF(IPTR)+1
+    # So for TTYPE=1 (integer/code), LMBUF(IPTR) = 0
+    code_size = len(linker.linked_code) * 4  # 4 x 16-bit words per instruction
+
+    # Header: [0, count, addr, page+1, dest, 0, 0, 0]
+    # For PS: dest=0, addr=0, count = total 16-bit words
+    words.extend([0, code_size, 0, 1, 0, 0, 0, 0])
+
+    # Code data: each 64-bit instruction as 4 x 16-bit words
+    for instr in linker.linked_code:
+        words.append((instr >> 48) & 0xFFFF)
+        words.append((instr >> 32) & 0xFFFF)
+        words.append((instr >> 16) & 0xFFFF)
+        words.append(instr & 0xFFFF)
+
+    # Info record: PPA start, PPA end, LMID
+    words.extend([2, 0, 0, 0, 0, 0, 0, 0])  # TYPE-1=2 → info
+
+    # End record: TYPE-1 = 3 → end
+    words.extend([3, 0, 0, 0, 0, 0, 0, 0])
+
+    # Write as binary (16-bit little-endian words)
+    with open(filename, 'wb') as f:
+        for w in words:
+            f.write(struct.pack('<H', w & 0xFFFF))
+
+    print(f"Wrote {filename}: {len(words)} words "
+          f"({len(linker.linked_code)} instructions)", file=sys.stderr)
+
+
+def write_c_header(linker, filename, entry_name=None):
+    """Write a C header with the linked microcode as an array."""
+    with open(filename, 'w') as f:
+        f.write("/* Linked AP microcode — generated by lnk100.py */\n")
+        f.write(f"/* Modules: {', '.join(m.name for m in linker.modules)} */\n")
+        f.write(f"/* {len(linker.linked_code)} instructions */\n\n")
+        f.write("#include <stdint.h>\n\n")
+
+        if entry_name:
+            addr = linker.get_entry_address(entry_name)
+            if addr is not None:
+                f.write(f"#define ENTRY_{entry_name.upper()} {addr}\n\n")
+
+        # Entry point defines
+        for name, addr in sorted(linker.entry_points.items()):
+            cname = name.replace('!', 'C_').upper()
+            f.write(f"#define ENTRY_{cname} {addr}  "
+                    f"/* {addr:04o} */\n")
+        f.write("\n")
+
+        f.write(f"static const uint64_t ap_microcode"
+                f"[{len(linker.linked_code)}] = {{\n")
+        for i, word in enumerate(linker.linked_code):
+            w0 = (word >> 48) & 0xFFFF
+            w1 = (word >> 32) & 0xFFFF
+            w2 = (word >> 16) & 0xFFFF
+            w3 = word & 0xFFFF
+            # Find which module this belongs to
+            mod_name = ""
+            for mod in linker.modules:
+                if mod.base_addr <= i < mod.base_addr + len(mod.code):
+                    if i == mod.base_addr:
+                        mod_name = f"  /* {mod.name} */"
+                    break
+            f.write(f"    0x{word:016X}ULL,  "
+                    f"/* {i:3d}: {w0:06o},{w1:06o},{w2:06o},{w3:06o} */"
+                    f"{mod_name}\n")
+        f.write("};\n")
+
+    print(f"Wrote {filename}", file=sys.stderr)
+
+
+# ── Main ────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='LNK100 — FPS AP-120B/FPS-100 APO Linker')
+    parser.add_argument('inputs', nargs='+', help='APO input files')
+    parser.add_argument('-o', '--output', help='Output load module (.lm)')
+    parser.add_argument('-S', '--simh', help='Output SimH deposit script')
+    parser.add_argument('-C', '--c-header', help='Output C header with microcode array')
+    parser.add_argument('-s', '--symbols', action='store_true',
+                        help='Print symbol table / link map')
+    parser.add_argument('-e', '--entry', help='Primary entry point name')
+    args = parser.parse_args()
+
+    # Parse all input files
+    all_modules = []
+    for filename in args.inputs:
+        modules = parse_apo(filename)
+        if not modules:
+            print(f"Warning: no modules found in {filename}", file=sys.stderr)
+        else:
+            print(f"Parsed {filename}: {len(modules)} modules "
+                  f"({', '.join(m.name for m in modules)})", file=sys.stderr)
+        all_modules.extend(modules)
+
+    if not all_modules:
+        print("Error: no modules to link", file=sys.stderr)
+        sys.exit(1)
+
+    # Link
+    linker = Linker()
+    linker.add_modules(all_modules)
+    success = linker.link()
+
+    if args.symbols or not success:
+        linker.print_map()
+
+    if not success:
+        print(f"Link failed: {sum(1 for w in linker.warnings if 'Unresolved' in w)} "
+              f"unresolved symbols", file=sys.stderr)
+        # Continue anyway — partial output may be useful
+
+    # Output
+    if args.output:
+        write_load_module(linker, args.output)
+
+    if args.simh:
+        write_simh_script(linker, args.simh, args.entry)
+
+    if args.c_header:
+        write_c_header(linker, args.c_header, args.entry)
+
+    if not (args.output or args.simh or args.c_header):
+        # Default: print summary
+        linker.print_map(sys.stdout)
+
+    print(f"\nLinked: {len(linker.linked_code)} instructions, "
+          f"{len(linker.symbol_table)} symbols, "
+          f"{len(linker.warnings)} warnings", file=sys.stderr)
+
+
+if __name__ == '__main__':
+    main()
