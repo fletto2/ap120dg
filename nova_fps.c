@@ -113,7 +113,7 @@
 #define PS_SIZE         4096            /* Program Store: 4K x 64-bit */
 #define MD_SIZE         65536           /* Main Data: 64K x 38-bit (stored in 64-bit) */
 #define TM_SIZE         2560            /* Table Memory ROM: 2.5K x 38-bit */
-#define SP_SIZE         16              /* Scratch Pad: 16 x 16-bit */
+#define SP_SIZE         16              /* Scratch Pad: 16 x 16-bit (0-15, octal 0-17) */
 #define SRS_SIZE        16              /* Subroutine Return Stack */
 
 /* REG SELECT values for FN EXAM/DEP */
@@ -1143,6 +1143,7 @@ fps_cb = instr;
 
 
 
+
 /* Decode fields */
 df      = FPS_DF(instr);
 sop     = FPS_SOP(instr);
@@ -1241,10 +1242,11 @@ if (df == 0) {
     switch (sop) {
         case SOP_NOP:   break;
         case SOP_SPEC:                                  /* SPEC mode */
-            /* SPS values 0-7 are SPEC ops (handled in separate block below),
-               not s-pad single-operand operations. Skip write for those. */
+            /* SPS 0-7 are SPEC ops (HALT, SWDB, JMP/JSR) handled later.
+               SPS 8 is dual: CLR when SPD>3, JMP/JSR when SPD<=3 (use_value).
+               SPS 9-12 are always s-pad ops. */
             if (sps < 8)
-                goto skip_spad_write;
+                goto skip_spad_write;  /* Pure SPEC ops, no s-pad */
             switch (sps) {
                 case SPS_CLR:                           /* CLR SPD */
                     result = 0;
@@ -1303,8 +1305,9 @@ if (df == 0) {
     else
         fps_spcond = 1;                                 /* Positive */
 
-    /* Write result to SPD (unless NOP) */
-    if (sop != SOP_NOP && spd < SP_SIZE)
+    /* Write result to SPD (unless NOP or JMP/JSR) */
+    if (sop != SOP_NOP && spd < SP_SIZE &&
+        !(sop == SOP_SPEC && sps == 8 && use_value))
         fps_spad[spd] = result & 0xFFFF;
 
     /* SPFN output = result (available for deposit into DP, etc.) */
@@ -1666,7 +1669,7 @@ fps_fmth = 0;
 fps_fmtl = 0;
 fps_running = 0;
 fps_psa = 0;
-fps_sra = 0;
+/* fps_sra preserved across reset (host deposits before go) */
 fps_ma = 0;
 fps_tma = 0;
 fps_dpa = 0;
@@ -1676,8 +1679,7 @@ fps_spfn = 0;
 fps_dma_active = 0;
 fps_dma_phase = 0;
 fps_dma_buf = 0;
-/* Preserve s-pad across reset (host deposits before go) */
-memset (fps_srs, 0, sizeof (fps_srs));
+/* Preserve s-pad and SRS across reset (host deposits before go) */
 memset (fps_dpx, 0, sizeof (fps_dpx));
 memset (fps_dpy, 0, sizeof (fps_dpy));
 fps_fa = fps_fm = 0;
