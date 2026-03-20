@@ -112,7 +112,7 @@
 /* Memory sizes */
 #define PS_SIZE         4096            /* Program Store: 4K x 64-bit */
 #define MD_SIZE         65536           /* Main Data: 64K x 38-bit (stored in 64-bit) */
-#define TM_SIZE         2560            /* Table Memory ROM: 2.5K x 38-bit */
+#define TM_SIZE         8192            /* Table Memory: 8K for trig + constants */
 #define SP_SIZE         16              /* Scratch Pad: 16 x 16-bit (0-15, octal 0-17) */
 #define SRS_SIZE        16              /* Subroutine Return Stack */
 
@@ -560,7 +560,7 @@ switch (regsel) {
     case REGSEL_PSA:     fps_psa = val & 0xFFF; break;
     case REGSEL_SPD:     fps_spd_ptr = val & 0xF; break;    /* Set SPD pointer */
     case REGSEL_MA:      fps_ma = val & 0xFFFF; break;
-    case REGSEL_TMA:     fps_tma = val & 0xFFF; break;
+    case REGSEL_TMA:     fps_tma = val & 0xFFFF; break;
     case REGSEL_DPA:     fps_dpa = val & 0xFF; break;
     case REGSEL_SPFN:                                      /* DEP into SPFN → write to spad[SPD] */
         fps_spfn = val & 0xFFFF;
@@ -767,7 +767,7 @@ if (cmd & FN_DEP) {
     switch (inc) {
         case 1: fps_ma++;  fps_ma &= 0xFFFF; break;
         case 2: fps_dpa++; fps_dpa &= 0xFF;  break;
-        case 3: fps_tma++; fps_tma &= 0xFFF; break;
+        case 3: fps_tma++; fps_tma &= 0xFFFF; break;
         }
     }
 
@@ -792,7 +792,7 @@ if (cmd & FN_EXAM) {
     switch (inc) {
         case 1: fps_ma++;  fps_ma &= 0xFFFF; break;
         case 2: fps_dpa++; fps_dpa &= 0xFF;  break;
-        case 3: fps_tma++; fps_tma &= 0xFFF; break;
+        case 3: fps_tma++; fps_tma &= 0xFFFF; break;
         }
     }
 
@@ -1134,8 +1134,7 @@ static void fps_execute_cycle (void)
 t_uint64 instr;
 int32 df, sop, sh, sps, spd, fadd_op, cond, disp;
 int32 ma_op, dpa_op, tma_op, dpbs, use_value;
-int32 spsr_val, result, branch;
-int32 signed_disp;
+int32 spsr_val, result, branch, psa_set = 0;
 
 if (!fps_running || !fps_ps)
     return;
@@ -1200,7 +1199,7 @@ if (df == 0 && sop == SOP_SPEC && sps < 8) {
             switch (ps_mode) {
                 case 0: target = FPS_VALUE(instr) & 0xFFF; break;
                 case 1: target = (fps_psa + (int16_t)FPS_VALUE(instr)) & 0xFFF; break;
-                case 2: target = fps_tma & 0xFFF; break;
+                case 2: target = fps_tma & 0xFFFF; break;
                 case 3: target = fps_swr & 0xFFF; break;
                 }
             if (spd & 1) {                              /* JSR */
@@ -1236,8 +1235,9 @@ switch (cond) {
         if (fps_sra > 0) {
             fps_sra--;
             fps_psa = fps_srs[fps_sra & 0xF];
+            psa_set = 1;                                /* Skip normal PSA advance */
             }
-        return;                                         /* Pipeline already shifted above */
+        break;                                          /* Let rest of cycle complete */
     case 3:  branch = 1; break;                          /* BINTRQ - interrupt request */
     case 4:  branch = 1; break;                          /* BION - I/O ready (stub: always) */
     case 5:  branch = 0; break;                          /* BIOZ - I/O not ready */
@@ -1345,7 +1345,7 @@ if (df == 0 && sop == SOP_SPEC) {
             switch (ps_mode) {
                 case 0: target = FPS_VALUE(instr) & 0xFFF; break;   /* Absolute from VALUE */
                 case 1: target = (fps_psa + (int16_t)FPS_VALUE(instr)) & 0xFFF; break; /* PC-relative */
-                case 2: target = fps_tma & 0xFFF; break;            /* TMA */
+                case 2: target = fps_tma & 0xFFFF; break;            /* TMA */
                 case 3: target = fps_swr & 0xFFF; break;            /* SWR (host panel) */
                 }
             if (spd & 1) {                              /* JSR (odd SPD) */
@@ -1556,6 +1556,16 @@ switch (dpbs) {
     case 7: dpbs_val = (fps_tm && fps_tma < TM_SIZE) ? fps_tm[fps_tma] : 0; break;
     }
 
+/* FADD=7 I/O group: register loads from DPBS value (SIM100 line 32000).
+   A1=0 selects "store into regs", A2 selects which register. */
+if (fadd_op == 7 && FPS_A1(instr) == 0) {
+    switch (FPS_A2(instr)) {
+        case 2: fps_ma = (int32)(dpbs_val & 0xFFFF); break;    /* LDMA */
+        case 3: fps_tma = (int32)(dpbs_val & 0xFFFF); break;   /* LDTMA */
+        case 4: fps_dpa = (int32)(dpbs_val & 0x3F); break;     /* LDDPA */
+        }
+    }
+
 /* Write to Data Pads (when DPBS active and not NOP) */
 if (dpbs != 0) {
     fps_dpx[dpx_widx] = dpbs_val;
@@ -1603,11 +1613,12 @@ if (!use_value) {
     switch (tma_op) {
         case ADDR_INC:  fps_tma = (fps_tma + 1) & 0xFFF; break;
         case ADDR_DEC:  fps_tma = (fps_tma - 1) & 0xFFF; break;
-        case ADDR_SET:  fps_tma = fps_spad[spd] & 0xFFF; break;
+        case ADDR_SET:  fps_tma = fps_spad[spd] & 0xFFFF; break;
         }
     }
 
-/* Advance PSA (always incremented by 1 first) */
+/* Advance PSA (unless already set by RETURN) */
+if (!psa_set) {
 fps_psa = (fps_psa + 1) & 0xFFF;
 if (branch) {
     /* Branch displacement: PSA = PSA + 1 + DISPF - 17
@@ -1615,7 +1626,8 @@ if (branch) {
        where M21 = -17). DISPF is unsigned 5-bit (0-31). */
     fps_psa = (fps_psa + disp - 17) & 0xFFF;
     }
-}
+}  /* end if (!psa_set) */
+}  /* end fps_execute_cycle */
 
 
 /* Initialize Table Memory ROM with trig tables
@@ -1670,7 +1682,21 @@ for (i = 0; i < 1024; i++)
 for (i = 0; i < 1024; i++)
     fps_tm[1024 + i] = fps_double_to_38bit (cos (pi2 * (double)i / 1024.0));
 
-/* Remaining 512 entries: reciprocals, sqrt, etc. - leave as zero for now */
+/* Math constants (from SYMSRC.APS, octal addresses converted to decimal) */
+fps_tm[4097] = fps_double_to_38bit (1.0);       /* !ONE   oct 10001 */
+fps_tm[4098] = fps_double_to_38bit (2.0);       /* !TWO   oct 10002 */
+fps_tm[4345] = fps_double_to_38bit (0.0);       /* !ZERO  oct 10371 */
+fps_tm[4385] = fps_double_to_38bit (3.0);       /* !THREE oct 10441 */
+fps_tm[4386] = fps_double_to_38bit (4.0);       /* !FOUR  oct 10442 */
+fps_tm[4387] = fps_double_to_38bit (5.0);       /* !FIVE  oct 10443 */
+fps_tm[4388] = fps_double_to_38bit (6.0);       /* !SIX   oct 10444 */
+fps_tm[4389] = fps_double_to_38bit (7.0);       /* !SEVEN oct 10445 */
+fps_tm[4390] = fps_double_to_38bit (8.0);       /* !EIGHT oct 10446 */
+fps_tm[4391] = fps_double_to_38bit (9.0);       /* !NINE  oct 10447 */
+fps_tm[4392] = fps_double_to_38bit (10.0);      /* !TEN   oct 10450 */
+fps_tm[4393] = fps_double_to_38bit (16.0);      /* !SIXTN oct 10451 */
+fps_tm[4375] = fps_double_to_38bit (0.5);       /* !HALF  oct 10427 */
+fps_tm[4227] = fps_double_to_38bit (1.41421356); /* !SQRT2 oct 10203 */
 }
 
 
