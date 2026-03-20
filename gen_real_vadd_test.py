@@ -104,8 +104,9 @@ code = [
     pack_instr(sop=SOP_SPEC, sps=SPS_INC, spd=2),
 
     # PS[8]: DEC SP[3] (N--). Branch if s-pad > 0 back to PS[0].
-    # COND_BGT=15, signed disp from PS[8] to PS[0] = -8 → disp = -8 + 32 = 24
-    pack_instr(sop=SOP_SPEC, sps=SPS_DEC, spd=3, cond=COND_BGT, disp=(-8) & 0x1F),
+    # Branch formula: target = PSA + 1 + DISPF - 17
+    # Want target=0 from PSA=8: 0 = 8 + 1 + DISPF - 17, DISPF = 8
+    pack_instr(sop=SOP_SPEC, sps=SPS_DEC, spd=3, cond=COND_BGT, disp=8),
 
     # PS[9]: HALT
     pack_instr(sop=SOP_SPEC, sps=SPS_HALT),

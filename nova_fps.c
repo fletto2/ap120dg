@@ -1572,16 +1572,13 @@ if (!use_value) {
         }
     }
 
-/* Advance PSA */
+/* Advance PSA (always incremented by 1 first) */
+fps_psa = (fps_psa + 1) & 0xFFF;
 if (branch) {
-    /* Signed 5-bit displacement: range -16 to +15 */
-    signed_disp = disp;
-    if (signed_disp >= 16)
-        signed_disp -= 32;
-    fps_psa = (fps_psa + signed_disp) & 0xFFF;
-    }
-else {
-    fps_psa = (fps_psa + 1) & 0xFFF;
+    /* Branch displacement: PSA = PSA + 1 + DISPF - 17
+       (from SIM100.FTN: TCADD(ONE2,PSA), TCADD(DISPF,PSA), TCADD(M21,PSA)
+       where M21 = -17). DISPF is unsigned 5-bit (0-31). */
+    fps_psa = (fps_psa + disp - 17) & 0xFFF;
     }
 }
 
