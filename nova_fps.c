@@ -1137,6 +1137,7 @@ instr = fps_ps[fps_psa];
 fps_cb = instr;
 
 
+
 /* Decode fields */
 df      = FPS_DF(instr);
 sop     = FPS_SOP(instr);
@@ -1670,7 +1671,7 @@ fps_spfn = 0;
 fps_dma_active = 0;
 fps_dma_phase = 0;
 fps_dma_buf = 0;
-memset (fps_spad, 0, sizeof (fps_spad));
+/* Preserve s-pad across reset (host deposits before go) */
 memset (fps_srs, 0, sizeof (fps_srs));
 memset (fps_dpx, 0, sizeof (fps_dpx));
 memset (fps_dpy, 0, sizeof (fps_dpy));
@@ -1678,7 +1679,7 @@ fps_fa = fps_fm = 0;
 fps_a1 = fps_a2 = fps_m1 = fps_m2 = 0;
 fps_inbs = fps_dpbs = fps_cb = 0;
 fps_spcond = fps_facond = 0;
-/* Don't zero PS and MD on reset -- preserve loaded programs and loaded APOs */
+/* Don't zero PS, MD, or SPAD on reset -- preserve loaded programs and state */
 /* Initialize table memory ROM on first reset */
 fps_init_table_memory ();
 
