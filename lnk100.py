@@ -135,7 +135,8 @@ def parse_apo(filename):
 
         if '***AENTRY' in line:
             fields = stripped.split()
-            aentry_count = parse_octal(fields[0]) if fields else 1
+            # Format: "13 COUNT ***AENTRY" — fields[0]=type(13), fields[1]=count
+            aentry_count = parse_octal(fields[1]) if len(fields) > 1 else 1
             state = 'aentry'
             aentry_remaining = aentry_count
             continue
@@ -162,7 +163,8 @@ def parse_apo(filename):
 
         if '***ENTRY' in line:
             fields = stripped.split()
-            entry_count = parse_octal(fields[0]) if fields else 1
+            # Format: "4 COUNT ***ENTRY" — fields[0]=type(4), fields[1]=count
+            entry_count = parse_octal(fields[1]) if len(fields) > 1 else 1
             state = 'entry'
             entry_remaining = entry_count
             continue
@@ -232,7 +234,8 @@ def parse_apo(filename):
 
         if '***EXT' in line:
             fields = stripped.split()
-            ext_count = parse_octal(fields[0]) if fields else 0
+            # Format: "5 COUNT ***EXT" — fields[0]=type(5), fields[1]=count
+            ext_count = parse_octal(fields[1]) if len(fields) > 1 else 0
             state = 'ext'
             continue
 
