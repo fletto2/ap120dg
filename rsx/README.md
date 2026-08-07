@@ -93,10 +93,49 @@ volume `UWM`, and `[1,2]STARTUP` installs the compiler:
 
 so FORTRAN IV is available as `FOR` at the MCR `>` prompt.
 
-**SimH console input does not come from stdin.** Piping text into the
-simulator sends it to SimH's own `sim>` interpreter, not to the running
-operating system. Use `expect`/`send` rules in the `.ini` instead, as
-`boot_rsx.ini` does for the date prompt.
+## Verified toolchain
+
+The complete edit / compile / task-build / run cycle has been exercised on
+this pack:
+
+```
+>PIP TEST.FTN=TI:            ! type source, end with ^Z -- no editor needed
+      PROGRAM T
+      TYPE 10
+10    FORMAT(' HELLO FROM FORTRAN IV')
+      END
+^Z
+>FOR TEST,TEST=TEST          ! -> TEST.OBJ + TEST.LST
+>INS $TKB
+>TKB
+TKB>TEST=TEST,LB:[1,1]SYSLIB/LB
+TKB>//                       ! -> TEST.TSK
+>RUN TEST
+HELLO FROM FORTRAN IV
+TT0  --  STOP
+```
+
+Work happens in `DK0:[200,200]`; `SYSLIB.OLB` in `LB:[1,1]` supplies the
+FORTRAN object-time system.
+
+### Three things that will waste your time
+
+1. **`set cpu fpp` is required.** Without it the task builder dies with
+   `TASK "TT0   " TERMINATED / RESERVED INST EXECUTION`. The compiler
+   itself works fine without it, so the failure appears only at TKB.
+2. **`INS $TKB` is required.** `[1,2]STARTUP` installs only `$EDI`, `$PIP`
+   and `$FOR`; the task builder is not installed by default.
+3. **TKB needs its multi-line form.** `TKB TEST=TEST,...` on one line makes
+   TKB swallow the *following* command as a continuation line. Invoke bare
+   `TKB`, give the build line, then terminate with `//`.
+
+### SimH console input does not come from stdin
+
+Piping text into the simulator sends it to SimH's own `sim>` interpreter,
+not to the running operating system. Use `expect`/`send` rules in the `.ini`
+instead, as `boot_rsx.ini` does for the date prompt. Note also that the
+first character sent after a prompt match is dropped, so lead every `send`
+with `\r`.
 
 The RSX-11M v5.1.1 distribution used elsewhere in this work is not part of
 this directory; it is a separate, much larger set of RL02 images.
