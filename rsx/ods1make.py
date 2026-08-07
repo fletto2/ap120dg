@@ -215,19 +215,19 @@ class Volume:
             lbn += n
             left -= n
         self.header(1, "INDEXF", "SYS", self.contig_ufat(idx_total), ext,
-                    owner=0o401, scha=0o200)
+                    owner=0o401, ucha=0o200)
         self.header(2, "BITMAP", "SYS",
                     self.contig_ufat(1 + bitmap_blocks),
-                    [(1 + bitmap_blocks, scb_lbn)], owner=0o401, scha=0o200)
+                    [(1 + bitmap_blocks, scb_lbn)], owner=0o401, ucha=0o200)
         self.header(3, "BADBLK", "SYS", self.contig_ufat(0), [],
-                    owner=0o401, scha=0o200)
+                    owner=0o401, ucha=0o200)
         self.header(4, "000000", "DIR", self.dir_ufat(1), [(1, mfd_lbn)],
-                    owner=0o401, scha=0o200)
+                    owner=0o401, ucha=0o200)
         self.header(5, "CORIMG", "SYS", self.contig_ufat(0), [],
-                    owner=0o401, scha=0o200)
+                    owner=0o401, ucha=0o200)
         udir = "%03o%03o" % (self.uic[1], self.uic[0])
         self.header(6, udir, "DIR", self.dir_ufat(1), [(1, ufd_lbn)],
-                    owner=0o401, scha=0o200)
+                    owner=(self.uic[1] << 8) | self.uic[0], ucha=0o200)
         self.next_fnum = 7
 
         # ---- user files --------------------------------------------------
@@ -276,8 +276,15 @@ class Volume:
         for b in range(self.next_free, self.nblocks):
             sb[b >> 3] |= 1 << (b & 7)
         self.put(bm_lbn, bytes(sb))
+        # Storage control block. The layout is not fully understood; these
+        # bytes are taken from a working 4800-block RK05 volume and patched
+        # with our geometry. Byte 3 is the bitmap block count and the word at
+        # 14 is the volume size, both of which match that volume exactly.
         scb = bytearray(BLK)
-        struct.pack_into('<4H', scb, 0, 0, BLK, self.nblocks & 0xFFFF, 0)
+        scb[3] = bitmap_blocks
+        scb[5] = 16
+        scb[9] = 16
+        struct.pack_into('<H', scb, 14, self.nblocks & 0xFFFF)
         self.put(scb_lbn, bytes(scb))
 
         self.homeblock()
