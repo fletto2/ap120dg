@@ -1255,10 +1255,26 @@ switch (cond) {
 
 /* S-pad operation (when DF=0) */
 if (df == 0) {
+    int32 spad_single_op = 0;                           /* SOP=0, SPS>=8 group */
     result = spsr_val;
 
     switch (sop) {
-        case SOP_NOP:   break;
+        case SOP_NOP:
+            /* SOP=0 is only a true no-op when SPS<8.  SOP=0 with SPS>=8 is
+               the single-operand group, which operates on SPD and writes
+               back (SIM100 label 13100; the NOP test is at label 13000:
+               IXNOP = SOPF==1 .OR. (SOPF==0 .AND. SPSF<8)). */
+            if (sps < 8)
+                goto skip_spad_write;
+            spad_single_op = 1;
+            switch (sps) {
+                case 8:  result = 0; break;                       /* CLR */
+                case 9:  result = (fps_spad[spd] + 1) & 0xFFFF; break;  /* INC */
+                case 10: result = (fps_spad[spd] - 1) & 0xFFFF; break;  /* DEC */
+                case 11: result = (~fps_spad[spd]) & 0xFFFF; break;     /* COM */
+                default: result = fps_spad[spd]; break;           /* 12-15: MOV SPD */
+                }
+            break;
         case SOP_SPEC:                                  /* SPEC mode */
             /* SPS 0-7 are SPEC ops (HALT, SWDB, JMP/JSR) handled later.
                SPS 8 is dual: CLR when SPD>3, JMP/JSR when SPD<=3 (use_value).
@@ -1323,8 +1339,10 @@ if (df == 0) {
     else
         fps_spcond = 1;                                 /* Positive */
 
-    /* Write result to SPD (unless NOP or JMP/JSR) */
-    if (sop != SOP_NOP && spd < SP_SIZE &&
+    /* Write result to SPD (unless NOP or JMP/JSR).  SIM100 label 13880 also
+       suppresses the write when COND=1 (STEST), which uses the s-pad ALU
+       purely to set condition bits. */
+    if ((sop != SOP_NOP || spad_single_op) && spd < SP_SIZE && cond != 1 &&
         !(sop == SOP_SPEC && sps == 8 && use_value))
         fps_spad[spd] = result & 0xFFFF;
 
@@ -1466,7 +1484,6 @@ int32 dpy_widx = (fps_dpa + yw - 4) & 0x1F;
 t_uint64 dpx_val = fps_dpx[dpx_ridx];
 t_uint64 dpy_val = fps_dpy[dpy_ridx];
 t_uint64 md_val = (fps_md && fps_ma < MD_SIZE) ? fps_md[fps_ma] : 0;
-t_uint64 a1_val = 0, a2_val = 0;
 t_uint64 fa_new = fps_fa, fm_new = fps_fm;
 t_uint64 dpbs_val = 0;
 int32 mi_field = use_value ? 0 : FPS_MI(instr);
@@ -1474,36 +1491,48 @@ int32 fm_start = use_value ? 0 : FPS_FM(instr);
 int32 m1_field = use_value ? 0 : FPS_M1(instr);
 int32 m2_field = use_value ? 0 : FPS_M2(instr);
 
-/* Adder input selection */
-if (fadd_op != 0 && fadd_op != 7) {                    /* Not NOP or I/O group */
-    /* A1 sources (SIM100 line 2089):
-       0=NOP, 1=FM, 2=DPX, 3=DPY, 4=TMR, 5-7=ZERO */
-    switch (FPS_A1(instr)) {
-        case 0: break;                                  /* NOP */
-        case 1: a1_val = fps_fm; break;                 /* FM (multiplier) */
-        case 2: a1_val = dpx_val; break;                /* DPX */
-        case 3: a1_val = dpy_val; break;                /* DPY */
-        case 4: a1_val = (fps_tm && fps_tma < TM_SIZE) ?  /* TMR (table memory) */
-                         fps_tm[fps_tma] : 0; break;
-        default: a1_val = 0; break;                     /* ZERO */
-        }
+/* Adder input selection.  The adder is "active" -- and therefore pushes its
+   pipeline -- for every instruction except the I/O group (FADD=7) and a true
+   no-op (FADD=0 with A1=0).  FADD=0 with A1!=0 is the single-operand group
+   (FIX/FLOAT/SCALE, dispatched on A1); those still advance the pipeline.
+   Condition transcribed from SIM100 label 35000. */
+if (fadd_op != 7 && !(fadd_op == 0 && FPS_A1(instr) == 0)) {
+    /* A1/A2 are architectural input latches, not per-cycle temporaries:
+       SIM100 keeps them in COMMON beside FAB1/FAB2 (line 1059/1092), and
+       a select field of 0 falls through to label 35200 without loading,
+       so the latch retains its previous contents.  That is what makes the
+       bare "FADD" push idiom work -- it re-runs the adder on the operands
+       latched by the preceding instruction.
+       When FADD=0 the A1 field is the single-operand sub-opcode rather
+       than a source select, so A1 is not loaded at all (label 35000). */
+    if (fadd_op != 0)
+        /* A1 sources: 0=hold, 1=FM, 2=DPX, 3=DPY, 4=TMR, 5-7=ZERO */
+        switch (FPS_A1(instr)) {
+            case 0: break;                              /* hold latch */
+            case 1: fps_a1 = fps_fm; break;             /* FM (multiplier) */
+            case 2: fps_a1 = dpx_val; break;            /* DPX */
+            case 3: fps_a1 = dpy_val; break;            /* DPY */
+            case 4: fps_a1 = (fps_tm && fps_tma < TM_SIZE) ? /* TMR */
+                             fps_tm[fps_tma] : 0; break;
+            default: fps_a1 = 0; break;                 /* ZERO */
+            }
     /* A2 sources (SIM100 line 2102):
        0=NOP, 1=FA, 2=DPX, 3=DPY, 4=MD, 5=ZERO, 6=MDPX, 7=MDPY */
     switch (FPS_A2(instr)) {
-        case 0: break;                                  /* NOP */
-        case 1: a2_val = fps_fa; break;                 /* FA */
-        case 2: a2_val = dpx_val; break;                /* DPX */
-        case 3: a2_val = dpy_val; break;                /* DPY */
-        case 4: a2_val = md_val; break;                 /* MD */
-        case 5: a2_val = 0; break;                      /* ZERO */
+        case 0: break;                                  /* hold latch */
+        case 1: fps_a2 = fps_fa; break;                 /* FA */
+        case 2: fps_a2 = dpx_val; break;                /* DPX */
+        case 3: fps_a2 = dpy_val; break;                /* DPY */
+        case 4: fps_a2 = md_val; break;                 /* MD */
+        case 5: fps_a2 = 0; break;                      /* ZERO */
         case 6:                                         /* MDPX: modify DPX */
             /* On real hardware: copies DPX mantissa and applies exponent
                from SPFN+512, then FPADD normalizes. Since DPBS=6 already
                produces a normalized float in DPX, MDPX passes it through. */
-            a2_val = dpx_val;
+            fps_a2 = dpx_val;
             break;
         case 7:                                         /* MDPY */
-            a2_val = dpx_val;
+            fps_a2 = dpx_val;
             break;
         }
 
@@ -1513,12 +1542,19 @@ if (fadd_op != 0 && fadd_op != 7) {                    /* Not NOP or I/O group *
 
     /* Compute new result into FAB1 */
     switch (fadd_op) {
-        case 1: fa_new = fps_38bit_sub (a2_val, a1_val); break; /* FSUBR */
-        case 2: fa_new = fps_38bit_sub (a1_val, a2_val); break; /* FSUB */
-        case 3: fa_new = fps_38bit_add (a1_val, a2_val); break; /* FADD */
-        case 4: fa_new = ~(a1_val ^ a2_val) & FP_38_MASK; break; /* FEQV */
-        case 5: fa_new = a1_val & a2_val; break;        /* FAND */
-        case 6: fa_new = a1_val | a2_val; break;        /* FOR */
+        case 0:
+            /* Single-operand group (SIM100 FPADD label 10000): MC<-A2,
+               then A1 dispatches FIX/SCALE/FLOAT.  Those conversions are
+               not implemented; pass A2 through so the pipeline still
+               advances with the right timing. */
+            fa_new = fps_a2;
+            break;
+        case 1: fa_new = fps_38bit_sub (fps_a2, fps_a1); break; /* FSUBR */
+        case 2: fa_new = fps_38bit_sub (fps_a1, fps_a2); break; /* FSUB */
+        case 3: fa_new = fps_38bit_add (fps_a1, fps_a2); break; /* FADD */
+        case 4: fa_new = ~(fps_a1 ^ fps_a2) & FP_38_MASK; break; /* FEQV */
+        case 5: fa_new = fps_a1 & fps_a2; break;        /* FAND */
+        case 6: fa_new = fps_a1 | fps_a2; break;        /* FOR */
         }
     fps_fab1 = fa_new;
     }
@@ -1566,24 +1602,22 @@ if (fadd_op == 7 && FPS_A1(instr) == 0) {
         }
     }
 
-/* Write to Data Pads (when DPBS active and not NOP) */
-if (dpbs != 0) {
-    fps_dpx[dpx_widx] = dpbs_val;
-    fps_dpy[dpy_widx] = dpbs_val;
+/* Write to Data Pads.  The DPX/DPY fields alone select the source and
+   enable the write (SIM100 sections 33010-33220):
+       0 = no write, 1 = DPBS, 2 = FA, 3 = FM
+   The write does not depend on the DPBS bus or the adder being active
+   this cycle -- DPX=2 latches whatever the adder pipeline presented in
+   FA at the top of the cycle, which is how pipeline-scheduled library
+   code retrieves results. */
+switch (FPS_DPX(instr)) {
+    case 1: fps_dpx[dpx_widx] = dpbs_val; break;
+    case 2: fps_dpx[dpx_widx] = fps_fa; break;
+    case 3: fps_dpx[dpx_widx] = fps_fm; break;
     }
-
-/* Adder result can also write to DPX */
-if (fadd_op != 0 && fadd_op != 7) {
-    int32 dpx_src = FPS_DPX(instr);
-    int32 dpy_src = FPS_DPY(instr);
-    if (dpx_src == 1)                                   /* DPX source = FA */
-        fps_dpx[dpx_widx] = fps_fa;
-    if (dpy_src == 1)                                   /* DPY source = FA */
-        fps_dpy[dpy_widx] = fps_fa;
-    if (dpx_src == 2)                                   /* DPX source = FM */
-        fps_dpx[dpx_widx] = fps_fm;
-    if (dpy_src == 2)                                   /* DPY source = FM */
-        fps_dpy[dpy_widx] = fps_fm;
+switch (FPS_DPY(instr)) {
+    case 1: fps_dpy[dpy_widx] = dpbs_val; break;
+    case 2: fps_dpy[dpy_widx] = fps_fa; break;
+    case 3: fps_dpy[dpy_widx] = fps_fm; break;
     }
 
 /* Memory input (MI field) - write to main data

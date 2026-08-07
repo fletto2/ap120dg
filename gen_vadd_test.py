@@ -98,7 +98,10 @@ COND_BGE = 15
 
 DPBS_NOP = 0; DPBS_MD = 5; DPBS_DPX = 3
 
-MI_NOP = 0; MI_DPBS = 3
+MI_NOP = 0; MI_FA = 1; MI_FM = 2; MI_DPBS = 3
+
+# DPX/DPY write-source field (SIM100 sections 33010-33220)
+DPW_NOP = 0; DPW_DPBS = 1; DPW_FA = 2; DPW_FM = 3
 
 MA_NOP = 0; MA_INC = 1; MA_DEC = 2; MA_SET = 3
 
@@ -167,27 +170,37 @@ def ieee32(f):
 # A[0] + B[0] → C[0].  A at MD[0], B at MD[1], C at MD[2].
 #
 # Inst 0: MA=0 (from SP[0]=0), NOP
-# Inst 1: Read MD[0] into DPX. MA++.
-# Inst 2: FADD A1=DPX, A2=MD[1]. Route FA→DPX. MA++.
-# Inst 3: DPBS=DPX, MI=DPBS→MD[2]. Store result.
-# Inst 4: HALT.
+# Inst 1: Read MD[0] onto DPBS, DPX←DPBS. MA++.
+# Inst 2: FADD A1=DPX, A2=MD[1]. MA++.
+# Inst 3: Adder-active filler -- pushes the adder pipeline one stage.
+# Inst 4: MI=FA → MD[2]. Store result.
+# Inst 5: HALT.
 #
-# 5 instructions total.
+# The filler at inst 3 is required: the floating adder has a 2-cycle
+# latency (FPADD→FAB1→FAB2→FA), so the sum issued at inst 2 only reaches
+# FA at inst 4.  A plain NOP would NOT do -- per SIM100 label 35000 the
+# adder pipeline only advances when the adder is active, so the filler
+# uses the single-operand form (FADD=0 with A1≠0) rather than all-zeros.
+#
+# 6 instructions total.
 
 microcode = [
     # Inst 0: MA ← SPAD[0] (=0).  NOP everything else.
     pack_instr(sop=SOP_NOP, spd=0, ma_op=MA_SET),
 
-    # Inst 1: DPBS=MD (read MD[0] into data pad bus → DPX write).  MA++.
-    pack_instr(dpbs=DPBS_MD, ma_op=MA_INC),
+    # Inst 1: DPBS=MD (read MD[0]), DPX ← DPBS.  MA++.
+    pack_instr(dpbs=DPBS_MD, dpx_src=DPW_DPBS, ma_op=MA_INC),
 
-    # Inst 2: FADD A1=DPX + A2=MD[1].  Route FA→DPX[0].  MA++.
-    pack_instr(fadd=FADD_FADD, a1=A_DPX, a2=A_MD, dpx_src=1, ma_op=MA_INC),
+    # Inst 2: FADD A1=DPX + A2=MD[1].  MA++.
+    pack_instr(fadd=FADD_FADD, a1=A_DPX, a2=A_MD, ma_op=MA_INC),
 
-    # Inst 3: DPBS=DPX, MI=DPBS→MD[2].  (store FA result from DPX)
-    pack_instr(dpbs=DPBS_DPX, mi=MI_DPBS),
+    # Inst 3: adder-active filler (single-operand form) to advance the pipeline.
+    pack_instr(fadd=0, a1=A_DPX),
 
-    # Inst 4: HALT
+    # Inst 4: MI=FA → MD[2].  (store the adder result directly)
+    pack_instr(mi=MI_FA),
+
+    # Inst 5: HALT
     pack_instr(sop=SOP_SPEC, sps=SPS_HALT),
 ]
 

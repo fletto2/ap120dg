@@ -273,7 +273,8 @@ def parse_apo(filename):
 # ── Linker ──────────────────────────────────────────────────────────
 
 class Linker:
-    def __init__(self):
+    def __init__(self, origin=0):
+        self.origin = origin    # first PS address to allocate (overlay base)
         self.modules = []
         self.symbol_table = {}  # name → (module_index, offset, abs_addr)
         self.linked_code = []   # final list of 64-bit words
@@ -287,8 +288,8 @@ class Linker:
 
     def link(self):
         """Resolve symbols and produce linked output."""
-        # Phase 1: Assign base addresses (sequential in PS)
-        addr = 0
+        # Phase 1: Assign base addresses (sequential in PS from the origin)
+        addr = self.origin
         for mod in self.modules:
             mod.base_addr = addr
             addr += len(mod.code)

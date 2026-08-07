@@ -1,3 +1,4 @@
 dgasm/build/
 *.o
 *.bin
+__pycache__/

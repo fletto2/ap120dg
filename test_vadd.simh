@@ -30,20 +30,24 @@ deposit 062 000444
 deposit 063 100060
 deposit 064 000000
 deposit 065 000000
-deposit 066 005444
+deposit 066 045444
 deposit 067 100020
 deposit 070 000001
 deposit 071 124000
-deposit 072 040444
+deposit 072 000444
 deposit 073 100020
 deposit 074 000000
-deposit 075 000000
-deposit 076 003444
-deposit 077 100300
-deposit 100 010500
+deposit 075 020000
+deposit 076 000444
+deposit 077 100000
+deposit 100 000000
 deposit 101 000000
 deposit 102 000444
-deposit 103 100000
+deposit 103 100100
+deposit 104 010500
+deposit 105 000000
+deposit 106 000444
+deposit 107 100000
 
 ; Input data at host address 600
 ; A=1.5: hi=3FC0 lo=0000, B=2.5: hi=4020 lo=0000
@@ -51,14 +55,14 @@ deposit 600 037700
 deposit 601 000000
 deposit 602 040040
 deposit 603 000000
-deposit 104 000600
+deposit 110 000600
 ; Result area at host address 610
 deposit 610 0
 deposit 611 0
 ; Expected C=4.0: hi=4080 lo=0000
-deposit 105 000610
+deposit 111 000610
 
-; Page-zero used: 040-105 (38 words)
+; Page-zero used: 040-111 (42 words)
 
 ; DG Nova program at 0o200
 ; Phase 1: Load microcode into PS[0..4] via FN DEP
@@ -155,43 +159,59 @@ deposit 320 020103
 deposit 321 061055
 deposit 322 020045
 deposit 323 061155
-deposit 324 020057
+deposit 324 020104
 deposit 325 061055
-deposit 326 020046
+deposit 326 020042
 deposit 327 061155
-deposit 330 020055
-deposit 331 062255
-deposit 332 020104
-deposit 333 062155
-deposit 334 020053
-deposit 335 062055
-deposit 336 020051
-deposit 337 061255
-deposit 340 062355
-deposit 341 063656
-deposit 342 000777
-deposit 343 020040
-deposit 344 061055
-deposit 345 020047
-deposit 346 061155
-deposit 347 020050
-deposit 350 061155
-deposit 351 063655
-deposit 352 000777
-deposit 353 020056
-deposit 354 062255
-deposit 355 020105
-deposit 356 062155
-deposit 357 020054
-deposit 360 062055
-deposit 361 020052
-deposit 362 061255
-deposit 363 062355
-deposit 364 063656
-deposit 365 000777
-deposit 366 063077
+deposit 330 020105
+deposit 331 061055
+deposit 332 020043
+deposit 333 061155
+deposit 334 020106
+deposit 335 061055
+deposit 336 020044
+deposit 337 061155
+deposit 340 020107
+deposit 341 061055
+deposit 342 020045
+deposit 343 061155
+deposit 344 020057
+deposit 345 061055
+deposit 346 020046
+deposit 347 061155
+deposit 350 020055
+deposit 351 062255
+deposit 352 020110
+deposit 353 062155
+deposit 354 020053
+deposit 355 062055
+deposit 356 020051
+deposit 357 061255
+deposit 360 062355
+deposit 361 063656
+deposit 362 000777
+deposit 363 020040
+deposit 364 061055
+deposit 365 020047
+deposit 366 061155
+deposit 367 020050
+deposit 370 061155
+deposit 371 063655
+deposit 372 000777
+deposit 373 020056
+deposit 374 062255
+deposit 375 020111
+deposit 376 062155
+deposit 377 020054
+deposit 400 062055
+deposit 401 020052
+deposit 402 061255
+deposit 403 062355
+deposit 404 063656
+deposit 405 000777
+deposit 406 063077
 
-; Program: 200-366 (119 words)
+; Program: 200-406 (135 words)
 
 go 200
 echo "=== Full Pipeline Test: 1.5 + 2.5 = 4.0 ==="
