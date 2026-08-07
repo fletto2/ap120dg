@@ -42,7 +42,8 @@ C                                                                       LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
         COMMON /CODCOM/ CODE(4,1024),NCODE                              LNKCOM
 C
-        INTEGER CMD,ARG(20),NARG
+        INTEGER CMD,NARG
+        LOGICAL*1 ARG(40)
         LOGICAL*1 TTBUF(80)
         INTEGER IDS
 C
@@ -211,7 +212,8 @@ C****** SETBAS = SET BASE ADDRESS FOR NEXT MODULE = SECTION 2.6 *******
 C
         SUBROUTINE SETBAS (ARG,NARG)
 C
-        INTEGER ARG(20),NARG
+        LOGICAL*1 ARG(40)
+        INTEGER NARG
         INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
      1  IRADIX,NUNDEF,FROZEN,LODCNT,FIRSTE,ITTI,ITTO,IOBJ,IOUT          LNKCOM
         INTEGER CODE,NCODE                                              LNKCOM
@@ -233,7 +235,8 @@ C****** SETRAD = SET I/O RADIX = SECTION 2.12 *************************
 C
         SUBROUTINE SETRAD (ARG,NARG)
 C
-        INTEGER ARG(20),NARG
+        LOGICAL*1 ARG(40)
+        INTEGER NARG
         INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
      1  IRADIX,NUNDEF,FROZEN,LODCNT,FIRSTE,ITTI,ITTO,IOBJ,IOUT          LNKCOM
         INTEGER CODE,NCODE                                              LNKCOM
@@ -263,7 +266,8 @@ C****** SYMLST = LIST THE GLOBAL SYMBOL TABLE = SECTION 2.4 ***********
 C
         SUBROUTINE SYMLST (ARG,NARG)
 C
-        INTEGER ARG(20),NARG
+        LOGICAL*1 ARG(40)
+        INTEGER NARG
         INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
      1  IRADIX,NUNDEF,FROZEN,LODCNT,FIRSTE,ITTI,ITTO,IOBJ,IOUT          LNKCOM
         INTEGER CODE,NCODE                                              LNKCOM
@@ -300,7 +304,8 @@ C****** UNDLST = LIST UNDEFINED GLOBAL SYMBOLS = SECTION 2.5 **********
 C
         SUBROUTINE UNDLST (ARG,NARG)
 C
-        INTEGER ARG(20),NARG
+        LOGICAL*1 ARG(40)
+        INTEGER NARG
         INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
      1  IRADIX,NUNDEF,FROZEN,LODCNT,FIRSTE,ITTI,ITTO,IOBJ,IOUT          LNKCOM
         INTEGER CODE,NCODE                                              LNKCOM
@@ -330,7 +335,8 @@ C****** FORCE = ENTER A SYMBOL AS EXTERNAL = SECTION 2.8 **************
 C
         SUBROUTINE FORCE (ARG,NARG)
 C
-        INTEGER ARG(20),NARG
+        LOGICAL*1 ARG(40)
+        INTEGER NARG
         INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
      1  IRADIX,NUNDEF,FROZEN,LODCNT,FIRSTE,ITTI,ITTO,IOBJ,IOUT          LNKCOM
         INTEGER CODE,NCODE                                              LNKCOM
@@ -401,14 +407,281 @@ C
         END
 C
 C
-C****** STUBS FOR THE REMAINING PHASES *******************************
+C****** OBJECT MODULE READER AND LOAD MODULE EMITTER ******************
 C
-C       THESE ARE THE PIECES STILL TO BE WRITTEN.  THE ALGORITHMS ARE
-C       ESTABLISHED AND VALIDATED IN LNK100.PY; WHAT REMAINS IS THE
-C       FORTRAN IV TRANSCRIPTION AND THE FILE HANDLING.
+C       APO OBJECT FORMAT, LNK100 MANUAL CHAPTER 3.  ALL NUMBERS OCTAL.
+C       A BLOCK HEADER IS ANY LINE CONTAINING "***"; THE FIRST NUMBER ON
+C       IT IS THE BLOCK TYPE AND THE SECOND, WHERE PRESENT, IS THE COUNT
+C       OF DATA RECORDS THAT FOLLOW.
+C
+C         6  ***LSB      1  ***END       3  ***TITLE
+C         4 C ***ENTRY   5 C ***EXT     13 C ***AENTRY
+C         0 C L ***CODE  7  ***LEB      12 C ***FPB
+C
+C       ONLY RELOCATION TYPE 5, EXTERNAL REFERENCE, IS PROCESSED -- SAID
+C       TWICE IN SECTION 3.2.  IT PATCHES THE LOW 16 BITS OF THE 64-BIT
+C       WORD, WHICH IS THE VALUE FIELD (BITS 48-63), I.E. CODE WORD 4.
+C
+        SUBROUTINE LODFIL (LUN)
+C
+        INTEGER LUN
+        INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
+     1  IRADIX,NUNDEF,FROZEN,LODCNT,FIRSTE,ITTI,ITTO,IOBJ,IOUT          LNKCOM
+        INTEGER CODE,NCODE                                              LNKCOM
+        COMMON /LNKCOM/ SYMNAM(3,200),SYMVAL(200),SYMFLG(200),          LNKCOM
+     1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
+     2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
+        COMMON /CODCOM/ CODE(4,1024),NCODE                              LNKCOM
+        LOGICAL*1 LINE(80)
+        INTEGER V(16),NV,BTYPE,ICNT,IL,I,J,K,IDX
+        INTEGER NAME(3),MODBAS,NEXTRA,EXTNAM(3,40),NEXT
+        INTEGER STAR3
+C
+        MODBAS = NEXTLC
+        NEXT = 0
+C
+10      READ (LUN,900,END=800) LINE
+900     FORMAT (80A1)
+        CALL STARS (LINE,STAR3)
+        IF (STAR3 .EQ. 0) GO TO 10
+        CALL GETNUM (LINE,STAR3-1,V,NV,16)
+        IF (NV .LE. 0) GO TO 10
+        BTYPE = V(1)
+        ICNT = 0
+        IL = 0
+        IF (NV .GE. 2) ICNT = V(2)
+        IF (NV .GE. 3) IL = V(3)
+C
+        IF (BTYPE .EQ. 3) GO TO 100
+        IF (BTYPE .EQ. 4) GO TO 200
+        IF (BTYPE .EQ. 5) GO TO 300
+        IF (BTYPE .EQ. 0) GO TO 400
+        IF (BTYPE .EQ. 1) GO TO 500
+        IF (BTYPE .EQ. 13) GO TO 200
+        IF (BTYPE .EQ. 6) GO TO 10
+        IF (BTYPE .EQ. 7) GO TO 800
+C       ANY OTHER BLOCK (FPB, DBDB, DBIB) IS SKIPPED WITH ITS RECORDS.
+        IF (ICNT .LE. 0) GO TO 10
+        DO 20 I=1,ICNT
+          READ (LUN,900,END=800) LINE
+20      CONTINUE
+        GO TO 10
+C
+C------ TITLE: THE MODULE NAME IS ON THE FOLLOWING LINE.
+100     READ (LUN,900,END=800) LINE
+        CALL PACK6 (LINE,1,NAME)
+        LODCNT = LODCNT + 1
+        IF (FIRSTE(1) .NE. 0) GO TO 10
+        FIRSTE(1) = NAME(1)
+        FIRSTE(2) = NAME(2)
+        FIRSTE(3) = NAME(3)
+        GO TO 10
+C
+C------ ENTRY / AENTRY: NAME VALUE TYPE PARAMNUM.  THE VALUE IS RELATIVE
+C       TO THE START OF THE ROUTINE, SO ADD THE MODULE BASE.
+200     IF (ICNT .LE. 0) GO TO 10
+        DO 210 I=1,ICNT
+          READ (LUN,900,END=800) LINE
+          CALL PACK6 (LINE,1,NAME)
+          CALL GETNUM (LINE,80,V,NV,16)
+          CALL SYMLU (NAME,IDX,1)
+          IF (IDX .LE. 0) GO TO 210
+          IF (SYMFLG(IDX) .NE. 0) GO TO 205
+          NUNDEF = NUNDEF - 1
+205       SYMFLG(IDX) = 1
+          SYMVAL(IDX) = MODBAS
+          IF (NV .GE. 1) SYMVAL(IDX) = MODBAS + V(1)
+210     CONTINUE
+        GO TO 10
+C
+C------ EXT: A LIST OF NAMES.  THE RELOCATION ARG IS A ONE-BASED INDEX
+C       INTO THIS LIST, SO THE ORDER MATTERS.
+300     IF (ICNT .LE. 0) GO TO 10
+        DO 310 I=1,ICNT
+          READ (LUN,900,END=800) LINE
+          CALL PACK6 (LINE,1,NAME)
+          IF (NEXT .GE. 40) GO TO 310
+          NEXT = NEXT + 1
+          EXTNAM(1,NEXT) = NAME(1)
+          EXTNAM(2,NEXT) = NAME(2)
+          EXTNAM(3,NEXT) = NAME(3)
+          CALL SYMLU (NAME,IDX,1)
+310     CONTINUE
+        GO TO 10
+C
+C------ CODE: ICNT DATA RECORDS OF FOUR OCTAL WORDS, EACH OPTIONALLY
+C       FOLLOWED BY (FLDDES,TYPE,ARG) TRIPLES.
+400     IF (ICNT .LE. 0) GO TO 10
+        DO 450 I=1,ICNT
+          READ (LUN,900,END=800) LINE
+          CALL GETNUM (LINE,80,V,NV,16)
+          IF (NV .LT. 4) GO TO 450
+          IF (NCODE .GE. 1024) GO TO 440
+          NCODE = NCODE + 1
+          DO 410 J=1,4
+            CODE(J,NCODE) = V(J)
+410       CONTINUE
+C         RELOCATION TRIPLES START AT FIELD 5.
+          K = 5
+420       IF (K+2 .GT. NV) GO TO 445
+          IF (V(K+1) .NE. 5) GO TO 430
+          IDX = V(K+2)
+          IF (IDX .LT. 1) GO TO 430
+          IF (IDX .GT. NEXT) GO TO 430
+          NAME(1) = EXTNAM(1,IDX)
+          NAME(2) = EXTNAM(2,IDX)
+          NAME(3) = EXTNAM(3,IDX)
+          CALL SYMLU (NAME,J,0)
+          IF (J .LE. 0) GO TO 430
+          IF (SYMFLG(J) .EQ. 0) GO TO 425
+C         PATCH THE VALUE FIELD, CODE WORD 4.
+          CODE(4,NCODE) = SYMVAL(J)
+          GO TO 430
+425       SYMVAL(J) = NEXTLC + NCODE - 1
+430       K = K + 3
+          GO TO 420
+440       WRITE (ITTO,910)
+910       FORMAT (' PROGRAM STORE OVERFLOW')
+445       CONTINUE
+450     CONTINUE
+        NEXTLC = NEXTLC + ICNT
+        IF (NEXTLC .GT. HIGH) HIGH = NEXTLC - 1
+        GO TO 10
+C
+C------ END: CONSUMES THE TRAILING NAME LINE, THEN THE NEXT MODULE MAY
+C       FOLLOW IN THE SAME FILE (A LIBRARY).
+500     READ (LUN,900,END=800) LINE
+        MODBAS = NEXTLC
+        NEXT = 0
+        GO TO 10
+C
+800     RETURN
+        END
+C
+C
+C****** STARS = LOCATE "***" IN A LINE, 0 IF ABSENT *******************
+C
+        SUBROUTINE STARS (LINE,IPOS)
+        LOGICAL*1 LINE(80),AST
+        INTEGER IPOS,I
+        DATA AST/'*'/
+        IPOS = 0
+        DO 10 I=1,78
+          IF (LINE(I) .NE. AST) GO TO 10
+          IF (LINE(I+1) .NE. AST) GO TO 10
+          IF (LINE(I+2) .NE. AST) GO TO 10
+          IPOS = I
+          RETURN
+10      CONTINUE
+        RETURN
+        END
+C
+C
+C****** GETNUM = EXTRACT OCTAL NUMBERS FROM A LINE *******************
+C
+C       A LEADING "*" ON A CODE RECORD MARKS RELOCATION AND IS SKIPPED.
+C
+        SUBROUTINE GETNUM (LINE,NCH,V,NV,MAXV)
+        LOGICAL*1 LINE(80),BL,AST,ZERO,SEVEN
+        INTEGER NCH,V(16),NV,MAXV,I,D,ACC,INNUM
+        DATA BL/' '/,AST/'*'/,ZERO/'0'/,SEVEN/'7'/
+        NV = 0
+        INNUM = 0
+        ACC = 0
+        DO 30 I=1,NCH
+          IF (LINE(I) .EQ. AST) GO TO 30
+          IF (LINE(I) .LT. ZERO) GO TO 20
+          IF (LINE(I) .GT. SEVEN) GO TO 20
+          D = LINE(I) - ZERO
+          ACC = ACC * 8 + D
+          INNUM = 1
+          GO TO 30
+20        IF (INNUM .EQ. 0) GO TO 30
+          IF (NV .GE. MAXV) GO TO 25
+          NV = NV + 1
+          V(NV) = ACC
+25        ACC = 0
+          INNUM = 0
+30      CONTINUE
+        IF (INNUM .EQ. 0) RETURN
+        IF (NV .GE. MAXV) RETURN
+        NV = NV + 1
+        V(NV) = ACC
+        RETURN
+        END
+C
+C
+C****** PACK6 = PACK SIX CHARACTERS INTO THREE WORDS *****************
+C
+        SUBROUTINE PACK6 (LINE,IST,NAME)
+        LOGICAL*1 LINE(80)
+        INTEGER IST,NAME(3),I,J,K,C1,C2
+        DO 20 I=1,3
+          J = IST + 2*I - 2
+          K = J + 1
+          C1 = LINE(J)
+          C2 = LINE(K)
+          IF (C1 .LT. 0) C1 = C1 + 256
+          IF (C2 .LT. 0) C2 = C2 + 256
+          NAME(I) = C1 + C2*256
+20      CONTINUE
+        RETURN
+        END
+C
+C
+C****** EMTFIL = WRITE THE LOAD MODULE ********************************
+C
+C       MODE 0, THE E COMMAND: A CORE IMAGE FOR SIM100 AND DBG100
+C       (SECTION 2.10).  ONE LINE PER PROGRAM STORE WORD, FOUR OCTAL
+C       16-BIT FIELDS, WHICH IS THE SAME PRESENTATION THE ***CODE BLOCK
+C       USES AND WHAT DBG100 READS BACK.
+C
+C       MODE 1, THE A COMMAND: HOST FORTRAN FOR APX100 (SECTION 2.11) --
+C       A SUBROUTINE WHOSE BODY IS DATA STATEMENTS, NAMED FOR THE FIRST
+C       ENTRY POINT DEFINED.
+C
+        SUBROUTINE EMTFIL (LUN,MODE)
+C
+        INTEGER LUN,MODE
+        INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
+     1  IRADIX,NUNDEF,FROZEN,LODCNT,FIRSTE,ITTI,ITTO,IOBJ,IOUT          LNKCOM
+        INTEGER CODE,NCODE                                              LNKCOM
+        COMMON /LNKCOM/ SYMNAM(3,200),SYMVAL(200),SYMFLG(200),          LNKCOM
+     1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
+     2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
+        COMMON /CODCOM/ CODE(4,1024),NCODE                              LNKCOM
+        INTEGER I,J,N
+C
+        IF (MODE .EQ. 1) GO TO 200
+C
+C------ E FORMAT
+        DO 100 I=1,NCODE
+          WRITE (LUN,900) (CODE(J,I),J=1,4)
+900       FORMAT (4(1X,O6))
+100     CONTINUE
+        RETURN
+C
+C------ A FORMAT
+200     WRITE (LUN,910) FIRSTE(1),FIRSTE(2),FIRSTE(3)
+910     FORMAT ('      SUBROUTINE ',3A2)
+        N = NCODE * 4
+        WRITE (LUN,920) N
+920     FORMAT ('      INTEGER CODE(',I6,')')
+        DO 210 I=1,NCODE
+          WRITE (LUN,930) (CODE(J,I),J=1,4)
+930       FORMAT ('      DATA /',4(1X,O6),'/')
+210     CONTINUE
+        WRITE (LUN,940)
+940     FORMAT ('      RETURN'/'      END')
+        RETURN
+        END
+C
+C
+C****** COMMAND-LEVEL ROUTINES ****************************************
 C
         SUBROUTINE LOAD (ARG,NARG)
-        INTEGER ARG(20),NARG
+        LOGICAL*1 ARG(40)
+        INTEGER NARG
         INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
      1  IRADIX,NUNDEF,FROZEN,LODCNT,FIRSTE,ITTI,ITTO,IOBJ,IOUT          LNKCOM
         INTEGER CODE,NCODE                                              LNKCOM
@@ -420,13 +693,22 @@ C
         WRITE (ITTO,1000)
 1000    FORMAT (' LINKS FROZEN - RESET REQUIRED')
         RETURN
-10      WRITE (ITTO,1010)
-1010    FORMAT (' LOAD COMPLETE')
+10      IF (NARG .GT. 0) GO TO 20
+        WRITE (ITTO,1010)
+1010    FORMAT (' ?')
+        RETURN
+20      CALL ASSIGN (IOBJ,ARG,NARG)
+        CALL LODFIL (IOBJ)
+        CLOSE (UNIT=IOBJ)
+        WRITE (ITTO,1020)
+1020    FORMAT (' LOAD COMPLETE')
         RETURN
         END
 C
+C
         SUBROUTINE ENDMOD (ARG,NARG,MODE)
-        INTEGER ARG(20),NARG,MODE
+        LOGICAL*1 ARG(40)
+        INTEGER NARG,MODE
         INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
      1  IRADIX,NUNDEF,FROZEN,LODCNT,FIRSTE,ITTI,ITTO,IOBJ,IOUT          LNKCOM
         INTEGER CODE,NCODE                                              LNKCOM
@@ -435,7 +717,11 @@ C
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
         COMMON /CODCOM/ CODE(4,1024),NCODE                              LNKCOM
 C       E AND A BOTH FREEZE THE LINKS (SECTION 2.10).
-        FROZEN = 1
+        IF (NARG .LE. 0) GO TO 10
+        CALL ASSIGN (IOUT,ARG,NARG)
+        CALL EMTFIL (IOUT,MODE)
+        CLOSE (UNIT=IOUT)
+10      FROZEN = 1
         WRITE (ITTO,1000) FIRSTE(1),FIRSTE(2),FIRSTE(3),HIGH
 1000    FORMAT (1X,3A2,3X,'HIGH=',O6)
         IF (NUNDEF .LE. 0) RETURN
@@ -444,8 +730,10 @@ C       E AND A BOTH FREEZE THE LINKS (SECTION 2.10).
         RETURN
         END
 C
+C
         SUBROUTINE GETCMD (CMD,ARG,NARG)
-        INTEGER CMD,ARG(20),NARG
+        INTEGER CMD,NARG
+        LOGICAL*1 ARG(40)
         INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
      1  IRADIX,NUNDEF,FROZEN,LODCNT,FIRSTE,ITTI,ITTO,IOBJ,IOUT          LNKCOM
         INTEGER CODE,NCODE                                              LNKCOM
@@ -453,48 +741,56 @@ C
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
         COMMON /CODCOM/ CODE(4,1024),NCODE                              LNKCOM
-        INTEGER I,LINE(20),IBLNK
-        DATA IBLNK/1H /
+        INTEGER I
+        LOGICAL*1 LINE(80),BL
+        DATA BL/' '/
 C       THE PROMPT IS AN ASTERISK (SECTION 2.1).  THE COMMAND LETTER IS
 C       ON ONE LINE; ANY ARGUMENT IS ON THE LINE THAT FOLLOWS.
         WRITE (ITTO,1000)
 1000    FORMAT (' *')
         READ (ITTI,1010,END=90) LINE
-1010    FORMAT (20A1)
+1010    FORMAT (80A1)
         CMD = LINE(1)
         NARG = 0
-        DO 20 I=1,20
-          ARG(I) = IBLNK
+        DO 20 I=1,40
+          ARG(I) = BL
 20      CONTINUE
         IF (CMD .EQ. 1HR) RETURN
         IF (CMD .EQ. 1HM) RETURN
         IF (CMD .EQ. 1HX) RETURN
-        READ (ITTI,1010,END=90) ARG
-        NARG = 20
+        READ (ITTI,1010,END=90) LINE
+        DO 30 I=1,40
+          ARG(I) = LINE(I)
+30      CONTINUE
+        DO 40 I=1,40
+          IF (ARG(41-I) .NE. BL) GO TO 50
+40      CONTINUE
+        RETURN
+50      NARG = 41 - I
         RETURN
 90      CMD = 1HX
         NARG = 0
         RETURN
         END
 C
+C
         SUBROUTINE ARGNAM (ARG,NARG,NAME)
-        INTEGER ARG(20),NARG,NAME(3)
-C       PACK THE FIRST SIX ARGUMENT CHARACTERS INTO THREE WORDS.
-        NAME(1) = 0
-        NAME(2) = 0
-        NAME(3) = 0
+        LOGICAL*1 ARG(40),PAD(8)
+        INTEGER NARG,NAME(3),I
+        LOGICAL*1 BL
+        DATA BL/' '/
+        DO 10 I=1,8
+          PAD(I) = BL
+          IF (I .LE. NARG) PAD(I) = ARG(I)
+10      CONTINUE
+        CALL PACK6 (PAD,1,NAME)
         RETURN
         END
+C
 C
         SUBROUTINE NUMIN (ARG,NARG,IVAL)
-        INTEGER ARG(20),NARG,IVAL
-C       CONVERT THE ARGUMENT TEXT USING THE CURRENT RADIX.
-        IVAL = 0
-        RETURN
-        END
-C
-        SUBROUTINE OPNOUT (ARG,NARG,LUN)
-        INTEGER ARG(20),NARG,LUN
+        LOGICAL*1 ARG(40)
+        INTEGER NARG,IVAL
         INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
      1  IRADIX,NUNDEF,FROZEN,LODCNT,FIRSTE,ITTI,ITTO,IOBJ,IOUT          LNKCOM
         INTEGER CODE,NCODE                                              LNKCOM
@@ -502,13 +798,65 @@ C
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
         COMMON /CODCOM/ CODE(4,1024),NCODE                              LNKCOM
-C       A LISTING DESTINATION OF TTY MEANS THE TERMINAL.
-        LUN = ITTO
+        LOGICAL*1 ZERO,NINE,BLA,BLF
+        INTEGER I,D
+        DATA ZERO/'0'/,NINE/'9'/,BLA/'A'/,BLF/'F'/
+        IVAL = 0
+        DO 20 I=1,NARG
+          D = -1
+          IF (ARG(I) .LT. ZERO) GO TO 10
+          IF (ARG(I) .GT. NINE) GO TO 10
+          D = ARG(I) - ZERO
+10        IF (IRADIX .NE. 16) GO TO 15
+          IF (ARG(I) .LT. BLA) GO TO 15
+          IF (ARG(I) .GT. BLF) GO TO 15
+          D = ARG(I) - BLA + 10
+15        IF (D .LT. 0) GO TO 20
+          IF (D .GE. IRADIX) GO TO 20
+          IVAL = IVAL * IRADIX + D
+20      CONTINUE
         RETURN
         END
 C
+C
+        SUBROUTINE OPNOUT (ARG,NARG,LUN)
+        LOGICAL*1 ARG(40)
+        INTEGER NARG,LUN
+        INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
+     1  IRADIX,NUNDEF,FROZEN,LODCNT,FIRSTE,ITTI,ITTO,IOBJ,IOUT          LNKCOM
+        INTEGER CODE,NCODE                                              LNKCOM
+        COMMON /LNKCOM/ SYMNAM(3,200),SYMVAL(200),SYMFLG(200),          LNKCOM
+     1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
+     2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
+        COMMON /CODCOM/ CODE(4,1024),NCODE                              LNKCOM
+        LOGICAL*1 T,Y
+        DATA T/'T'/,Y/'Y'/
+C       A LISTING DESTINATION OF TTY MEANS THE TERMINAL (SECTION 2.4).
+        LUN = ITTO
+        IF (NARG .LE. 0) RETURN
+C       (kept short: the single-line form ran to column 73 and the
+C       trailing RETURN was truncated)
+        IF (ARG(1) .NE. T) GO TO 10
+        IF (ARG(2) .NE. T) GO TO 10
+        IF (ARG(3) .EQ. Y) RETURN
+10      CONTINUE
+        CALL ASSIGN (IOUT,ARG,NARG)
+        LUN = IOUT
+        RETURN
+        END
+C
+C
         SUBROUTINE CLSOUT (LUN)
         INTEGER LUN
+        INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
+     1  IRADIX,NUNDEF,FROZEN,LODCNT,FIRSTE,ITTI,ITTO,IOBJ,IOUT          LNKCOM
+        INTEGER CODE,NCODE                                              LNKCOM
+        COMMON /LNKCOM/ SYMNAM(3,200),SYMVAL(200),SYMFLG(200),          LNKCOM
+     1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
+     2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
+        COMMON /CODCOM/ CODE(4,1024),NCODE                              LNKCOM
+        IF (LUN .EQ. ITTO) RETURN
+        CLOSE (UNIT=LUN)
         RETURN
         END
 C
@@ -516,12 +864,9 @@ C
 C****** BATCH = DRIVE THE LINKER FROM THE MCR COMMAND LINE ************
 C
 C       EXTENSION, NOT RECOVERED BEHAVIOUR -- SEE THE NOTE IN THE MAIN
-C       PROGRAM.  FOLLOWS THE APEEL.FTN IDIOM: GETMCR RETURNS THE WHOLE
-C       LINE INCLUDING THE THREE-CHARACTER TASK NAME, AND ASSIGN ATTACHES
-C       A FILE NAME OF A GIVEN LENGTH TO A LUN.
+C       PROGRAM.  FOLLOWS THE APEEL.FTN IDIOM.
 C
         SUBROUTINE BATCH (TTBUF,IDS)
-C
         LOGICAL*1 TTBUF(80)
         INTEGER IDS
         INTEGER SYMNAM,SYMVAL,SYMFLG,NSYM,HIGH,BASE,NEXTLC,             LNKCOM
@@ -531,13 +876,9 @@ C
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
         COMMON /CODCOM/ CODE(4,1024),NCODE                              LNKCOM
-C
         LOGICAL*1 LEQ
         INTEGER I,IEQ,LOUT,LIN
         DATA LEQ/'='/
-C
-C       FIND THE '=' SEPARATING OUTPUT FROM INPUT.
-C
         IEQ = 0
         DO 10 I=5,IDS
           IF (TTBUF(I) .NE. LEQ) GO TO 10
@@ -548,37 +889,21 @@ C
         WRITE (ITTO,1000)
 1000    FORMAT (' LNK -- COMMAND LINE MUST BE (OUT)=(IN)')
         RETURN
-C
-C       OUTPUT NAME IS COLUMNS 5..IEQ-1, INPUT NAME IS IEQ+1..IDS.
-C
 30      LOUT = IEQ - 5
         LIN = IDS - IEQ
         IF (LOUT .GT. 0 .AND. LIN .GT. 0) GO TO 40
         WRITE (ITTO,1000)
         RETURN
-C
 40      CALL ASSIGN (IOBJ,TTBUF(IEQ+1),LIN)
         CALL LODFIL (IOBJ)
+        CLOSE (UNIT=IOBJ)
         CALL ASSIGN (IOUT,TTBUF(5),LOUT)
         CALL EMTFIL (IOUT,0)
+        CLOSE (UNIT=IOUT)
         WRITE (ITTO,1010) HIGH
 1010    FORMAT (' HIGH=',O6)
         IF (NUNDEF .LE. 0) RETURN
         WRITE (ITTO,1020) NUNDEF
 1020    FORMAT (1X,I3,' UNDEFINED SYMBOLS')
-        RETURN
-        END
-C
-C
-        SUBROUTINE LODFIL (LUN)
-        INTEGER LUN
-C       LOAD ALL MODULES FROM AN ALREADY-ASSIGNED LUN.
-        RETURN
-        END
-C
-C
-        SUBROUTINE EMTFIL (LUN,MODE)
-        INTEGER LUN,MODE
-C       EMIT THE LOAD MODULE.  MODE 0 = E FORMAT, 1 = A FORMAT.
         RETURN
         END
