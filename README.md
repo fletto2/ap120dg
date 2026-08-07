@@ -19,6 +19,7 @@ This repository contains:
 - **DG Nova DAPEX driver** (`dapex_dg.asm`) -- all 25 routines, complete replacement for PDP-11 DAPEX.MAC
 - **ANSI C driver** (`fdapex.c/h`) and **host-independent API** (`iapex.c/h`)
 - **LNK100 linker replacement** (`lnk100.py`) -- links all 9 APO libraries (11,420 instructions, 596 symbols)
+- **LOD100 loader replacement** (`lod100.py`) -- load modules, overlays, PS partition tables, TCBs, HASI routines
 - **Register mapping analysis** derived from 280B schematic trace
 - **Hardware documentation** (netlists, wire lists) for the Nova interface
 - **Test programs** -- hardware probe, SimH pipeline tests, HSR library tests
@@ -206,7 +207,42 @@ the real DAPEX.MAC implementation.
 
 Python replacement for the missing LNK100 linker. Links all 9 APO libraries
 from the FPS-100 software archive: 11,420 microcode instructions, 596 symbols.
-The original LNK100 was destroyed during installation and is not on the tape.
+
+## LOD100 Loader Replacement (`lod100.py`)
+
+Python replacement for the missing LOD100 loader, built from the LOD100
+Reference Manual (860-7423-000) cross-checked against `FSLMLD` in
+`FDAPEX.FTN` -- the routine that actually parses load modules. Where the
+manual and the code disagree on field naming, the code wins.
+
+- load module blocks: code to program source memory (4 host words per 64-bit
+  instruction) and to main data (2 words per value), data blocks including
+  the 38-bit triple split, information block, and both the logical and
+  terminating end blocks
+- overlay support: `TREE` structure parsing, PS allocation, PS partition
+  table, per-task overlay tables (8-word entries), and task communication
+  blocks (150 main-data words) with ready-queue linkage
+- HASI ADC/UDC host interface routines from each module's formal parameter
+  block
+- the LOD100 command language, plus command-line flags
+- host-resident FORTRAN and binary output forms
+
+Not implemented: DBDB/DBIB data-block object records (the shipped `.APO`
+libraries contain none) and ISR vector wiring, which belongs to APX100.
+
+### Why both tools were missing
+
+Neither LNK100 nor LOD100 is on the FPS-100 software tape. The tape is a
+12-Sep-1986 FLX dump of a disk holding the unpacked distribution sources --
+not the FPS distribution tape (which per INSTAL.TXT §2.1 carries MAGTAP as
+file 0 and a names file with pass numbers), and not a post-install disk
+(there are zero build products among its 182 files). The install was never
+run on that disk, so the deletions in `PDS100.CMD` do not explain the
+absence. LNK100 and LOD100 are missing both source *and* build driver
+(`LNK100.FTN`, `LNK10.CMD`, `LOD100.FTN`, `LOD10.CMD`, plus `LIB100.CMD`)
+while all six sibling PDS tools have both -- a missing product tier.
+`INSTAL.TXT` §9.13 and §9.14 do reproduce the two build command files
+verbatim, and §9.14's overlay descriptor lists LOD100's ~50 module names.
 
 ## SimH AP-120B Emulator (`nova_fps.c`)
 
@@ -318,6 +354,7 @@ reporting symbol counts and instruction totals.
 - `fdapex.c` / `fdapex.h` -- **ANSI C driver** (C equivalent of FDAPEX.FTN)
 - `iapex.c` / `iapex.h` -- **ANSI C host-independent API** (C equivalent of IAPEX.FTN)
 - `lnk100.py` -- **LNK100 linker replacement** (links all 9 APO libraries)
+- `lod100.py` -- **LOD100 loader replacement** (load modules, overlays, HASI)
 - `gen_vadd_test.py` -- Test generator: single FADD pipeline test (PASSES)
 - `gen_real_vadd_test.py` -- Test generator: 12-instruction VADD loop
 - `gen_hsr_vadd_test.py` -- Test generator: production 20-instruction HSR VADD
