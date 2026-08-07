@@ -2,3 +2,7 @@ dgasm/build/
 *.o
 *.bin
 __pycache__/
+rsx/*.gz
+rsx/*.dsk
+rsx/*.rk
+rsx/console.log

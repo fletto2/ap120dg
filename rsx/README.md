@@ -6,7 +6,9 @@ any of them -- original or reconstructed -- you need a PDP-11 FORTRAN
 compiler, which was a separately licensed layered product and is therefore
 not part of a base RSX-11M distribution.
 
-These are the compiler kits, archived here so the build is reproducible.
+These are the compiler kits. **The DEC images themselves are not
+redistributed here** -- run `./fetch_kits.sh` to download them from bitsavers
+and verify them against the checksums below.
 
 ## Which compiler does FPS need?
 
@@ -46,10 +48,17 @@ heuristic scan of blocks that parse as Files-11 file headers, with the ident
 area decoded from RAD50 -- a lower bound, not an authoritative directory
 listing. A proper listing needs a working ODS-1 reader or a booted system.
 
-## Provenance
+## Source and checksums
 
-All three from bitsavers, `http://www.bitsavers.org/bits/DEC/pdp11/discimages/rk05/`,
-retrieved 2026-08-07, unmodified:
+All three come from bitsavers:
+
+<http://www.bitsavers.org/bits/DEC/pdp11/discimages/rk05/>
+
+- [AN-1822C-BC_F4RSX_V2.2.dsk.gz](http://www.bitsavers.org/bits/DEC/pdp11/discimages/rk05/AN-1822C-BC_F4RSX_V2.2.dsk.gz) (152K)
+- [rsx31wStr11andFtn.dsk.gz](http://www.bitsavers.org/bits/DEC/pdp11/discimages/rk05/rsx31wStr11andFtn.dsk.gz) (877K)
+- [pdp11-f77-rsx-v40-bin.rk.gz](http://www.bitsavers.org/bits/DEC/pdp11/discimages/rk05/pdp11-f77-rsx-v40-bin.rk.gz) (220K)
+
+Verified 2026-08-07, unmodified:
 
 ```
 689aaec104dff33072dcdb4182e7ca7254899ea5a5477aef9b40ce02adda53ad  AN-1822C-BC_F4RSX_V2.2.dsk.gz
@@ -60,24 +69,37 @@ bc025ae416b2d1728974ec0d89158ee90692d535d728bc769441a77111881291  rsx31wStr11and
 All are RK05 images (2,457,600 bytes uncompressed; the F77 image is
 2,482,176) and all are ODS-1 -- `DECFILE11A` appears in the home block.
 
-These are DEC software distributions, redistributed here under the same
-hobbyist-use convention as the bitsavers archive they came from. They are
-build tooling for this project, not part of the FPS-100 preservation set.
+These are DEC software distributions and are deliberately **not** committed
+to this repository; they are build tooling, not part of the FPS-100
+preservation set. `fetch_kits.sh` downloads and checksums them.
 
 ## Usage
 
-Both RK05 images attach to the SimH PDP-11 simulator:
-
 ```
-set cpu 11/70
-set cpu 256k
-set rk0 rk05
-att rk0 rsx31wStr11andFtn.dsk
-boot rk0
+./fetch_kits.sh          # download from bitsavers and verify
+pdp11 boot_rsx.ini       # boot RSX-11M 3.1 with FORTRAN IV
 ```
 
-The RSX-11M v5.1.1 distribution used elsewhere in this work is not included
-here; it is a separate, much larger set of RL02 images.
+Verified working: the pack boots to `RSX-11M V3.1 BL22  124K  MAPPED` on
+volume `UWM`, and `[1,2]STARTUP` installs the compiler:
+
+```
+>TIM 12:00 07-AUG-86
+>ACS DK0:/BLKS=150
+>INS $EDI
+>INS $PIP
+>INS $FOR
+```
+
+so FORTRAN IV is available as `FOR` at the MCR `>` prompt.
+
+**SimH console input does not come from stdin.** Piping text into the
+simulator sends it to SimH's own `sim>` interpreter, not to the running
+operating system. Use `expect`/`send` rules in the `.ini` instead, as
+`boot_rsx.ini` does for the date prompt.
+
+The RSX-11M v5.1.1 distribution used elsewhere in this work is not part of
+this directory; it is a separate, much larger set of RL02 images.
 
 ## Caveats for the FPS build
 
