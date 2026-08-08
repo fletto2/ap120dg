@@ -122,9 +122,23 @@ record `lod100.py` already emits. **This mapping is inference, not
 established**: it fits the argument order and count exactly, but no
 surviving document states it.
 
-`DUTIL` appears only in ODL module lists and is never called in 848 KB of
-source, so it is most likely the object module name for FDUTIL itself,
-which the ODLs reference to place it in a chosen overlay segment.
+`DUTIL` is **not** an FDUTIL routine. `ADUTIL.MAC` -- which is on the tape --
+opens with
+
+    ;/***** DUTIL = HOST DEPENDENT UTILITIES FOR PDP-11 = REL B.1 , JAN 80
+             .TITLE   DUTIL
+             .GLOBL   IOR16,INOT16,IADD16,IRSH16,ILSH16,ILOC
+             .GLOBL   SREAD,TERM,INT16,IP16,IAND16,IGRN16
+
+so `DUTIL` is ADUTIL's object module title, which is why the ODLs name it
+and why it is never CALLed. `DAPEX` in the same lists is DAPEX.MAC's module
+title for the same reason. Both were false positives from confusing module
+names with routine names.
+
+That also shows FPS had *two* host-dependent utility modules: ADUTIL (=DUTIL)
+in MACRO-11 for the bit-twiddling primitives, and FDUTIL in FORTRAN for the
+I/O. The A/FD prefixes distinguish assembly from FORTRAN, not dependent from
+independent.
 
 ## Callers
 
@@ -143,6 +157,15 @@ overlay descriptors.
 
 **Missing callers: LNK100 and LOD100** — so any entry point used *only* by
 those two is invisible to this analysis. The list above is a lower bound.
+
+## Verified
+
+`FDUTIL.FTN` in this directory compiles clean on RSX-11M (all eight units,
+no diagnostics) and task-builds. A driver exercising every entry point links
+with exactly **one** undefined symbol, `IAND16` -- which is supplied by
+ADUTIL.MAC's DUTIL module, on the tape, exactly as it would be in a real
+LIB100 build. So the eight reconstructed entry points resolve, and FDUTIL's
+own external references are satisfied by SYSLIB plus ADUTIL.
 
 ## What is not recoverable this way
 
