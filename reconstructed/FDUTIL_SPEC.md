@@ -1,6 +1,9 @@
 # FDUTIL — recovered specification
 
-`FDUTIL.FTN` is the one LIB100 component missing from the FPS-100 tape.
+`FDUTIL.FTN` is the one LIB100 component missing from the FPS-100 tape --
+though it **was** shipped: `SHORT.DAT`, the distribution's own short index,
+lists it as file 36, `FPS100>DE04>UTIL>FDUTIL`, pass 1. It was lost from the
+1986 disk, not withheld.
 `LNK10.CMD` and `LOD10.CMD` both state "LIB100 MUST BE BUILT AND IN PLACE",
 so it blocks building either reconstructed tool against the real library.
 
