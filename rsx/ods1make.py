@@ -9,6 +9,7 @@ device to read from, and the SimH console send queue is far too small to
 type a 20 KB source file in.
 
     python3 ods1make.py out.dsk LNK100.FTN [more files...]
+    python3 ods1make.py -x out.dsk [destdir]      # read files back out
     # then, in RSX:  MOU DK1:XFER  /  PIP *.*=DK1:[200,200]*.*
 
 EVERY STRUCTURE HERE WAS DERIVED BY READING A WORKING VOLUME
@@ -340,7 +341,74 @@ class Volume:
         open(path, 'wb').write(bytes(self.disk))
 
 
+def extract(img, outdir='.'):
+    """Read files back out of an ODS-1 volume.
+
+    Walks the same structures build() writes, so it doubles as a check on
+    them. Text files (RTYP=2) are decoded from the variable-record stream
+    back into lines.
+    """
+    d = open(img, 'rb').read()
+    h = d[BLK:2 * BLK]
+    W = lambda o: struct.unpack_from('<H', h, o)[0]
+    ibsz, iblb, fmax = W(0), (W(2) << 16) | W(4), W(6)
+    hdr0 = iblb + ibsz
+    out = []
+    for fn in range(1, fmax + 1):
+        off = (hdr0 + fn - 1) * BLK
+        if off + BLK > len(d):
+            break
+        b = d[off:off + BLK]
+        fnum, fseq, flev = struct.unpack_from('<3H', b, 2)
+        if flev != 0o401 or fnum != fn:
+            continue
+        i = b[0] * 2
+        w = struct.unpack_from('<5H', b, i)
+        name = (unr50(w[0]) + unr50(w[1]) + unr50(w[2])).strip()
+        ext = unr50(w[3]).strip()
+        if name in ('INDEXF', 'BITMAP', 'BADBLK', 'CORIMG') or ext == 'DIR':
+            continue
+        u = b[14:46]
+        rtyp = u[0]
+        efbk = (struct.unpack_from('<H', u, 8)[0] << 16) | struct.unpack_from('<H', u, 10)[0]
+        ffby = struct.unpack_from('<H', u, 12)[0]
+        mp = b[1] * 2
+        use = b[mp + 8]
+        raw = b[mp + 10:mp + 10 + 2 * use]
+        data = b''
+        for o in range(0, len(raw), 4):
+            lbn = (raw[o] << 16) | struct.unpack_from('<H', raw, o + 2)[0]
+            cnt = raw[o + 1] + 1
+            data += d[lbn * BLK:(lbn + cnt) * BLK]
+        n = (efbk - 1) * BLK + (ffby if ffby else BLK)
+        data = data[:n] if n <= len(data) else data
+        fname = "%s.%s" % (name, ext) if ext else name
+        if rtyp == 2:
+            text = bytearray()
+            o = 0
+            while o + 2 <= len(data):
+                ln = struct.unpack_from('<H', data, o)[0]
+                if ln == 0xFFFF or o + 2 + ln > len(data):
+                    break
+                text += data[o + 2:o + 2 + ln] + b'\n'
+                o += 2 + ln + (ln & 1)
+            data = bytes(text)
+        open(os.path.join(outdir, fname), 'wb').write(data)
+        out.append((fname, len(data)))
+    return out
+
+
+def unr50(w):
+    if w >= 64000:
+        return '???'
+    return R50[w // 1600] + R50[(w // 40) % 40] + R50[w % 40]
+
+
 def main():
+    if len(sys.argv) >= 3 and sys.argv[1] == '-x':
+        for f, n in extract(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else '.'):
+            print("  %-14s %7d bytes" % (f, n))
+        return 0
     if len(sys.argv) < 3:
         print(__doc__)
         return 1
