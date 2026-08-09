@@ -239,6 +239,15 @@ static int32 fps_sra;                   /* Subroutine Return Address (stack ptr)
 static int32 fps_ma;                    /* Main Data Address */
 static int32 fps_tma;                   /* Table Memory Address */
 static int32 fps_dpa;                   /* Data Pad Address */
+/* Main data read pipeline.  SIM100 line 1316 says it outright: "FETCH MD
+   FROM MA SET THREE CYCLES AGO IF A READ WAS DONE THEN".  A read started
+   by SETMA at cycle N lands in MDR at N+3, and the production math
+   library depends on it -- VADD issues SETMA two instructions before the
+   DPX<MD that consumes the value.  Reading memory instantly puts the
+   wrong vector element in the data pads. */
+static t_uint64 fps_mdb[3];             /* MDB1..MDB3 */
+static int32 fps_mdb_v[3];              /* valid flags, SIM100's MDBn(7) */
+static t_uint64 fps_mdr;                /* memory data register */
 static int32 fps_da;                    /* Device Address */
 static int32 fps_ap_status;             /* AP internal status register */
 static int32 fps_spfn;                  /* S-Pad Function output */
@@ -267,6 +276,8 @@ static t_uint64 fps_dpbs;                /* Data Pad bus */
 static t_uint64 fps_cb;                   /* Control Buffer (current instruction) */
 static int32 fps_trace = 0;               /* per-cycle trace to stdout */
 static int32 fps_trace_n = 0;             /* cycles remaining to trace */
+static t_uint64 tr_dpx, tr_dpy;           /* pad operands, for the trace only */
+static int32 tr_xr, tr_yr, tr_xw;
 
 /* AP memory (allocated dynamically, fps_ps is extern for loader) */
 t_uint64 *fps_ps;                         /* Program Store (64-bit words) */
@@ -696,6 +707,9 @@ if (cmd & FN_RESET) {
     fps_ma = 0;
     fps_tma = 0;
     fps_dpa = 0;
+fps_mdb[0] = fps_mdb[1] = fps_mdb[2] = 0;
+fps_mdb_v[0] = fps_mdb_v[1] = fps_mdb_v[2] = 0;
+fps_mdr = 0;
     fps_da = 0;
     fps_ap_status = 0;
     fps_spfn = 0;
@@ -1147,7 +1161,7 @@ static void fps_execute_cycle (void)
 {
 t_uint64 instr;
 int32 df, sop, sh, sps, spd, fadd_op, cond, disp;
-int32 ma_op, dpa_op, tma_op, dpbs, use_value;
+int32 ma_op, dpa_op, tma_op, dpbs, use_value, mem_cycle;
 int32 spsr_val, result, branch, psa_set = 0;
 
 if (!fps_running || !fps_ps)
@@ -1168,6 +1182,11 @@ if (fps_trace && fps_trace_n != 0) {
             (int32)((instr >> 16) & 0xFFFF), (int32)(instr & 0xFFFF));
     }
 
+
+/* Memory data register: SIM100 label 12600, before the operands are used.
+   MDB3 -> MDR only when MDB3 holds a completed read. */
+if (fps_mdb_v[2] == 1)
+    fps_mdr = fps_mdb[2];
 
 /* Pipeline shift: FAB2→FA every cycle (unconditional, per SIM100 line 1338).
    This must happen before any early returns (HALT, JMP, RETURN, etc.)
@@ -1534,7 +1553,9 @@ int32 dpx_widx = (fps_dpa + xw - 4) & 0x1F;
 int32 dpy_widx = (fps_dpa + yw - 4) & 0x1F;
 t_uint64 dpx_val = fps_dpx[dpx_ridx];
 t_uint64 dpy_val = fps_dpy[dpy_ridx];
-t_uint64 md_val = (fps_md && fps_ma < MD_SIZE) ? fps_md[fps_ma] : 0;
+tr_dpx = dpx_val; tr_dpy = dpy_val;
+tr_xr = dpx_ridx; tr_yr = dpy_ridx; tr_xw = dpx_widx;
+t_uint64 md_val = fps_mdr;      /* three cycles behind SETMA */
 t_uint64 fa_new = fps_fa, fm_new = fps_fm;
 t_uint64 dpbs_val = 0;
 int32 mi_field = use_value ? 0 : FPS_MI(instr);
@@ -1702,14 +1723,35 @@ if (!use_value) {
         }
     }
 
+/* Push the memory pipeline every cycle -- SIM100 label 41000, user mode
+   "time-pushing" -- then start a new cycle if this instruction touched
+   MA.  Order matters: the push happens after the operands were taken
+   from MDR above. */
+fps_mdb[2] = fps_mdb[1];  fps_mdb_v[2] = fps_mdb_v[1];
+fps_mdb[1] = fps_mdb[0];  fps_mdb_v[1] = fps_mdb_v[0];
+fps_mdb[0] = 0;           fps_mdb_v[0] = 0;
+/* SIM100 label 41010: a memory cycle starts on a live MA field, or on
+   the FADD=7 register-load forms that touch MA. */
+mem_cycle = ((ma_op >= 1 && !use_value) ||
+             (fadd_op == 7 && FPS_A1(instr) == 0 && FPS_A2(instr) == 2) ||
+             (fadd_op == 7 && FPS_A1(instr) == 3 && FPS_A2(instr) == 1));
+if (mem_cycle) {
+    if ((use_value ? 0 : FPS_MI(instr)) != 0)
+        fps_mdb_v[0] = -1;                     /* a write, nothing returns */
+    else {
+        fps_mdb_v[0] = 1;
+        fps_mdb[0] = (fps_md && fps_ma < MD_SIZE) ? fps_md[fps_ma] : 0;
+        }
+    }
+
+
 if (fps_trace && fps_trace_n != 0) {
-    printf ("  FA=%.6g MD=%.6g DPX0=%.6g DPY0=%.6g MA=%o TMA=%o"
-            " SP=[%d %d %d %d %d %d %d] fc=%d\n",
+    printf ("  FA=%.6g MD=%.6g DPXr=%.6g DPYr=%.6g MA=%o TMA=%o"
+            " xr=%d yr=%d xw=%d SP=[%d %d %d %d %d %d %d] fc=%d\n",
             fps_38bit_to_double (fps_fa),
             fps_38bit_to_double ((fps_md && fps_ma < MD_SIZE) ? fps_md[fps_ma] : 0),
-            fps_38bit_to_double (fps_dpx[fps_dpa & 3]),
-            fps_38bit_to_double (fps_dpy[fps_dpa & 3]),
-            fps_ma, fps_tma,
+            fps_38bit_to_double (tr_dpx), fps_38bit_to_double (tr_dpy),
+            fps_ma, fps_tma, tr_xr, tr_yr, tr_xw,
             fps_spad[0], fps_spad[1], fps_spad[2], fps_spad[3],
             fps_spad[4], fps_spad[5], fps_spad[6], fps_facond);
     if (fps_trace_n > 0)

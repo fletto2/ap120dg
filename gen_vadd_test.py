@@ -184,23 +184,37 @@ def ieee32(f):
 #
 # 6 instructions total.
 
+# Main data reads are THREE cycles deep.  SIM100 line 1316 says it
+# outright -- "FETCH MD FROM MA SET THREE CYCLES AGO IF A READ WAS DONE
+# THEN" -- and the pipeline MDB1->MDB2->MDB3->MDR is pushed once per
+# cycle, so a SETMA at cycle N delivers to MDR at N+3.  An instruction
+# consuming MD must sit that far behind the SETMA that fetched it.  The
+# adder is separately 2 deep and only advances when active, hence the
+# filler before the store.
+
 microcode = [
-    # Inst 0: MA ← SPAD[0] (=0).  NOP everything else.
+    # 0: MA <- SPAD[0] (=0).  Starts the read of MD[0]; reaches MDR at 3.
     pack_instr(sop=SOP_NOP, spd=0, ma_op=MA_SET),
 
-    # Inst 1: DPBS=MD (read MD[0]), DPX ← DPBS.  MA++.
-    pack_instr(dpbs=DPBS_MD, dpx_src=DPW_DPBS, ma_op=MA_INC),
+    # 1: MA++ (=1).  Starts the read of MD[1]; reaches MDR at 4.
+    pack_instr(sop=SOP_NOP, ma_op=MA_INC),
 
-    # Inst 2: FADD A1=DPX + A2=MD[1].  MA++.
-    pack_instr(fadd=FADD_FADD, a1=A_DPX, a2=A_MD, ma_op=MA_INC),
+    # 2: waiting for the first read.
+    pack_instr(sop=SOP_NOP),
 
-    # Inst 3: adder-active filler (single-operand form) to advance the pipeline.
-    pack_instr(fadd=0, a1=A_DPX),
+    # 3: MDR holds MD[0].  DPBS=MD, DPX <- DPBS.
+    pack_instr(dpbs=DPBS_MD, dpx_src=DPW_DPBS),
 
-    # Inst 4: MI=FA → MD[2].  (store the adder result directly)
+    # 4: MDR holds MD[1].  FADD A1=DPX (MD[0]) + A2=MD (MD[1]).
+    pack_instr(fadd=FADD_FADD, a1=A_DPX, a2=A_MD),
+
+    # 5: adder-active filler advances FAB1->FAB2; MA++ (=2) for the store.
+    pack_instr(fadd=0, a1=A_DPX, ma_op=MA_INC),
+
+    # 6: FA ready.  MI=FA -> MD[2].
     pack_instr(mi=MI_FA),
 
-    # Inst 5: HALT
+    # 7: HALT
     pack_instr(sop=SOP_SPEC, sps=SPS_HALT),
 ]
 
