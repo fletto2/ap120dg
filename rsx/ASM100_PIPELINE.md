@@ -123,3 +123,36 @@ bare `L DGNOBJ.APO` fails with `NO SUCH FILE` from `LODFIL`, and
 `LOAD COMPLETE`. So the reconstruction's `ASSIGN`-plus-implicit-open path
 behaves differently from ASM100's `ASSIGN`-plus-explicit-`OPEN`, and it
 does not pick up `SY:`. That is the next thing to chase.
+
+## The full chain, on the real machine
+
+    DGNSRC.APS  --ASM100-->  DGNOBJ.APO  --LNK100-->  DGNLNK.LM
+                             identical to               identical to
+                             shipped DGNLIB.APO         lnk100.py (283 lines)
+
+ASM100 is built from tape source; LNK100 is the reconstruction built
+under `LNK10.CMD`; both link LIB100, which carries the reconstructed
+FDUTIL. `LNK DGNLNK.LM=DGNOBJ.APO` reports `HIGH= 431` -- octal 431 is
+281, and DGNLIB has 282 instructions -- and 3 undefined symbols, which
+are `ILOG2`, `CFFT` and `!ONE`, exactly what `lnk100.py` reports for the
+same input.
+
+### Driving LNK100
+
+`LNK100` uses the manual's **two-line** dialogue: the command letter on
+one line, its argument on the next. Sending `L DGNOBJ.APO` on a single
+line makes it take `L` and then read the *following line* as the
+filename, which is why it reported `NO SUCH FILE` naming a file that was
+plainly there, and why a lone `L` hung -- it was waiting for the argument
+line. LOD100, by contrast, takes command and argument on one line.
+
+Better still, install it and use the command line, which avoids the
+console send queue entirely:
+
+    INS LNK100.TSK/TASK=...LNK
+    LNK DGNLNK.LM=DGNOBJ.APO
+
+`LOAD` now opens through `INFILE` rather than a bare `ASSIGN`. A bare
+`ASSIGN` with no `OPEN` leaves the unit unconnected, and the first READ
+then either reports no such file or falls back to the terminal and blocks
+forever. Using INFILE is also what `LNK10.CMD` implies by linking LIB100.
