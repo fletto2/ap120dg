@@ -544,6 +544,7 @@ class Session:
         self.callable = {}           # entry name → wants APOVLD call
         self.isr_segments = []       # overlay numbers declared as ISRs
         self.readyq = False
+        self.bufsize = 0
 
     def number(self, tok):
         return int(tok, self.radix) if self.radix != 10 else int(tok, 10)
@@ -633,13 +634,27 @@ class Session:
                 pass
             elif cmd == 'INPUT':
                 self.inputs.extend(args)
-            elif cmd == 'OUTPUT':
-                # /D selects the binary disk-resident form [M 4.2.5]
-                target = args[0] if args else 'lm.out'
-                if any(a.upper().lstrip('/') == 'D' for a in args[1:]) or target.endswith('/D'):
-                    self.output = target.rstrip('/D')
-                else:
-                    self.host_output = target
+            elif cmd in ('OUTPUT', 'O'):
+                # OUTPUT </size> hasifile lmfile-a </D> <lmfile-b/D>
+                # [M 2.3.2].  The FIRST file named is the HASI file and the
+                # SECOND is the load module -- "OUTPUT HASI LMOD1" writes
+                # HASIs to HASI and a host-resident load module to LMOD1.
+                # /D on a load module name selects the disk-resident binary
+                # form, the only one SIM100/DBG100 can use; without it the
+                # host-resident FORTRAN form is produced, which is the
+                # default.  A leading /size sets the run-time transfer
+                # buffer size and must be a multiple of eight.
+                rest = list(args)
+                if rest and rest[0].startswith('/') and rest[0][1:].isdigit():
+                    n = int(rest.pop(0)[1:])
+                    self.bufsize = n - (n % 8)
+                if rest:
+                    self.hasi_output = rest.pop(0)
+                for a in rest:
+                    if a.upper().endswith('/D'):
+                        self.output = a[:-2]
+                    else:
+                        self.host_output = a
             elif cmd == 'LMID':
                 self.lmid = self.number(args[0])
             elif cmd == 'MODE':
