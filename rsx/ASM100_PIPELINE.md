@@ -6,12 +6,24 @@ containing the reconstruction, assemble a source that shipped on the
 tape, and compare the object it produces with the object that shipped
 beside it.
 
-**Result: byte-identical.** `SYMSRC.APS` assembles to output equal to
-`SYMLIB.APO` -- 66 modules, 0 errors, 7199 bytes each after stripping
-the trailing spaces RSX pads onto output records.
+**Result: byte-identical, on two sources.**
 
-That exercises `INFILE`, `PAKS` and `DATTIM` from the reconstruction; a
-defect in any of them changes or prevents the output.
+| source | modules | errors | vs shipped |
+|---|---|---|---|
+| `SYMSRC.APS` -> `SYMLIB.APO` | 66 | 0 | identical (7199 bytes) |
+| `DGNSRC.APS` -> `DGNLIB.APO` | 11 | 0 | identical (10592 bytes) |
+
+sizes after stripping the trailing spaces RSX pads onto output records.
+
+`SYMSRC` is only `$EQU` constant definitions, so on its own it proves
+little about the assembler -- it never emits an instruction. `DGNSRC` is
+the diagnostic library: real AP microcode, so instruction encoding,
+symbol resolution, relocation records and multi-block modules are all
+exercised. It is also the library whose `APFET` module carries two
+`***CODE` blocks, the case that exposed a relocation bug in `lnk100.py`.
+
+Either way the run exercises `INFILE`, `PAKS` and `DATTIM` from the
+reconstruction; a defect in any of them changes or prevents the output.
 
 ## The build
 
