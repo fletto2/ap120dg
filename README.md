@@ -139,6 +139,17 @@ Results from all 12 Phase 1 reads are also stored at zero-page addresses
   exact loading procedure (alternating SWR and FN writes). Contains complete
   FN command encoding and CTL register bit layout.
 
+### OCR'd FPS-100 manuals (`docs/ocr/`)
+Every FPS-100 manual scan is images with no text layer, so these are
+`tesseract` transcriptions: LNK100, LOD100, the Supervisor Reference
+Manual, the Library Editor, VFC100, the AP-120B Software Development
+Manual and the Math Library -- 575 pages. They are what the LNK100 and
+LOD100 reconstructions are written from, and they are **OCR output, not
+proofread text**: check any number against the page image, since digits
+are the least reliable characters. See `docs/ocr/README.md` for the file
+list and for the specific facts they settled -- the E command load module
+format, the overlay table entry, the TCB layout and its STATUS bits.
+
 ### PDP-11 Reference Source Code
 - `DAPEX.MAC` -- The PDP-11 driver that must be rewritten for DG. Contains the
   complete register map, SWR/FN handshake protocol, DMA setup, and SENDER routine.
@@ -371,7 +382,8 @@ reporting symbol counts and instruction totals.
 - `dg_register_mapping.md` -- Complete DG register mapping analysis
 - `microcode.md` -- AP microcode instruction format reference
 
-### Reference Hardware Documentation
+### Reference Documentation
+- `docs/ocr/` -- OCR'd text of seven FPS-100/AP-120B manuals (575 pages)
 - `860-7259-003_procHbkFeb79_ocr.pdf` -- AP-120B Processor Handbook (OCR'd)
 - `4448_APIF_netlist.txt` -- FPS-100 AP Interface (Nova version) netlist
 - `4421_PDPIF_netlist.txt` -- FPS-100 PDP-11 Interface netlist (comparison)
