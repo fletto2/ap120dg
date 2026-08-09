@@ -21,8 +21,20 @@ before relying on it. Page images can be regenerated with
 | `SWDEVEL.txt`        | `7292_AP-120B_swDevelMan.pdf` | 111 |
 | `MATHLIB.txt`        | `860-7288-004_AP_mathLibr.pdf` | 153 |
 
-`800-7428-001` (ASM100) and `860-7292-002` already carry a text layer and
-need no OCR; use `pdftotext -layout` on those directly.
+## Not OCR: extracted text
+
+`800-7428-001` (ASM100) and `860-7292-002` (AP-120B Program Development
+Software) already carry a text layer, so these two are `pdftotext -layout`
+output rather than OCR -- lossless, and far more trustworthy for digits
+than anything above. Kept here so they are as quick to grep as the rest.
+
+| file | source PDF | pages |
+|---|---|---|
+| `ASM100.txt` | `800-7428-001_..._ASM100_Reference_Manual_197909.pdf` | 109 |
+| `PDS.txt`    | `860-7292-002_AP-120B_Program_Development_Software_Manual_Sep78.pdf` | 134 |
+
+Their cover pages still come out as noise (`FPs-1cg Asserril?ler`) because
+those *are* images; the body text is clean.
 
 ## What these settled
 

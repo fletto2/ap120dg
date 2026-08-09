@@ -1,0 +1,4616 @@
+                  FPs-1cg
+                 Asserril?ler
+FLOATING POINT   CASIVl10Q:l .
+SYSTEMS,  INC.   Reference
+                  Manual
+                  aeo-742s-001
+by FPS Technical Publications Staff
+
+
+
+
+                                FPS-~OQ
+                               Asserribliir
+                               ..'ASM;,w..,~·'
+                                        .· .:-..-.,ti.
+                                Reference
+                                 IVlanual
+                                 S&Q•742S•001
+                                Publication No. 860-7428-001                        '- . /
+                                September, 197 9
+
+
+
+
+                       NOTICE
+
+
+     This edition applies to Release A of
+     FPS-100 software and all subsequent
+     releases until superseded by a new
+     edition.
+
+
+     The material in this manual is for
+     inf orm.ational purposes only and is
+     subject to change Without notice.
+
+
+     Floating Point Systems, Inc. assumes no
+     responsibility for any errors which may
+     appear in this publication.
+
+
+
+
+Copyright C   197 9 by Floating Point Systems , Inc.
+                           Beaverton, Oregon 97005
+
+
+All rights reserved. No part of this publication
+may be reproduced in any form or by any means
+without permission in writing from the publisher.
+
+                                                                          '.
+
+                   Printed in USA                              '   ;..:- "~.
+                                                                   :-.       f'
+                                                           •   ~   'r"'   ,: ....
+                                         CONTENTS
+
+
+
+
+                                                                    Page
+     CHAPTER 1          OVERVIEW
+
+     1-1                IN'l:RODUCTION                              1-1
+     1. 2               PURPOSE                                     1-1
+     l· 3               SCOPE                                       1-2
+     1.4                CONVENTIONS                                 1-2
+     1. 5               RELATED MANUALS                             1-2
+
+     CHAPTER 2          S"lNTAX
+
+     2.1                CHARACTER SET                               2-1
+     2.2                FILE NAMES                                  2-3
+     2.3                SYMBOL NAMES                                2-3
+     2. 4               TABLE MEMORY SYMBOLS                        2-4
+     2.s                INTEGEllS                                   2-4
+     2.6                EXPRESSIONS                                 2-5
+     2.6.l                   Operands                               2-6
+     2.6.2                   Operators                              2-6
+     2. 7               ADDRESSING                                  2-7
+     2. 7.1                  Relative Addressing                    2-7
+     2.1.2                   Absolute Addressing                    2-8
+     2. 7. 3                 Relocation of Symbols                  2-8
+
+
+     CHAPTER 3          SOURCE PROGRAM STATEMENTS
+
+     3.1                INTRODUCTION                                3-1
+     3.2                COMMENT STATEMENTS                          3-1
+     3.3                INSTRUCTION STATEMENTS                      3-2
+     3. 3.1                  Label Field                            3-2
+     3.3.2                   Op-code Field (Operation Code Field)   3-3
+     3. 3.3                  Comment Field                          3-28
+     3.4                PSEUDO-OPERATION STATEMENTS                 3-28
+     3.4.1                   $TASK                                  3-28
+     3.4.2                    $!SR                                  3-30
+     3.4.3                    $TITLE                                3-30
+     3.4. 4                   $ENTRY                                3-31
+     3.4.5                    $SUBR                                 3-32
+     3.4. 6                   $GLOBAL                               3-33
+     3.4. 7                   $INTEGER                              3-33
+      3.. 4. 8                $REAL                                 3-35
+i3
+      3.4.9                   $TRIPLE                               3-34
+      3.4.10                  $COMIO                                3-35
+      3. 4.11                 $PA.RAM                               3-37
+~     3.4.12                  $COMMON                               3-39
+
+
+     FPS 860-7428-001                       iii
+                                                                                      .
+     3.4.13                 $DATA                                      3-40    ',_/
+
+     3.4.14                 $EXT                                       3..43
+     3. 4.15                $VAL                                       3-43
+     3. 4.16                $FP                                        3-44
+     3. 4. 17               $EQU                                       3-45
+     3.4ol8                 $LOC                                       3-46
+     3. 4.19                $RADIX                                     3-47
+     3. 4. 20               $CALL                                      3-47
+     3. 4.. 21              $INSERT                                    3-50
+     3.4.22                 $IF ••• $ENDIF                             3-51
+     3.4.23                 $LIB ••• $ENDLIB                           3-42
+     3.4.24                 $PAGE                                      3-52
+     3.4. 25                $BOX•• • $ENDBOX                           3-52
+     3.4.26                 $NO LIST                                   3-53
+     3.4.27                 $LIST                                      3-53
+     3.4. 28                $END                                       3-53
+     3.4.29                  Dummy FMUL and FADD Pushers               3-54
+     3.4.30                  External Variables                        3-54
+     3. 5              ORDER OF PROGRAM STATEMENTS                     3-55
+     3. 6              CREA.TING FTNlOO CALL.ABLE ASMlOO SUBROUTINES   3-56
+     3.7               CALLING FTNlOO ROUTINES FROM ASMlOO             3-57
+     3. 8              CALLING ASMlOO SUBROUTINES FROM THE ROST        3-58
+     3. 8.1                  Auto-directed Calls (ADC) to ASMlOO
+                                   Subroutines                         3-58
+    J.8.2                    User Directed Calls (UDC) to ASM l 00
+                                   Subroutines                         3-62    ~-,
+
+
+
+
+     3.9               SAMPLE PROGRAMS                                 3-63
+     3. 9.1                  tJDC Example                              3-63
+     3. 9. 2                 ADC Example                               3-66
+     J. 9. 3                 ADC Example with Common Blocks            3-68
+
+
+    CHAPTER 4          OPERATING PROCEDURES
+
+    4.1                USING ASMlOO                                    4-1
+    4.2                EXECUTION                                       4-3
+    4.3                LISTING FILE FORMAT                             4-3
+    4.4                SAMPLE ASMlOO LISTING                           4-5
+
+    CHAPTER 5          ERROR MESSAGES
+
+     s.1               GENERAL INFORMATION                             5-l
+     5.2               MESSAGES                                        5-2
+
+    INDEX
+
+
+
+
+    FPS 860-7428-001                    iv
+
+L
+                                        ILLUSTRATIONS
+
+
+
+          Figure No.                        Title                       Page
+
+          3-1                 UDC Subroutine                            3-64
+          3-2                 Host Calling Program for UDC Subroutine   3-65
+          3-3                 ADC Subroutine                            3-67
+          3-4                 Rost Calling Program for ADC Subroutine   3-68
+          3-5                 ADC Subroutine with Common Blocks         3-69
+          3-6                 Host Calling Program for ADC Subroutine
+                                   with Common Blocks                   3-70
+
+          4-1                 Sample ASMlOO Listing                     4-5
+
+
+                                           TABLES
+
+
+
+          Table No.                        Title                        Page
+
+          1-1                 Related Manuals                           1-2
+
+          2-1                 Character Set                             2-1
+          2-2                 Special Characters                        2-2
+    "'
+          3-1                 Op-code Abbreviations                     3-4
+          3-2                 Table Memory Constants                    3-25
+
+          5-1                 Message Category                          5-1
+          s-2                 Error Messages                            5-3
+
+
+
+
+         FPS 860-7 42 8-001                      v
+
+l
+                                CHAPTER 1
+
+
+                                OVERVIEW
+
+
+
+1.1 INTRODUCTION
+
+The Floating Point Systems, Inc., FPS-100 is a peripheral device that
+operates independently from but under the direction of a host
+processor. It contains its own internal memories and 38-bit
+floating-point arithmetic units which are interconnected with multiple
+data paths, allowing parallel internal data transfers. Its arithmetic
+units, the floating adder and floating multiplier, are designed as
+pipelines (operations are performed in independent stages permitting
+new operations to begin before old operations are complete). This
+parallel processing capability and pipeline arithmetic permit the
+FPS-100 to perform high speed array processing.
+
+The FPS-100 Assembly Language {ASMlOO) allows the progratllI1ler to use the
+FPS-100 instruction set and control assembly with a group of
+pseudo-operations. ASMlOO code is assembled on the host system for
+execution on the FPS-100.
+
+
+
+
+1.2 PURPOSE
+
+This manual provides the information necessary for a programmer to
+create a complete assembly language program and assemble it using the
+ASMlOO assembler. It is not a training manual, however. It does not
+attempt to teach assembly language programming to the beginner. !t
+does assume that the user is familiar with FPS-100 hardware and the
+FPS-100 instruction set.
+
+
+
+
+FPS 860-7428-001                 1      1
+1.3 SCOPE
+
+This manual describes the syntax of all ASMlOO statements. Complete
+descriptions are provided for all pseudo-ops. A short description of
+the FPS-100 instruction set is provided, but this manual is not the
+primary reference source for the instruction set. For a complete
+description of the instruction set, refer to the Programmer's Reference
+Manual, Parts 1 and 2. Finally, a description of how to use the
+assembler is provided, along with a list of error messages.
+
+
+
+
+1.4 CONVENTIONS
+
+In examples of dialogue at a terminal, user input is underlined to
+distinguish it from FPS-100 or program output. Also, all user input is
+assumed to be terminated with a carriage return.
+
+In statement descriptions, uppercase characters must pe entered exactly
+as shown; lowercase characters indicate that a value or name must be
+substituted for the characters. Optional parameters are surrounded by
+brackets ({ }).
+
+
+
+
+1·5 RELATED MANUALS
+The following manuals may also be of interest to the user.
+
+
+
+                       Table 1-1       Related Manuals
+
+
+
+                      MANUAL                             PUBLICATION NO.
+
+  FPS-100 ProgralDD!er's Reference Manual                FPS 860-7427-000
+          Parts One and Two
+
+  LODlOO Reference Manual                                FPS 860-7423-000
+
+  Sll1100/DBG100 Reference Manual                        FPS 860-7424-000
+
+  FTNlOO Reference Manual                                FPS 860-7422-000
+
+  FPS-100 Supervisor Reference Manual                    FPS 860-7445-000
+
+
+FPS 860-7428-001                   1        2
+                                CHAPTER 2
+
+
+                                    SniTAX
+
+
+
+2.1 CHARACTER SET
+ASMlOO recognizes the characters in Table 2-1.         Characters which have
+special meaning are listed in Table 2-2.
+
+
+
+
+                        Table 2-1     Character Set
+
+
+
+          ALPHABETIC         NTJMBElUC               SPECIAL
+
+          A through Z       0 through 9              Blank
+                                                 •   Equals
+                                                 + Plus
+                                                   Minus
+                                                 * Asterisk
+                                                 I Slash
+                                                 ( Left parenthesis
+                                                 ) Right parenthesis
+                                                     Comma
+                                                 • Decimal point
+                                                 $ Dollar
+                                                   Tab
+                                                 < Less than
+                                                   Semicolon
+                                                   Colon
+                                                 " Quote
+                                                 I Number
+                                                 & Ampersand
+                                                   Exclamation point
+                                                 @ At sign
+
+
+
+
+FPS 860-7428-001                 2 -         l
+                     Table 2-2    Special Characters
+
+CHARACTER                           FUNCTION
+
+    +         Integer addition operator; unary addition operator
+
+              Integer subtraction operator; unary subtraction operator
+
+     *        Integer multiplication operator
+
+     I        Integer division operator
+
+     •        Decimal point; current location
+
+     $        First character of pseudo-op names
+
+  space       Symbol terminator
+
+    tab       Symbol terminator
+
+     =         $EQU pseudo-op; DB • op-code; arithmetic identify
+     (        Precedes a data pad index expression
+     )        Terminates a data pad index expression
+
+     <        Used with DPX, DPY, and MI op-codes; arithmetic less than
+
+              Op-code terminator
+              Operand separator
+
+              Label terminator
+
+              Comment start indicator (carriage return terminates)
+
+     #         S-pad no-load indicator
+
+     &         S-pad bit-reverse indicator
+
+              First character of predefined symbols
+
+              Logical OR operator
+     ,
+              Logical complement
+
+     >         Arithmetic greater than
+
+     ?         No system £unction
+
+     -         No system function
+
+               Absolute addressing
+
+
+FPS 860-7428-00 l                 2 -    2
+2.2 FILE NAMES
+File names may contain 30 characters including special characters and
+numbers. On systems where programmed file assignment is not allowed or
+is very difficult, the user must enter the number of the logical unit
+of a file assigned prior to calling ASMlOO.
+A special symbol (which is different for each host system) exists for
+referencing the user terminal (for example: TT: for the PDPll}.
+
+
+Examples:
+
+
+            RUNNER
+            RUNNER.OBJ
+            P38
+            CHANNEL
+
+
+
+
+2.3 SYMBOL NAMES
+Symbol names may be of any length; however, only the first six
+characters of a name are significant. The first character of a name
+must be alphabetic or the exclamation point (!). The subsequent
+characters can be either alphabetic, numeric, or the exclamation point.
+
+
+Examples:
+
+
+            LOOP
+            A6
+            STARTRERE
+
+
+A symbol can be created and given a value by the following:
+
+
+            •     defining it with the $EQU pseudo-op
+            •     declaring it with the $INTEGER, $REAL, or $COMMON pseudo-op
+                  and giving it a value with the $DA'!A pseudo-op   ·
+
+            •     using it as a label
+            •     declaring it an external with the $EXT pseudo-op
+
+
+
+FPS 860-7 42 8-00 1                     2   3
+2. 4 TABLE MEMORY SYMBOLS
+
+A symbol with a value preset to the address of each of the constants in
+table memory ROM is predefined in ASMlQO. These symbols all start with
+the exclamation point character (1) to avoid conflict with any
+user-defined symbol. ASMlOO declares these symbols externals when used
+in expressions (for example, DB=!ZERO). Therefore, they must be loaded
+from library SYMLIB at load time. When these symbols are used in any
+other way, such as in labels, ASMlOO treats them as variables, and they
+are not predefined.
+
+A complete list of these symbols can be found in section 3.3.2.14. For
+example, the following fetches pi from table memory and adds it to a
+number in DPX(2):
+
+
+         LDTMA; DB=!PI             "Fetch PI from TM
+         NOP                       "Wait
+         FADD TM, DPX(2)           "Add PI to DPX(2)
+
+
+
+
+2.5 INTEGERS
+
+Integers can be written in four radices: octal, binary, decimal, or
+hexadecimal. In each radix, an integer can be either signed or
+unsigned. The radix of a number is established by a radix identifying
+character which is written immediately after the number. Octal
+integers are denoted by a K, decimal by a period (.), hexadecimal by an
+X, and binary by a T. The first digit of a hexadecimal integer must be
+a decimal digit. The default radix, if a radix identifier is not used,
+is octal unless otherwise specified by a $RADIX pseudo-op.
+
+Integers can be single precision or double precision. Single precision
+integers are stored as 16-bit 2~s complement numbers. Integers larger
+than 16 bits are truncated to 16 bitse Negative integers larger than
+16 bits are truncated before they are negated.
+
+
+
+
+FPS 860-7428-00 l              2       4
+     Double precision integers are declared with the $TRIPLE pseudo-op.
+     They are stored as 38-bit 2's complement numbers.
+
+
+     Examples:
+
+
+                 octal integers :            177777
+                                             -40727K
+                                             -10
+
+
+                 decimal integers:           32767.
+                                             -1000.
+                                             +10.
+
+
+                 hexadecimal integers:       OABCDX
+                                             123FX
+                                             ocx
+
+                 binary integers:            101101T
+                                             -1101T
+
+
+
+
+     2.6 EXPRESSIONS
+     Expressions are symbolic representations of numbers. They are made of
+     operands and operators. If an expression contains a reference to an
+     external symbol, the expression must be of the form external-symbol ±.
+     expr, where expr is an expression without any external references •
+
+
+
+
+..
+
+
+
+     FPS 860-7428•001                    2         5
+Operands are symbol names, numbers, or the location counter, which is
+denoted by a period (.).
+
+
+Examples:
+
+
+            !BLADR
+            598X
+            33K
+
+
+
+
+Operators are of two types, unary and binary.
+
+                                  ,
+            Unary Operators               logical complement
+                                  +       positive remainder {+3K, +10.)
+                                          negati~e of a number {-15X, -777)
+
+
+
+
+Standard arithmetic operators are the following:
+
+
+            Binary Operators      +       addition
+                                          subtraction
+                                  *       multiplication
+                                  I       division
+
+
+
+Standard arithmetic relations, which return a value of one if the
+relation is true and zero if the relation is false, are as follows (for
+example, B $EQU 6<10 sets B to l):
+
+            <      less than
+            •      equals
+            >      greater than
+
+
+
+
+                                      2      6
+Some expressions are:
+
+
+         TBLADR+3F
+         • + 9.
+         LOOP + 6   A*
+         (34 - lOX)   2  *
+
+Expressions a:re evaluated from left to right in 16-bit 2's complement
+arithmetic: according to FORTRAN precedence standards; parentheses may
+be used liberally.
+
+
+
+
+                                   NOTE
+
+          Only   the low order 16 bits are        used if an
+          expression results in a decimal value   larger than
+          65535.
+
+
+
+
+2.7 ADDRESSING MODES
+
+Two modes of addressing can be used on the FPS-100, relative addressing
+and absolute addressing. Relative addressing is done unless the
+absolute addressing indicator (@) is specified.
+
+
+
+
+2.1.1 RELATIVE ADDRESSING
+In this mode, all addresses specified are regarded as relative to the
+program source address register (PSA). PSA points to the instruction
+currently executing. Therefore, a specified address is really only a
+displacement (either positive or negative) which is added to PSA in
+order to arrive at an absolute program source· address at execution
+time. With relative addressing, the program is position-independent in
+program source memory.
+
+
+
+
+FPS 860-7428-001               2          7
+2.7.2 ABSOLUTE ADDRESSING
+
+Absolute addressing is performed when the at sign (@) prefaces an
+address and the addresses are used in conjunction with the absolute
+addressing versions of certain instructions (refer to section
+3.3.2.12). In this mode, all addresses represent absolute program
+source addresses as they are generated by the assembler or the loader.
+No execution time manipulation is required. With absolute addressing,
+the program is position-dependent and executes properly only if it is
+loaded at the correct program source address.
+
+
+
+
+2.7.3 RELOCATION OF SYMBOLS
+
+The assembler produces relocation information for certain variables so
+that the LODlOO loader can generate the correct absolute addresses for
+these symbols. ASMIOO generates relocation information for all
+external variables and all symbols and constants preceded by the
+absolute addressing indicator @.
+
+If the special absolute address indicator is not used, a reference to
+an external label is interpreted as the relative displacement from the
+instruction referencing the label to the label itself. A reference to
+an internal label is interpreted as the displacement of the label from
+the beginning of the subroutine as determined by the assembler (this is
+the number associated with the label in the symbol table displayed at
+the bottom of the assembly listing). Constants are unaltered
+regardless of where the program is loaded in program source memory.
+
+The relocation information produced by ASMlOO can only be used by the
+LODlOO loader. LNK100 cannot take advantage of this information.
+
+
+
+
+FPS 860-7428-001               2      8
+                                  CRAFTER 3
+
+                         SOURCE PROGRAM STATEMENTS
+
+
+
+3.1 INTRODUCTION
+
+ASMlOO source statements can be divided into three categories as
+follows:
+
+
+         •   comment statements
+         •   instruction statements
+
+         •   pseudo-op statements
+
+
+
+Comment statements allow program documentation. Instruction statements
+make up the actual symbolic machine code. Pseudo-ops provide
+directions to ASMlOO during the assembly process.
+
+ASMlOO statements can be entered in free format;     spaces and tabs may
+be used as desired to improve legibility.
+
+
+
+
+3.2·coMMENT STATEMENTS
+Everything on a line following a quote mark ("} is treated as a comment
+by ASMlOO.  A line containing only comments, or a completely blank
+line, is a comment statement and is ignored during the assenibly
+process. A carriage return terminates a comment.
+
+
+
+
+FPS 860-7428-001                  3      l
+3.3 INSTRUCTION STATEMENTS
+
+An ASMlOO assembly language instruction statement has the following
+format:
+
+
+         label:      op-code fields             "Comments
+
+
+
+The label and comments are optional. The assembler processes the
+op-code fields and generates one 64-bit instruction word for each
+instruction statement.
+
+
+
+
+3.3. l LABEL FIELD
+
+A label is a user-defined symbol which is assigned the value of the
+current location counter and entered into the user symbol table. A
+label is a symbolic means of referring to a specific location within a
+program. If present, a label always occurs first in an instruction
+statemen.t and mtist be terminated by a colon. For example, assume that
+the following instruction statement is entered:
+
+
+         LOOP:     FADD DPX, DPY                "LOOP HERE
+
+
+
+If the current location is 76, value of 76 is assigned to symbol LOOP.
+
+
+
+
+FPS 860-7428-001                      3 -   2
+3. 3. 2 OP-COOE FIELD (OPEltAT!ON CODE FIELD)
+
+The op-code field follows the label field in an instruction statement
+and contains one or more FPS-100 op-code mnemonics. Individual
+op-codes in an instruction are separated by a semicolon. For example,
+the following two groups of opcodes are equivalent. The absence of a
+semicolon following the last op-code field on a given line terminates
+the instruction with that line.
+
+
+         LOOP:   FADD DPX, DPY; FMUL TM, MD; BFGT DONE
+
+         or
+
+         LOOP:   FADD DPX, DPY;
+                 FMUL TM, MD;
+                 BFGT DONE
+
+
+
+Each is one instruction statement which assembles into one 64-bit
+instruction word. Thus, one instruction statement may be continued
+over as many lines as desired to achieve a readable program document.
+The absence of a semicolon after the last op-code signals the assembler
+that the instruction is ended.
+                      -':.--~.
+
+
+Op-codes may be written in any order within an instruction. The
+assembler flags any conflicting op-codes with an error message•
+
+Some op-codes require operands as arguments. The operand is separated
+from the op-code by a space or tab and from another operand by a comma.
+Some example op-codes are:
+
+
+         no operands:            HALT; RETUR.N
+         one operand:            FABS MD; BFGT LOOP
+         two operands:           FADD   DPX, DPY; FMUL TM, MD
+
+
+
+If an operand is missing or improper, the assembler generates an
+appropriate error message.
+
+The various FPS-100 op-codes may be divided into 13 groups. One
+op-code from each group may be used in any given instruction statement
+unless otherwise stated.
+
+Under the headings Function and Meaning, upper case characters are used
+to indicate the origin of the mnemonic code names.
+
+The list of abbreviations contained in Table 3-1 are used to facilitate
+the op-code descriptions. They are explained later when the op-code
+group f~rst appears.
+
+
+FPS 860-7428-001                   3        3
+                   Table 3-1     Op-code Abbreviations
+
+
+
+                                                          PARAGRAPH IN
+  ABBREVIATION                 MEANING                   WHICH DESCRIBED
+
+       sh          S-pad shift                              3.3.2.1
+
+       11          s-pad no-load                            3.3.2.1
+
+       sps         S-pad source register                    3.3.2.1
+
+       spd         s-pad destination register               3.3.2.1
+
+       &           Bit reverse                              3.3.2.1
+
+       disp        Branch displacement                      3.3.2.s
+
+       al          Floating adder argument #1               3.3.2.6
+
+       a2          Floating adder argument 112              3.3.2.6
+
+       idx         Data pad index                           3.3.2.6
+
+       ml          Floating m.ultip lier argument Ill       3.3.2.1        '---~'
+
+
+
+       m2          Floating multiplier argument 112         3.3.2.1
+
+       dbe         Data pad bus enable                      3.3.2.s
+
+       adr         Address, value, or expression            3. 3.. 2. 8
+
+
+
+
+FPS 860-7428-001                  3      4
+3.3.2.1 S-pad Op-code Group
+
+Purpose:    s-pad integer arithmetic
+
+
+Double Ooerand Op-codes          Function
+
+ADD{sh}{#}{&}sps,spd        ADD sps to spd
+SUB{sh}{#}{&}sps,spd        SUBtract sps from spd
+MOV{sh}{f/ }{ &}sps ,spd    MOVe sps tp spd
+AND{ sh}{ fl}{ &}sps ,spd   AND sps tp spd
+OR{sh}{i/}{ &}sps, spd      OR sps to spd
+EQV{sh}{tl}{&}sps,spd       EQuiValence sps to spd
+
+
+
+ Single Operand Op-codes      Function
+
+ CLR{sh}{/I}     spd        CleaR spd
+ INC{sh}{il}     spd        INCrement spd
+ DEC{sh}{/f}     spd        DECrement spd
+ COM{sh}{/F}     spd        COMplement spd
+
+
+
+The result of the above op-codes is SPFN (s-pad function).
+
+
+
+Miscellaneous Op-codes                   Function
+
+LDSPNL     spd              LoaD Spd from PaNeL bus
+LDSPE      spd              LoaD SPd from data pad bus Exponent
+LDSPI      spd              LoaD SPd from data pad bus Integer
+                                 (low 16-bit)
+ LDSPT     spd              LoaD SPd from data pad bus Table
+                                 look-up bits
+WRTEXP                      enable WRiTe of EXPonent only into
+                                 DPX, DPY, or MI
+WRTHMN                      enable WRiTe of High MaNtissa only
+                                 into DPX, DPY, or MI
+ WRTLMN                     enable WRiTe of Low MaNtissa only
+                                 into DPX, DPY, or MI
+
+
+
+
+FPS 86-0-7428-001                  3         5
+Abbreviations:
+
+
+-
+Name
+
+ sh
+         Meaning
+
+            s-pad shift:
+
+
+               Choices           Meaning
+
+               (omitted)         no shift
+               L                 shift SPFN left once
+               R                 shift SPFN right once
+               RR                shift SPFN right twice
+
+
+
+ #          S-pad no-load: if present, do not load SPFN into spd (s-pad
+            destination register). If specified, a branch group op-code
+            may not be used in the same instruction statement.
+
+
+ sps        S-pad source register: a name, number, or expression
+            specifying a register number between 0 and 17 8 •
+
+
+ spd        S-pad destination register: a name, number, or expression
+            specifying a register number between 0 and 17 •
+            SPFN is loaded into the s-pad destination reg~ster unless
+            s•pad no-load (#) is specified.
+
+
+ &          Bit reverse: if present, bit reverse the contents of sps
+            before using. The bit reverse is done as specified by
+            bits 13-15 of the internal status register.
+
+
+Examples:
+
+
+            MOV 3,6
+            SUBL l,15
+            ADDt I &PT.a, BASE
+            DEC CTR.
+            CLR 9.
+            LDSPI 6
+
+
+
+
+FPS 860-7428-001                   3       6
+3.3.2.2 Memory Address Op-code Group
+
+Purpose:    initiate main data memory cycles
+
+
+ Op-codes          Function
+
+ INCI!A            INCrement Memory Address
+ DECMA             DECrement Memory Address
+ SETMA             SET Memory Address from SPFN
+
+
+
+
+3.3.2.3 Table Memory Address Op-code Group
+
+Purpose:    initiate table memory fetches
+
+
+ Op-codes          Function
+
+ INCTMA            INCrement Table Memory Address
+ DECTMA            DECrement Table Memory Address
+ SETTMA            SET Table Memory Address from SPFN
+
+
+
+
+3.3.2.4 Data Pad Address Op-code Group
+
+Purpose:    change the DPA {data pad address) register
+
+
+ Op-codes          Function
+
+ INCDPA            INCrement Data Pad Address
+ DECDPA            DECrement Data Pad Address
+ SETDPA            SET Data Pad Address from SPFN
+
+
+
+
+FPS 860•7428-001                 3       7
+3.3.2.s Branch Op-code Group
+Purpose:     conditional branches
+
+
+Op-code                 Function
+
+ BR         disp        BRanch   unconditionally
+ BINTRQ     disp        Branch   on INTerrupt ReQuest flag non-zero
+ B!ON       disp        Branch   on I/O data ready flag Non-zero
+ BIOZ       disp        Branch   on t/O data ready flag Zero
+ BFPE       disp        Branch   on Floating-Point Error
+ BFEQ       disp        Branch   on Floating adder EQual to zero
+ BFNE       disp        Branch   on Floating adder Not Equal to zero
+BFGE        disp        Branch   on Floating adder Greater or Equal to zero
+BFGT        disp        Branch   on Floating adder Greater Than zero
+BEQ         disp        Branch   on s-pad function EQual to zero
+BNE         disp        Branch   on s-pad function Not Equal to zero
+BGE         disp        Branch   on s-pad function Greater or Equal to zero
+BGT         disp        Branch   on s-pad function Greater Than zero
+
+ RETURN                 RETURN from subroutine
+
+Abbreviation:
+
+
+-
+Name
+
+ disp
+              Meaning
+
+              Branch displacement: the branch target address, an
+              address between 16 locations behind and 15 locations
+              ahead of the current location.
+
+
+Examples:
+
+             BB. LOOP
+             BGT .+3
+             RFNE A-4
+
+
+
+
+FPS 860• 742 8-00 l                   3      8
+3.3.2.6 Floating Adder Op-code Group
+
+Purpose:      f loatirtg-point adds
+
+
+
+Double Operand Op-codes
+
+
+ Op-codes               Function
+
+ FADD al,a2             Floating   ADD (al+a2)
+ FSUB al,a2             Floating   SUBtract (al•a2)
+ FSUBR al,a2            Floating   SUBtract Reverse (a2-al)
+ FA.ND al,a2            Floating   AND (al and a2)
+ FOR   al,a2            Floating   OR (al or a2)
+ FEQV al,a2             Floating   EQuiValence (al eqv a2)
+
+
+
+Single Operand Op-codes
+
+
+ Op-codes               Function
+
+ FIX         a2         FIX a2 to au integer
+ FIXT        a2         FIX a2 to an integer (Truncated)
+ FSCALE      a2         Floating SCALE of a2
+ FSCLT       a2         Floating SCaLe of a2 (Truncated)
+ FSM2C       a2         Form.at conversion, Signed Magnitude to 2's Complement
+ F2CSM       a2         Format conversion, 2's Complement to Signed Magnitude
+ FABS        a2         Floating ABSolute value
+
+
+
+Other Op-codes
+
+
+ Op-codes               Function
+
+ FPAl                   Push Al through the Floating adder without change
+
+ FPA2                    Push A2 through the Floating adder without change
+
+
+
+Adder Operands:
+
+
+ Operand          Meaning
+
+        al        floating adder argument no.       1:
+
+
+
+FPS 860-7428-001                       3        9
+              Choices              Meaning
+
+              NC                   No Change (use previous al)
+              FM                   Floating Multiplier output
+              DPX {(idx)}          Data Pad X
+              DPY { (idx)}         Data Pad Y
+              TM                   Table Memory data
+              ZERO                 floating-point ZERO
+
+
+Operand       Meaning
+
+       a2     adder argument no.     2:
+
+
+              Choices              Meaning
+
+              NC                   No Change (use previous a2)
+              FA                   Floating Adder output
+              DPX {(idx)}          Data Pad X
+              DPY {(idx)}          Data Pad Y
+              TM                   Table Memory data
+              ZERO                 floating ZERO
+              MDPX { (idx)}        use Mantissa from Data Pad X
+                                       and exponent from SPFN
+              EDPX   {(idx)}       use Exponent Data Pad X and
+                                       mantissa from SPFN
+
+Abbreviation:
+
+-
+Name
+
+ idx
+              Meaning
+
+              Data pad index: a name, expression, or number which
+              lies in a range of -4 to +3.
+
+Examples:
+
+            FADD TM,MD
+            FSUB DPX(3), DPY(-4)
+            FEQV DPX, DPY (C)
+            FAND ZERO. MDPX(2)
+            FStrBR NC, FA
+            FADD
+
+
+                                          NOTE
+             Up to £our unique data pad indices may be specified
+             in one instruction statement. !n particular, only
+             one indexing each may be used for reading from data
+             pad X and Y, regardless of how many op-codes use
+             the data read from data pad.
+
+
+
+FPS 860-7428-001                     3     ...   10
+3.3.2.7 Floating-Point Multiply Op-code Group
+
+Purpose:    floating-point multiplies
+
+
+ Op-code               Function
+
+ FMUL   ml,m2          Floating MULtiply ml times m2
+
+
+
+Multiplier Operands:
+
+
+
+ Operand                          Meaning
+
+ ml          multiplier operand no. 1
+
+
+             Choices              Meaning
+
+             FM                   Floating Multiplier output
+             DPX{(idx)}           Data Pad X
+             DPY{(idx)}           Data Pad Y
+             TM                   Tab le Memory
+
+
+
+ m2          multiplier operand no. 2
+
+
+             Choices              Meaning
+
+             FA                   Floating Adder output
+             DPX{(idx)}           Data Pad X
+             DPY{(idx)}           Data Pad Y
+             MD                   Memory Data
+
+
+
+Examples:
+
+
+            FMUL ™~ MD
+            FMUL DPX(AR),DPY(B!)
+            FMUL
+
+
+
+
+ FPS 860-7428-001                      3    -   11
+3.3.2.s Data Pad X Op-code GrouR
+Purpose:    storing into data pad X
+
+Op-code              Function
+
+DPX{   (idx) }<opt   Store opt into data pad       x.        One of the following
+                     must be used for opt:
+
+                        Opt     Meaning
+
+                        FA      Floating Adder output
+                        FM      Floating Multiplier output
+                        DB      Data pad Bus
+                        dbe     data pad bus enable
+                                     This has the same effect
+                                     as an explicit data pad bus
+                                     op-code. One choice of
+                                     data pad bus enable may
+                                     be made per instruction
+                                     statement.
+
+                                    Choices             Meaning
+
+                                    ZERO                floating ZERO
+                                                                                    c,_/
+
+
+
+                                    {@}adr              An address or
+                                                        numeric value.
+                                                        Any 16-bit integer
+                                                        expression is
+                                                        legal. A floating
+                                                        multiplier, memory
+                                                        input, memory
+                                                        address, or data
+                                                        pad address
+                                                        op-code cannot
+                                                        be used in an
+                                                        instruction
+                                                        statement where
+                                                        an adr is used.
+                                                        The optional @
+                                                        indicates an
+                                                        absolute address.
+
+                                    DPX{(idx)}          Data Pad X
+                                    DPY{ (idx}}         Data Pad Y
+                                    MD                  Memory Data
+                                       SPFN             S-Pad FuNction
+                                    TM                  Table Memory data
+
+                                                                                    ~/
+
+
+
+
+                                                                                           "
+
+FPS 860-7428-001                   3          12
+Examples:
+
+
+            DPX(3)<FM
+            DPX(-2)<SPFN
+            DPX MD
+            DPX(l )<DPY (-2)
+            DPX(-2)< -123
+
+
+
+
+3.3.2.9 Data Pad Y Op-code Group
+
+Purpose:      storing into data pad Y
+
+
+ Op-code                  Function
+
+ DPY{ (idx)   }<opt       Store opt into data pad y. The
+                          possibilities for opt are the
+                          same as those described in section
+                          3.3.2.s.
+
+
+
+Examples:
+
+
+            DPY(-2)<FA
+            DPY<MD
+            DPY(2)<TM
+            Dl>Y(l )<39
+
+
+
+
+FPS 860-7428-001                      3 -   13
+ 3.3.2.10 Memory Input Op-code Group
+
+ Purpose:    writing into main data memory
+
+
+
+  Op-codes             Function
+
+  MI<FA                move Floating Adder output to the Memory Input
+                            register
+  MI<FM                move Floating Multiplier output to the Memory Input
+                            register
+  MI<DB                move Data pad Bus to the Memory Input register
+  MI<dbe               move dbe to the Memory Input register
+
+
+
+ To affect a memory write, an op-code from the memory address group or
+ an LDMA op-code must be included in the instruction statement to supply
+ the memory address.
+
+
+
+ Examples:
+
+
+             MI<FA; !NCMA
+             MI<DPX(3); DECMA
+             MI<MD; SETMA; ADD 3,6
+
+
+
+
+. FPS   860~7428-001                 3   14
+..
+     3.3.2.11 Data Pad Bus Op-code Group
+     Purpose:    explicitly enable data onto the data pad bus
+
+
+     Op-codes                Function
+
+      DB•ZERO                enable   ZERO onto the Data pad Bus
+      DB•{@}addr             enable   adr onto the Data pad Bus
+                               (the   optional @ indicates an absolute address)
+      DB=DPX{ (idx) }        enable   Data Pad X onto the Data pad Bus
+      DB•DPY{ (idx)}         enable   Data Pad Y onto the Data pad Bus
+      DB=MD                  enable   Memory Data onto the Data pad Bus
+      DB=SPFN                enable   s-Pad FuNction onto the Data pad Bus
+      DB-TM                  enable   Table Memory data onto the Data pad Bus
+
+
+
+     As mentioned in section 3.3.2.s, only one data source may be enabled
+     onto the data pad bus per instruction statement.
+
+
+     Examples:
+
+
+                 DB   = 37
+                 DB • DPX(-2)
+                 DB •MD
+                 DB • SPFN
+
+
+
+
+      FPS 860-7428-001                      3     15
+3.3.2.12 Special Operation Op-code Group
+
+If an op-code from this group is chosen, an s-pad group op-code cannot
+be used in the same instruction statement.
+
+Abbreviations:
+
+                      Meaning
+
+   A                  In this section, the optional A at the end of an
+                      op-code signifies that the associated address is an
+                      absolute address. If not specified, the address
+                      is relative. When these op-codes are used, the
+                      absolute address indicator @ should precede
+                      address.
+   @                  In this section the optional @ preceding the
+                      address indicates to the assembler and loader
+                      that the address is an absolute address. The
+                      assembler generates relocation information, so
+                      the loader can determine the correct absolute
+                      address.
+
+Special Tests
+
+Purpose:     additional conditional branches
+
+ Op-codes             Function
+
+ BFLT disp            Branch    on   Floating adder Less Than zero
+ BLT  disp            Branch    on   s-pad function Less Than zero
+ BNC  disp            Branch    on   Non-zero carry bit
+ BZC  disp            Branch    on   Zero Carry bit
+ BDBN disp            Branch    if   Data pad Bus Negative
+ BDBZ disp            Branch   if    Data pad Bus Zero
+ BIFN disp            Branch   if    Inverse FFT flag Non zero
+ BIFZ disp            Branch   if    Inverse FFT flag Zero
+ BFLO disp            Branch   if    FLag 0 is l
+ BFLl disp            Branch   if    FLag l is l
+ BFL2 disp            Branch   if    FLag 2 is l
+ BFL3 disp            Branch   if    FLag 3 is l
+
+If one of the preceding tests is used along with a test from the branch
+group, the conditions are ORed. In this case, only orte of the branch
+op-codes need have the target address as an operand.
+
+Examples:
+
+            BNC ODD
+            BFEQ LOOP; BFLT LOOP       LESS THAN OR EQUAL TO
+                                      11
+
+
+
+
+FPS 860-7428-001                           3   16
+    SETPSA
+
+    Purpose:    jumps and subroutine jumps
+
+
+     Op-codes               Function
+
+     JMP{A} {@}adr          JuMP   to   location adr
+     JMPT                   JuMP   to   location whose address is in TMA
+     JMPP                   JuMP   to   location whose address is on the Panel bus
+     JSR{A} {@}adr          Jump   to   SubRoutine at location adr
+     JSRT                   Jump   to   SubRout ine at addt'ess in TMA .
+     JSRP                   Jump   to   SubRoutine at address on Panel bus
+
+
+
+    Examples:
+
+
+                JMP LOOP + 3
+                JSR FFT
+                JMPS 300
+
+
+
+
+    SETEX!T
+
+
+    Purpose:     alter a subroutine return
+
+
+     Op-codes               Function
+
+     SETEX{A} {@}adr        SET subroutine EXit to adr
+     SETEXT                 SET subroutine EXit to contents of TMA
+     SETEXP                 SET subroutine EXit to contents of Panel bus
+
+
+
+    Example:
+
+
+                SETEX BAD
+
+
+
+
+.
+
+
+    FPS 860-7428-001                        3 -    17
+Program Source
+
+Purpose:     read/write program source memory
+
+ Op-codes              Function
+ RPSL{A} {@}adr        Read Program Source Left half of location adr
+ RPSF{A} {@}adr        Read Program Source Floating-point number
+                            from location adr
+ RPSLT                 Read Program Source Left half at address in !MA
+ Rl'SFT                Read Program Source Floating-point number
+                            at address in !MA
+ RPSLP                 Read Program Source Left half at address on Panel bus
+ RPSFP                 Read Program Source Floating-point number at address
+                            on Panel bus
+
+
+The preceding op-codes read onto the data pad bus.
+
+
+
+ op-codes              Function
+
+LPSL{A} {@}adr Load Program Source Left half of location adr
+LPSlt{A} { @}adr Load Program Source Right half of location adr
+LPSLT            Load Program Source Left half pointed at by TMA
+LPSRT            Load Program Source Right half pointed at by !MA
+LPSLP            Load Program Source Left half pointed at by Panel bus
+LPSRP            Load Program Source Right half pointed at by Panel bus
+
+
+The preceding op-codes load from the data pad bus.
+
+
+Example:
+
+
+            Rl'SF PI
+
+
+
+
+FPS 860-7 428-001                    3     18
+    PS Odd and Even
+    Purpose:    reading the host panel switches into program source
+                memory, writing program source to the panel lights
+                register
+
+
+
+     Op-codes           Function
+
+     RPSO{A}    {@}adr Read Program Source quarter 0 from location adr
+     RPSl{A}    {@}adr Read Program Source quarter 1 from location adr
+     RPS2{A}    {@}adr Read Program Source quarter 2 from location adr
+     RPS3{A}    { @}adr Read Program Source quarter 3 from location adr
+     RPS OT             Read Program Source quarter 0 from address in '1'MA
+     RPSlT              Read Program Source quarter 1 from address in TMA
+     RPS2T              Read Program Source quarter 2 from address in '1'MA
+     RPS3T              Read Program Source quarter 3 from address in !MA
+     WPSO{A}    { @}adr Write Program Source quarter 0 into location adr
+     WPSl{A}    {@}adr Write Program Source quarter 1 into location adr
+     WPS2{A}    {@}adr Write Program Source quarter 2 into location ad:r
+     WPS3{A}    {@}adr Write Program Source quarter 3 into location adr
+     WPS OT             Write Program Source quarter 0 into address in T.MA
+     WPSlT              Write Program Source quarter 1 into address in TMA
+     WPS2T              Write Program Source quarter 2 into address in TMA
+     WPS3T              Write Program Source quarter 3 into address in TMA
+
+
+
+
+    Host Panel
+
+    Purpose:     reading the host panel switches, writing to the host
+                 panel lights register
+
+
+
+     Op-codes           Function
+
+     PNLLIT             PaNeL bus to LighTs
+     DBELIT             Data pad Bus Exponent to LighTs
+     DBlll.IT           Data pad Bus High mantissa to LighTs
+     DBLLIT             Data pad Bus Low mantissa to LighTs
+     SWDB               SWitches to Data pad Bus
+     SWBE               SWitches to Data pad Bus Exponent
+     SWDBH              SWitches to Data pad Bus High mantissa
+~
+      SWDBL             SWitches to Data pad Bus Low mantissa
+
+
+.
+
+     FPS 860-7428-001                  3     19
+Special Interrupts
+
+Purpose:     provide a software interrupt capability for the FPS-100
+
+
+
+ Op-codes           Function
+
+ ION               enable (or turn ON) universal Interrupt
+ !OFF              inhibit (or turn OFF) universal Interrupt
+ SETMOD            SET MODe to supervisor
+ CUMOD             set mode to user (or CLeaR MODe)
+ SELMA             SELect MA
+ SELS!tA           SELec.t Supervisor MA
+ ENT INT           ENTer INTerrupt
+ CM2PM             Current Mode to Previous Mode
+ TRAP              cause TRAP interrupt
+ RDPI              Read Data Pad X and Y Input buff er
+ WDPI              Write Data Pad X and Y Input buff er
+ DBLSW             Data pad Bus Low mantissa to SWitch register
+ PN2DBL            PaNel bus to Data pad Bus Low mantissa
+ EXINT             EXit INTerrupt
+
+
+
+Miscellaneous
+
+
+ 02-c.odes         Function
+ SPNDAV            SPiN until MD AVailable
+
+
+
+
+FPS 860•7428-001                  3    20
+     3.3.2.13 !/O Op-code Group
+·•   If an op-code is used from this group, a floating adder op-code cannot
+     be used in the same instruction statement.
+
+
+     Load REG, Read REG
+
+     Purpose:    reading/writing various internal registers
+
+
+      Op-codes          Function
+
+      LDSPD             LoaD    S-Pad Destination address register
+      LDMA              LoaD    Memory Address register
+      LDTMA             LoaD    Table Memory Address register
+      LDDPA             LoaD    Data Pad Address register
+      LDSP              LoaD    S-Pad register pointed at by spd
+      LDAPS             LoaD    FPS-100 Status register
+      LDDA              LoaD    !/O Device Address
+
+
+     The preceding op-codes load from the data pad bus.
+
+
+
+      Op-codes           Function
+
+      RPSA               Read   Program Source Address
+      RSPD               Read   S-Pad Destination register
+      RMA                Read   Memory Address register
+      RTMA               Read   Table Memory Address register
+      RDPA               Read   Data Pad Address register
+      RSPFN              Read   S-Pad FuNction
+      RAPS               Read   FPS-100 Status
+      RDA                Read   I/O Device Address
+
+
+     The previous op-codes are read onto the panel bus•
+
+
+
+
+      FPS 860-7428-001                    3     21
+IOMEM
+Purpose:    read/write memory fields
+
+
+
+ Op-codes           Function
+
+ REXl'.T            Read subroutine EXl'.T address
+ STATMA             STATic memory read or write at current MA or SMA
+ LDOMA              LoaD inactive (Other) Memory Address register
+ ROMA               Read inactive (Other) Memory Address register
+
+
+IMO UT
+
+
+Purpose:    program control input/output of data
+
+
+ Op-codes           Function
+
+ OUT                OUTput data
+ SPNOOT             SPiN until device ready, then OUTput data
+ OUTDA              OUTput data, then set DA to spfn
+ SPOTDA             SPin until device ready, OuTput data, then
+                         set DA to spfn
+
+
+
+The preceding op-codes write to the I/O device specified by the device
+address register (DA). These op-codes write whatever data is enabled
+onto the data pad bus.
+
+
+
+ Op-codes           Function
+ IN                 INput data
+ SPININ             SPIN until device ready, then INput data
+ INDA               !Nput data, then set DA to spfn
+ SP INDA            SPin until device ready, then INput data, then
+                         set DA to spfn
+
+
+
+
+F'PS 860-7428-001                 3 -   22
+The preceding instructions put data onto the input bus from the I/O
+device specified by the device address register (DA). To be used, the
+data must be put onto the data pad bus and from there moved to a
+register or memory.
+
+
+Example:
+
+
+           IN; DPX(Z)<INBS      "READ I/O DATA INTO DPX
+
+
+
+SENSE
+
+Purpose:    sensing an I/O device condition
+
+
+ Op-codes            Function
+
+ SNSA                SeNSe condition A
+ SPINA               SPIN on condition A
+ SNSADA              SeNSe condition A, then set DA to spfn
+ SPNADA              SPiN on condition A, then set DA to spf n
+ SNSB                SeNSe condition B
+ SPINB               SPIN on condition B
+ SNSBDA              SeNSe condition B, then set DA to spfn
+ SPNBDA              SPiN on condition B, then set DA to spfn
+
+
+
+
+Purpose:    set/reset of program flags
+
+
+ Op-codes            Function
+
+ SFLO                Set FLag 0
+ SFLl                Set FLa.g 1
+ SFL2                Set FLag 2
+ SFL3                Set FLag 3
+ CFLO                Clear FLag    0
+ CFLl                Clear FLag    1
+ CFL2                Clear FLag    2
+ CFL3                Clear FLag    3
+
+
+
+
+ FPS 860-7 428-001                     3   23
+CONTROL
+
+Purpose:    miscellaneous control functions
+
+
+ Op-code           Functions
+ HALT              HALT processor
+ IORST             I/O ReSeT
+ INTEN             INTerrupt ENable
+ INTA              INTerrupt Acknowledge
+ REFR              memory REFResh synch
+ WR.TEX            enable WR.iTe of EXponent only into DPX, DPY, or MI
+ WRTMN             enable WRiTe of MaNtissa only into DPX, DPY, or MI
+ SPMDAV            SPin until a Main Data memory cycle AVailable
+ IOINTA            I/O INTerrupt Acknowledge
+
+
+Miscellaneous
+
+
+Purpose:    miscellaneous control functions
+
+
+ op-codes          Functions
+ REXIT             Read subroutine EXIT into panel bus
+
+
+
+
+3.3.2.14 Table Memory
+Table 3-2 lists the constants available in table memory. This section
+also includes the table memory functions. The constants and functions
+are externals, and their use must conform to the same rules as other
+externals.
+
+
+
+
+FPS 860-7428-001                 3     24
+                      Table 3-2   Table Memory Constants
+
+
+
+                CONSTANT            VALUE IN        2K TABLE MEMORY
+     SYMBOL    REPRESENTED        TABLE MEMORY    ROM ADDRESS (OCTAL)
+     !ZERO     ZERO               o.o                      4371
+     !ONE      ONE                l.O                      4001
+     !TWO      TWO                2.0                      4002
+     !THREE    THREE              3.0                      4441
+     !FOUR     FOUR               4.0                      4442
+
+     !FIVE     FIVE               5.0                      4443
+
+     !SIX      SIX                6.0                      4444
+     !SEVEN    SEVEN              7.0                      4445
+     !EIGHT    EIGHT              8.0                      4446
+     !NINE     NINE               9.0                      4447
+     !TEN      TEN                10.0                     4450
+
+     !SIXTN    SIXTEEN            16.0                     4451
+
+     !HALF     HALF               o.5                      4427
+     !THIRD    ONE THIRD          0.333333333              4430
+
+     !FOURTH   ONE FOURTH         0.25                     4431
+
+     !FIFTH    ONE FIFTH          0.2                      4432
+     !SIXTH    ONE SIXTH          0.166666667              4433
+
+     !SVNTH    ONE SEVENTH        o.14285 7143             4434
+
+     !EGHTH    ONE EIGHTH         0.125                    4435
+
+     1NINTR    ONE NINTH          0.111111111              4436
+
+     !TENTH    ONE TENTH          o.i                      4437
+
+     !SXNTH    ONE SIXTEENTH      0.0625                   4440
+
+     !SQRT2    SQRT(2)            1.414213562              4203
+
+
+
+FPS 860-7428-001                   3     -   25
+              Table 3-2      Table Memory Constants (cont.)
+
+
+
+               CONSTANT            VALUE IN        2K TABLE MEMORY
+    SYMBOL    REPRESENTED        TABLE MEMORY    ROM ADDRESS (OCTAL)
+     !SQRT3    SQB.T(3)          1. 732050808.          4422
+
+     !SQRTS    SQRT(5)           2-236067977            4423
+
+     !SQTlO    SQRT (10)         3.162277660            4424
+
+     !!SQT2    l.O/SQRT(2)       o. 707106781           4206
+
+     !ISQT3    l.O/SQRT(3)       0. 5773502 69          4452
+
+     !!SQTS    1.0/SQRT(S)       o. 44 7213596          4453
+
+     !ISQlO    1. O/SQRT (10)    0.31622 7766           4454
+
+     !CBT2    CBR'! (2)          1. 259921050           4417
+
+     !CBT3    CBRT(3)            1. 4422495 70          4420
+
+     !QDRT2    (2.0)**1/4        1.189207115            4421
+
+     !LOG2E   LOG2 (E)           le 442695041           4317
+
+     !LOG2    L0Gl0(2)           0.301029996            4411
+
+     !LOGE    LOGlO(#)           Q.434294432            4337
+
+     !LN2     LN(2)              o. 69314 7181          4336
+
+     !LN3     LN (3)             1.098612289            4407
+
+     !LNlO    LN(lO)             2.302585093            4410
+
+     !E        E                 2. 718281828           4403
+
+     !INVE     t.O/E             o. 36 7879441          4404
+
+     !ESQ      E**2              7.389056096            4405
+
+     !PI       PI                3.141592654            4402
+
+     !TWOPI    2*PI              6.283185308            4415
+
+     !!NVP!    1.0/PI            o.318309886            4412
+
+     1Pl2      Pl/2              1.570796327            4312
+
+
+
+FPS 860-7428-001                  3   -   26
+                 Table 3-2     Table Memory Constants (cont.)
+
+
+
+                  CONSTANT           VALUE IN            2K TABLE MEMORY
+    S!MBOL       REPRESENTED       TABLE MEMORY        ROM .ADDRESS (OCTAL)
+
+        lP 14    PI/4              o. 785398164               4373
+
+        !PII80   PI/180            o.017453293                4413
+
+        !PISQ    PI**2             9.869604404                4414
+
+        !SQTPI   SQRT(PI)          1-772453851                4416
+
+        !LNPI    LN (PI)           1.144729886                4406
+
+        !GAMMA   GAMMA             o.577215663                4425
+
+        !PHI     PHI               1. 618033989               4426
+
+
+
+Elementary Function Tables
+
+
+                 Elementary       Table Memory
+ Symbol          Function         Address (Octal)
+
+ !DIV            DIVIDE              4000
+ !DIVD2          HALF ADDRESS        2000
+ !SQRT           SQUARE ROOT         4202
+ !SNCS           SIN/COS/            4306
+ !LOG            LOGARITHM           4333
+ !EXP            EXPONENTIAL         4317
+ !ATAN           ARC TANGENT         4365
+
+
+
+FFT Cosine Table Constants
+
+ Symbol          Description                        Value
+
+ !FFTSZ          Size of installed           2048 • 4000 (octal)
+                 FFT cosine table
+
+ !FFTX2          Size times 2                4096 • 10000 (octal)
+ !FFTX4          Size times 4                8192 • 20000 (octal)
+ !FFTX8          Size times 8                16384 = 40000 (octal)
+
+
+
+
+FPS 860- 7428-001                    3   -     27
+3.3.3 COMMENT FIELD
+
+The remainder of any line following a quote mark {") is treated as a
+comment by the assembler and is ignored. The comment field is
+terminated by a carriage return. Tilus, an instruction can be written
+as follows:
+
+
+        LOOP:    FADD DPS, DPY;            "DO AN ADD
+                 FMUL TM, MD;              "AND A MULTIPLY
+                 BFGT DONE                 "AND A BRANCH
+                                           "ALL IN ONE INSTRUCTION
+
+
+
+
+3.4 PSEUDO-OPERATION STATEMENTS
+
+Pseudo-operations are directives to the assembler which control certain
+aspects of the assembly translation process. Each pseudo-op must
+appear on a separate line in the source text. All pseudo-op names
+start with a dollar sign ($). As With instruction statements,
+pseudo-op statements can be labeled and have comments.
+
+
+
+
+3.4.1 $TASK
+
+This pseudo-op identifies the routine that follows as an FPS-100
+supervisor task. Tasks require special treatment by the LODlOO loader.
+$TASK puses parameters for the task communication block (TCB) to
+LODlOO through the object module. If specified, this pseudo-op must
+appear as the first statement in a program. The format of this
+statement is as follows:
+
+
+         $TASK        idn   {/M}   {priority} {/I} {/S}
+
+
+                idn                 A 1- to 3-digit task identification
+                                      number which LOD!OO later uses to create
+                                      TCB identifier. The TCB identifier later
+                                      created is a common block with name
+                                      TCBidn. So, for example, if a task is
+                                      designated with a:n identification number
+                                      of 5, the user can locate its TCB address
+                                      by referencing the co111mon block TCBOOS.
+
+
+
+
+FPS 860-7428-001                       3      28
+             /M             If specified, this task uses minim.al
+                            machine resources (only those saved in
+                            the minimum state save). If not
+                            specified, this task uses full machine
+                            resources. This parameter is normally
+                            used for system tasks, such as I/O
+                            controller tasks. This option can be
+                            used if the following registers are not
+                            needed:
+                                     s-pad registers 8-15
+                                     DPY write buff er
+                                     all DPX and DPY registers except
+                                         DPX(O)-DPX(3)
+                                     DPA
+                                     floating adder
+                                     floating multiplier
+                                     flags
+
+             priority       Initial run priority and default priority
+                            of the task. Values between 1 and 255
+                            can be specified, with 255 the highest
+                            priority. If this parameter is not
+                            present, a value of 100 is assumed.
+
+             /I             For the purpose of initializing the
+                            supervisor ready queue, this inidicates
+                            that the previously specified or default
+                            priority should be ignored and this task
+                            placed at the front of the ready queue.
+                            This optional parameter should normally
+                            be used only for I/O controller tasks,
+                            since it actually results in performing
+                            part of the system bootstrapping function
+                            (it causes the I/O controller tasks to be
+                            waiting for action before any user tasks
+                            start).
+
+              /S            If specified, the priority of the task is
+                            slaved. Thus, when the task is activated,
+                            it acquires the priority of the activating
+                            task.
+
+
+The priority, /I, and /S parameters can also be specified at load time
+with LODlOO co1l1Dlands. The LODlOO commands override the parameters
+entered with $TASK.
+
+
+
+
+FPS 860-7428-001               3     29
+This pseudo-op identifies the routine that follows as an interrupt
+service routine. If specified, this pseudo-op must appear before the
+$TITLE pseudo-op. The format of this statement is as follows:
+
+
+
+            $ISR      index
+
+
+                   index            Device number of the I/O device which
+                                    this routine services. This number must
+                                    be the same as the device's bit number in
+                                    the IMASK register. Possible values are
+                                    l through 15.
+
+
+
+
+3.4.3 $TITLE
+
+This pseudo-op names a program. The name need not be unique among the
+other symbols in the program. The $TITLE pseudo-op must occur as the
+first or second statement in a program. The format of this statement
+is as follows:
+
+
+            $TITLE name
+
+                   name             Name of the program.
+
+
+
+Examplesl
+
+
+                   $TITLE FFT
+                   $TITLE DI vtDE
+
+
+
+
+FPS 860-7428-001                      3     30
+3.4.4 $ENTRY
+This pseudo-op declares a symbol to be global; that is, a symbol which
+is defined in this program and may be referenced by other separately
+assembled programs. The identified symbol must be defined in the
+program either by the $EQU pseudo-op or by its use as a label. $ENTRY
+pseudo-ops must occur before any instruction statements in the program.
+
+If an entry point defined with the $ENTRY pseudo-op is declared
+host-callable with the LODlOO loader, a host FORTRAN UDC HAS!
+(Host-Arithmetic processor Software Interface) subroutine is created
+for it. The term UDC stands for user directed calls. When a UDC HAS!
+is created, the calling parameters are integer values or FPS-100 memory
+addresses that are loaded into s-pads just prior to the execution of
+the FPS-100 routine. Data transfer/FPS-100 execution synchronization
+and main data memory allocation are controlled by the user with calls
+to APXlOO routines such as APPUT, APGET, APWD, and APWR. LODlOO
+generates a HASI that loads and executes the FPS-100 code. A sample
+UDC subroutine is shown in section 3.9.1. For a complete description
+of HASis, refer to the LODlOO Reference Manual.
+The format of this statement is as follows:
+
+
+            $ENTRY      symbol{,parnum}
+
+
+                 symbol            A l-to-6 character symbol which can be
+                                   referenced by other separately assembled
+                                   programs. This symbol must be defined
+                                   with the $EQU pseudo-op or by its use as
+                                   a label. When referenced externally,
+                                   execution begins at the location
+                                   specified by the value of symbol.
+
+
+                 pa mum            If the routine is host-callable, this
+                                   parameter must be present, specifying the
+                                   number of s-pad parameters expected in the
+                                   call. This may be a number from
+                                   0-158.
+
+
+Examples:
+
+
+            $EN!ltY A              "Not host-callable
+            $ENTRY B,6             "Expect 6 s-pad parameters
+            $EN!RY C,O             "Expect 0 s-pad parameters
+
+
+
+
+FPS 860-7428-001                     3     31
+3.4.5 $SUBR
+
+This pseudo-op declares a symbol to be an entry point. It is
+equivalent to the $ENTRY pseudo-op except that if a $SUBR entry point
+is declared host-callable with LODlOO, a host FORTRAN ADC HA.SI
+(host-arithmetic processor software interface) subroutine is created.
+The term ADC stands for auto-directed calls. When an ADC HAS! is
+created, the calling parameters to a routine have a meaning identical
+to those in a call to a FORTRAN subroutine (referred to as "call by
+reference"). LODlOO generates a HAS! that, in addition to loading and
+executing the FPS-100 code, handles all data transfers and the main
+data memory allocation. A sample ADC subroutine is shown in section
+3.9.z. For a complete description of HA.S!s, refer to the LODlOO
+Reference Manual.
+The format of this statement is as follows:
+
+
+            $SUBR     symbol{,parnum}
+
+
+                symbol            Symbol which can be referenced by other
+                                  separately assembled programs. This
+                                  symbol must be defined with the $EQU
+                                  pseudo-op or by its use as a label. When
+                                  referenced externally, execution begins
+                                  at the location specified by the value of
+                                  symbol.
+
+
+                    paruum        Number of formal parameters in the
+                                  routine. The local data block for this
+                                  routine (.LOCAL) should contain at least
+                                  parnum locations for parameter addresses.
+                                  (Refer to section 3.6 for further
+                                  discussion of .LOCAL.) If no local data
+                                  block is declared, LODlOO creates one of
+                                  size paruum when an. FTNlOO call to
+                                  this entry point occurs or when the entry
+                                  point is declared host-callable. If this
+                                  parameter is not present, a value of O
+                                  is assumed.
+
+
+
+Examples:
+
+
+            $SUBR A
+            $SUBR BBB,6           "Expect 6 parameters
+            $SUBR K,O             "Expect 0 parameters
+
+
+
+
+FPS 860-7428-001                    3     32
+3. 4. 6 $GLOBAL
+This pseudo-op declares symbols to be absolute entry points. These
+entry points are similar to those declared with the $ENTRY and $SUBR
+pseudo-ops. However, $GLOBAL is used when absolute values are required
+or when external references are made by ASMlOO instructions that
+require absolute references. At load time, no relocation is performed.
+
+The format of this statement is as follows:
+
+
+          $GLOBAL
+
+                               Symbol which can be referenced by other
+                               separately assembled prograins. This
+                               symbol, when defined with the $EQU
+                               pseudo-op, declares an absolute address.
+
+
+
+
+3.4.7 $INTEGER
+This pseudo-op declares variables that later appear in $COMMON or
+$PAR.AM statements to be of type integer. This pseudo-op must appear in
+the program before any $COMMON or $PAR.AM statements.
+
+The format of this statement is as follows:
+
+
+            $INTEGER
+
+
+                  symbol 1     Name of a variable which later appears
+                               in a $COMMON or $PABAM statement.
+
+
+
+
+Examples:
+
+            $INTEGER A
+            $INTEGER ARE,BEE,ZEDll
+
+
+
+
+ FPS 860-742 8-00 l                  3   33
+3. 4. 8 $REAL
+
+'nlis pseudo-op declares variables that later appear in $COMMON or
+$PA.RAM statements to be of type real. This pseudo-op must appear in
+the program before any $COMMON or $PARAM statements.
+
+The format of this statement is as follows:
+
+
+            $REAL
+
+
+                  symbol 1      Name of a variable which later appears
+                                in a $COMMON or $PABAM statement.
+
+
+
+
+Examples:
+
+
+            $REAL IVEC, BLT,J, IPQR
+            $REAL JNUM
+
+
+
+
+3. 4. 9 $TRIPLE
+
+This pseudo-op declares variables that later appear in $COMMON
+statements to be of type double precision integer (38-bit integers).
+This pseudo-op must appear in the program before any $COMMON statement.
+The format of this statement is as follows:
+
+
+
+
+                    symbol      Name of a variable which later appears in
+                                a $COMMON statement.
+
+
+
+A double precision integer specified with $TRIPLE can only occur in
+common data blocks other than the .LOCAL block. It is not possible for
+a subroutine to have double precision arguments. The only other place
+that a double precision value can be referenced is in the $DATA
+statement.
+
+
+
+
+FPS 860-7428-001                      3   34
+3. 4. 10 $COMIO
+
+For host•callable routines, this pseudo-op declares the direction of
+transfer of subsequent common blocks. Data in some common blocks need
+only be transferred from host to FPS-100. Other common blocks may
+require data transfers only from FPS-100 to host. Still others need
+both· This pseudo-op declares the type of transfer for a common block.
+$COMIO allows the HAS! subroutines to be smaller and more efficient.
+(host-arithmetic processor software Interface routines are host FORTRAN
+routines created by LODlOO for each host-callable routine.)
+
+If the $COMIC pseudo-op is present, it must appear in the program
+before the associated $COMMON. If it is omitted, common blocks are
+transferred in both directions.
+
+The format of this statement is as follows:
+
+
+          $COM IO                                         opt
+                                                                n
+
+
+                             Name of common block.
+
+
+
+
+FPS 860-7428-001               3     35
+                                    Specifies the type of transfer.
+                                    The following are acceptable
+                                    values:
+
+
+
+                                    ~           description
+                                      0         Data in this common block
+                                                should not be transferred.
+
+                                      1         Data in this common block
+                                                should be transferred only
+                                                from FPS-100 to host.
+
+                                      2         Data in this common block
+                                                should be transferred only
+                                                from the host to the
+                                                FPS-100.
+
+                                      3         Data should be transferred
+                                                from the host to the
+                                                FPS-100 and back.
+
+
+                                    NOTE
+
+            If  two host-callable routines reference the same
+            common block, their $COMIO specifications for it
+            should be the same.
+
+
+Examples:
+
+
+            $COMIO AI.D 3
+            $COMIO BC 1
+
+
+
+
+FPS 860-7428-001                3          36
+3.4.11 $PARAM
+
+This pseudo-op is used to describe the formal parameters of a
+subroutine that is to be host-callable and for which LODlOO is to
+create an ADC HASI (the entry point is declared with the $SUBR
+pseudo-op). LODlOO creates a loader parameter block, block number 10,
+whose values correspond directly to the parameters of this statement.
+Refer to the LODlOO Reference Manual for a description of the loader
+blocks. This statement must appear before any executable code.
+
+The format of this statement is as follows:
+
+
+         $PARAM   no, symbol 1 {(ind 1 , ••• ,ind )}{/type}{/op}, ••• ,
+         symbol {(ind 1 , ••• ,ind )}{/type}{/op~
+                n                 n
+
+                no             Number of parameters to be described.
+
+
+                               The name of a parameter. Later
+                               reference to this ith parameter symbol
+                               refers to the ith position in this
+                               routine's local data block. If a
+                               .LOCAL common block is declared, the
+                               first elements declared in that common
+                               block must correspond with the elements
+                               declared with the $PAR.AM pseudo-op.
+                               The values of the elements in the .LOCAL
+                               common block are addresses of the formal
+                               parameters. Refer to section 3.6 for
+                               further discussion of .LOCAL·
+
+
+                               Each indi.. describes a dimension of an
+                               array. This parameter can be an integer
+                               or an integer expression. If expression
+                               indi is preceded by a number sign
+                               (#), this dimension is to be dynamically
+                               defined at run time by the value of the
+                               ind 1th parameter.
+
+
+
+
+FPS 860-7428-001                  3      37
+                 type               Parameter type.      Acceptable values are:
+
+
+                                                      description
+
+                                         I            integer
+                                         R            real
+
+
+
+                                    Unless the symbol has appeared in a $REAL
+                                    or $INTEGER pseudo-op, the default type
+                                    for this parameter is integer.
+
+
+
+                op                  I/O option.      The following can be
+                                    specified: ·
+
+
+                                         £!?.         description
+
+                                         IP          The parameter is an input
+                                                     argument and must be passed
+                                                     only into the FPS-100 during
+                                                     host call.
+
+                                         OP          The parameter is an output
+                                                     argument and must only be
+                                                     passed back from the
+                                                     FPS-100.
+
+
+                                   If both are specified, the parameter is
+                                   defined as both. If neither is specified,
+                                   no data is transferred but space is
+                                   allocated in main data memory for the
+                                   parameter.
+
+
+
+Example:
+
+
+           $PAR.AM      2,   A(l0,#2)/R, INDEX/I/IP
+
+
+In this example, two parameters are defined. The first is a
+two-dimensional real array whose first dimension is 10 and whose second
+is defined at run time by the second parameter (INDEX). Its I/O option
+is defaulted to both IP and OP. The second parameter is INDEX. It is
+an integer scalar whose I/O option has been defined to IP for input                 "-._/
+only.
+
+
+FPS 860-7428-001                                38
+3.4.12 $COMMON
+
+This pseudo-op is used to declare a main data memory data area (common
+or local data block). This pseudo-op must occur before any executable
+code. The format of this statement is as follows:
+
+
+           $COMMON /name/ symbol 1{(ind 1 , ••• ,indn)}{/type}, ••• ,symbol
+           ind 0 ) }{/type}
+
+
+                 name            Name of the common block (.LOCAL for a
+                                 local data block). If .BLANK, absent,
+                                 or //, blank common is assumed.
+
+
+                 symbol.l.       Name of an element in the data block
+                                 (either array or scalar). Later
+                                 occurrences of this symbol reference its
+                                 base address in the data block.
+
+
+                                 Dimension of an array.
+
+
+                 type            Type of the variable.     Acceptable values
+                                 are as follows:
+
+
+                                                 description
+
+                                        I        integer
+                                        R        real
+                                        T        triple (double precision
+                                                         integer)
+
+
+                                 If omitted, the default is the type
+                                 specified earlier in the $IN'tEGER,
+                                 $TRIPLE, or $REAL pseudo-ops • Otherwise,
+                                 the default is a 16-bit integer.
+
+
+
+Example:
+
+
+           $COMMON /COMA/ I, J, A(lO)/R, K, Kl/T
+
+
+
+
+FPS 860-7428-001                    3       39
+3. 4.13 $DATA
+This pseudo-op is used to initialize values in a data area declared
+with the $COMMON pseudo-op. It should occur in the program before any
+executable code but after the common blocks to be initialized. The
+form.at of the statement is as follows (brackets indicate that one and
+only one line must be chosen):
+
+
+
+    $DATA
+
+
+
+
+                                               value
+                                        [ exp ,himann,lomann
+                                                              J
+                                             n relsyfd {+rva.L }
+                                                     n -     n
+
+
+
+                             Name of an element that must be previously
+                             defined in a $COMMON pseudo-op.
+
+
+
+                             Indicates that element indi-l after the
+                             address of symbol is initialized. Both
+                             positive and negative values can be
+                             specified for ind.. Note that only one
+                             dimension of subseripting is allowed.
+
+
+
+                repcnti      Repetition count• This specifies the
+                             number of words starting at symbolt(indi)
+                             that are to be given the value thaf'
+                             follows• The repetition count m.ust be an
+                             integer and not an integer expression.
+
+
+
+                valuei        Initial value for symboli (indi.). This
+                              value must conform to the type described
+                              previously• It must be a single real
+                              value or an expression consisting only of
+                              integers and/or local symbols {labels or
+                              symbols appearing on the left side of $EQU
+                              pseudo-ops; refer to section 3.4.14).
+
+
+
+
+ FPS 860-7428-001               3     40
+             exp-t, himani,   Three values which initialize a double
+             loman.           precision integer previously declared with
+                   l.
+                              a $TRIPLE pseudo-op. The exp. specifies
+                              the exponent portion (10 bit~), himan.
+                              specifies the high mantissa portion (t2
+                              bits), and loman 1 specifies the low
+                              mantissa portion (16 bits) of the 38-bit
+                              word. Each one of these parameters can be
+                              a value (refer to description of value.)
+                              or a relocatable symbol {refer to .    l.
+                              description of relsymi).
+
+
+
+                                                   NOTE
+                                    Due    to  restrictions    in   the
+                                    host-FPS-100 hardware interface, at
+                                    this time   it   is    possible  to
+                                    transfer   only    32    bits    of
+                                    information. Therefore, only four
+                                    bits    of  exponent    should   be
+                                    specified in expi;    the remainder
+                                    is lost.
+
+
+
+                              Name of a relocatable symbol; that is, a
+                              symbol whose actual value cannot be
+                              determined until load time. Relocatable
+                              symbols include any symbols that are not
+                              local symbols and include external
+                              symbols (declared with the $EXT pseudo-
+                              ops) and symbol names for variables in
+                              common (declared with $COMMON pseudo-ops).
+                              However, only variables in common that are
+                              integers can be initialized to values
+                              dependent on relocatable symbols.
+
+
+
+
+FPS 860-7428-001                3       41
+Examples:
+
+
+            $DATA I I, L(4)/10 2, K 3, A(2) 99.99, PI 3.1415
+
+
+In this example, I is set to I, L(4) and nine locations following L(4)
+are set to 2, K is set to 3, A(2) is set ~o 99. 99, and PI is set to
+3.1415.
+
+
+            $EXT      EXTLA.B , LAB 1
+            $DATA     G EXTLA.B, H LAB 1-3
+
+
+
+In this example, the variables G and H are initialized to the addresses
+of external variables EXTLAB and LAB!.
+
+
+            $EXT      LAB2
+            $DA.l'A   TR.IPA   3,5,17,    TRIPB     17, 4095, LAB 2+5
+
+
+
+In this example, two double precision integers are initialized. For
+TRIPB, the second double precision integer, the low mantissa portion is
+initialized to the address plus 6 of the external LAB2.
+
+
+
+
+FPS 860-7428-001                         3 -   42
+3. 4. 14 $EXT
+
+This pseudo-op declares global symbols which are referenced by this
+program but are defined by another separately assembled program. $EXT
+pseudo-ops must occur in the program before any instruction statements.
+The format of the statement is as follows:
+
+
+
+
+                symboli        Symbol referenced in the program, but
+                               defined elsewhere.
+
+
+
+Examples:
+
+
+            $EXT FLOAT, SCALE, FFT
+            $EXT DIVIDE
+
+
+
+
+3.4.15 $VAL
+
+This pseudo-op defines 64 bits of data to fill one program source word.
+The format of this statement is as follows:
+
+
+
+
+                                One of four 16-bit integers or integer
+                                expressions which represent the four
+                                16-bit quarters of a program source
+                                word. This parameter may contain an
+                                external reference.
+
+
+
+Examples:
+
+
+            $VAL -377, 104763, 10, LOOP + 6
+            $VAL 0, 0, 2000, 33
+
+
+
+
+FPS 860-7428-001                     3   43
+This pseudo-op fills the right-most 38 bits of a program source word
+with a specified floating-point number. The left-most 26 bits of the
+word are cleared. The format of this statement is as follows:
+
+
+            $FP    value
+
+
+                  value           Floating-point number.
+
+
+
+Examples:
+
+
+                $FP 6.0023E23
+                $FP 2
+                $FP E-17
+            PI: $FP J.141592653     "PI
+
+
+
+A floating-poi.nt number (for example, a constant for an algorithm) can
+be read out of program source memory and onto the data pad bus using
+the RPSF op-code. As an example, the following loads the contents of
+location PI onto data pad X:
+
+
+            RPSF PI ; DPX<DB   "GET PI INTO DPX
+
+
+
+
+FPS 860•7428-001                    3     44
+3. 4. 17 $EQU
+
+This pseudo-op equates a symbol with an expression. If user-defined
+symbols are used in the expression, they must be previously defined in
+the program. The format of this statement is as follows:
+
+
+            symbol       $EQU     exp res
+
+
+                   symbol             Symbol to which a value is assigned.
+
+
+                   exp res            Expression which is assigned to symbol.
+
+
+
+Alternatively, the equals sign (•) can be used in place of $EQU.
+
+If the expression assigned to the symbol contains an external, the
+symbol acquires the attributes of an external and must be treated as an
+external. For example, if the symbol is used in another expression,
+that expression cannot contain other externals.
+
+
+
+Examples:
+
+
+            A           $EQU    321
+            LOOP        $EQU    LOC + 3
+            HERE        $EQU    • - 3
+            MASK        $EQU    132*3+6
+            A • 6
+            X   = A*3
+
+
+
+
+FPS 860-7 428-001                           3   45
+                                                                                \~
+
+
+
+
+This pseudo-op sets the current location counter to the value of an
+expression. If symbols are used in the expression, they must be
+previously defined in the program. Th.is pseudo-op must not be used to
+set the location counter backwards. The format of this statement is as
+follows:
+
+
+            $LOC expres
+
+                   exp res          Integer expression whose value determines
+                                    the setting of the location counter.
+
+
+
+Examples:
+
+
+            $LOC    300
+            $LOC    • + 6    "LEA VE NEXT SIX UNUSED
+            $LOC    LOOP +10
+
+
+
+
+                                          NOTE
+
+            $LOC should not be set to an absolute address as in
+            the first example 1£ the output is to be linked
+            relocatably with other programs.
+
+
+
+
+FPS 860•7428·001                      3          46
+3. 4.19 $RADIX
+
+This pseudo-op changes the default number radix to the value of the
+expression. The format of this statement is as follows:
+
+
+             $RADIX expres
+
+
+                 exp res     Expression which determines the default
+                             number radix. This expression is entered
+                             and evaluated in base 10. The value of
+                             the expression must be either 8, 10, or
+                             16.
+
+
+
+Exs.mples:
+
+
+             $RADIX 10
+             $RADIX 8
+
+
+
+
+3. 4. 20 $CALL
+
+$CALL can be used to call FTNlOO subroutines or ASMlOO subroutines that
+conform to certain $SUBR and $PARAM conventions. These conventions are
+described in section 3.6. The format of this statement is as follows:
+
+
+
+
+                 subnam      Name of an FTNlOO or ASMlOO subroutine.
+                             It must be declared external.
+
+
+                             Arguments to be passed to the called
+                             subroutine, if any. Each arg. can be
+                             an expression {which is eval~ted at
+                             assembly time). The value of arg
+                             represents the address in main da!a
+                             memory of the actual argument and not
+                             the argument itself.
+
+
+
+
+FPS 860-7428-001               3     47
+The user and the $CALL pseudo-op reference the address of the called
+subroutine's local data block by means of the following:
+
+
+         DB=llsubroutine-name
+
+
+
+The term #subroutine-name is interpreted by the assembler to mean the
+address of the called subroutine's local data block (.LOCAL). The
+$CALL places the addresses of the actual parameters into the called
+routine's local data block, sets s-pads 0 and 1 to the correct values,
+and jumps to the routine.
+
+
+
+
+                                CAUTION
+
+          Extreme caution is     advised   when    using   this
+          pseudo-op since the addresses of the argU11tents in
+          the $CALL are calculated at assembly time, not at
+          run time.     This presents problems .if the argument
+          addresses cannot be known until run time. This is
+          the case if the arguments of the $CALL include the
+          subroutine's own formal parameters. In such cases,
+          the user must calculate the       address    of   the
+          argument, place the value of the address in a data
+          pad register (except for DPX(3)), and use the data
+          pad as an argument of the call. For exa1J1Ple,
+          suppose a routine wishes to pass its own parameter
+          (PAR.AM) to subroutine SUB. The user calculates the
+          address of the argument and places the result in
+          DPX(l). The subroutine could be called with the
+          following:
+
+
+                        LDMA; DB•PARAM
+                        NOP
+                        NOP
+                        DPX{l)<MD
+                        $CALL SUB (DPX(l))
+
+
+
+
+FPS 860-7428-001                3     48
+Example:
+
+
+           $COMMON / .WCAL/ A/R, I (20), FIVE
+           $DATA FIVE S
+           $CALL SUB (A, I+l4, FIVE)
+
+
+
+
+                                      NOTE
+           The $CALL expands into actual ASMlOO code that is
+           then assembled. This code also appears on the
+           listing.   The number of program source words used
+           is (2 X (number of arguments) + 4) unless no
+           arguments are specified, in which case only two
+           program source locations are used.   The following
+           is the expansion of the previous example ($CALL SUB
+            (A,I+l4,FIVE)):
+
+
+                          LDMA; DB=/! SUB-1
+                          DPX(3)<DB; DB=A
+                          INCMA; MI<DPX(3)
+                          DPX(3)<DB; DB=I+l4
+                          INCMA; MI<DPX(3)
+                          DPX(3)<DB; DB=FIVE
+                          INCMA; MI<DPX(3)
+                          LDSPI O; DB=/! SUB
+                          LDSPI l; DB=3
+                          JSR SUB
+
+
+
+
+FPS 860-7428-001                  3          49
+3.4.21 $INSERT
+
+This pseudo•op causes source code to be read from the designated file.
+The line number is reset. When end-of-file is encountered, source is
+again read from the file originally specified in the ASMlOO call. The
+line count is set to its original value when the end of the $INSERT
+file is reached. Also, when the $INSERT file is reached during Pass l
+of assembly, the line containing the $INSERT is written to the
+terminal. When its end is reached, the message "END $INSERT" is
+written to the listing. (This happens during Pass 2, also.)
+
+The format of this statement is as follows:
+
+
+           $INSERT filename
+
+                 filename     Name of file containing source code to
+                              be inserted in the source stream.
+
+
+
+Example:
+
+
+           $INSERT   F!LEA
+
+
+
+
+FPS 860-7428-001                3   -   50
+3.4.22 $IF ••• $ENDIF
+
+These pseudo-ops allow conditional assembly. If the expression which
+follows $IF evaluates to zero, any subsequent source lines up to $ENDIF
+are not assembled. However, they do appear on the listing.
+
+The format of the $IF statement is as follows:
+
+
+           $IF expression
+
+
+                expression    If the expression evaluates to zero,
+                              the subsequent source lines up to $ENDIF
+                              are ignored. If expression is unequal
+                              to zero, the source lines are assembled.
+
+
+
+The format of the $ENDIF statement is as follows:
+
+
+           $END IF
+
+
+
+                                    NOTE
+
+            $IF pseudo-ops can be nested. That is, $IF/$ENDIF
+            combinations can appear between other $IF/$ENDIF
+            combinations.
+
+
+Example:
+
+
+           $IF PROG
+           PROG $EQU 0
+           $ENDIF
+
+
+
+
+FPS 860-7428-001                3          51
+3.4.23 $LIB ••• $ENDLIB
+
+These pseudo-<>ps cause loader library start blocks and library end
+blocks to be written to the object file. 100100 treats an object
+module preceded by a library block as a library and loads only those
+routines that satisfy unsatisfied externals.
+
+The format of the $LIB statement is as follows:
+
+
+          $LIB
+
+
+The format of the $ENDLIB statement is as follows:
+
+
+          $ENDLIB
+
+
+
+
+3.4.24 $PAGE
+This pseudo-op begins a new page on the listing.     The form.at of this
+statement is as follows:
+
+
+          $PAGE
+
+
+
+
+3. 4. 25 $BOX.•. $ENDBOX
+
+'lb.ese pseudo-ops designate that all source lines found between them are
+considered comments and are surrounded by a box of asteriskS when the
+listing is produced. They can be used to improve the readability of
+the listing.
+
+The format of the $BOX statement is as follows:
+
+
+          $BOX
+
+
+The format of the $ENDBOX statement is as follows:
+
+
+          $ENDBOX
+
+FPS 860-7428-001                3     52
+3. 4. 26 $NOLI ST
+This pseudo-op specifies that no source code appears on the listing
+after this statement. A $LIST pseudo-op terminates this condition. If
+no listing was specified in the call to ASMlOO, this pseudo-op has no
+effect.
+
+The format of this statement is as follows:
+
+
+           $NOLI ST
+
+
+
+
+3.4.27 $LIST
+This pseudo-op specifies that source code after this statement appears
+on the listing. A $NOLIST pseudo-op terminates this condition. If no
+listing was specified in the call to ASMlOO, this pseudo-op has no
+effect.
+                      ·-;
+
+
+The format of this statement is as follows:
+
+
+           $LIST
+
+
+
+
+3.4. 28 $END
+This pseudo-op causes ASMlOO to terminate the assembly.   The format of
+this statement is as follows:
+
+
+           $END
+
+
+
+
+FPS 860-7428-001                3     53
+3. 4. 29 DUMMY FMUL AND FADD PUSHERS
+
+When programming pipelines as described in Part l of the Programmer's
+Reference Manual, it is convenient for readability to include in the
+code all the FMULs and FADDs that are used as pushers in any of the
+columns of the handwritten pipelines. These are coded without
+parentheses. Any PMUL or FADD without arguments does not conflict with
+other arithmetic arguments of like type and is completely ignored
+unless it is the only op-code of its type.
+
+
+Example:
+
+
+           FADD DPXl, DPYl; FMUL FM,FA; FADD
+
+
+
+In this exampie, the last FADD is ignored.
+
+
+
+                                     NOTE
+           Any liMUL op-code used as a pusher in an instruction
+           word without other :EMULs actually results in the
+           op-code ~ TM,MD. '!hough unlikely, this op-code
+           could cause an underflow or overflow condition when
+           the    meaningless result is pushed through the
+           multiplier pipeline (the result is pushed through
+           the pipeline when the instruction occurs in a
+           loop).   Unexplained     underflow   or    overflow
+           conditions discovered during program debugging may
+           be the result of :EMUL pushers.
+
+
+
+
+3. 4. 30 EXI'ERNAL VARIABLES
+
+The assembler assures that any variable beginning with an exclamation
+point ( ! ) is an external variable and is defined outside the
+referenciug program. Thus, any external variables used which start
+with ! need not be declared external with the $EXT pseudo-op.
+
+
+
+
+FPS 860-7428-001                 3     -    54
+3. 5 ORDER OF PROGRAM STATEMENTS
+
+There is a definite ordering of statement types within a program which
+must be followed. The $TASK or $ISR pseudo-op, if used, must appear
+first. The $TITLE pseudo-op must appear next, followed by any $ENTRY,
+$SUBR, or $GLOBAL pseudo-ops. $END must be the last statement. The
+remainder of the pseudo-ops (if present) and the program body appear in
+the following order:
+
+
+           $TASK or $!SR     pseudo-op
+           $TITLE            pseudo-op
+           $ENTRY or $SUBR   pseudo-op(s)
+           $GLOBAL           pseudo-op (s)
+           $EX!              pseudo-op(s)
+           $INTEGER          psuedo-op(s)
+           $REAL             pseudo-op(s)
+           $TRIPLE           pseudo-op(s)
+           $PAR.AM           pseudo-op
+           $COMIO            pseudo-op(s)
+           $COMMON           pseudo-op(s)
+           $DATA             peudo-op(s)
+           "program, etc."
+
+
+
+           $END
+
+
+
+
+FPS 860-7 4 2 8-00 l               3 -   55
+3. 6 CREATING FTNlOO CALLABLE ASMlOO SUBROUTINES
+
+In order to create ASMlOO subroutines that can be called from FTNlOO
+program units, the following conventions must be followed:
+
+
+         •   The $COMMON pseudo-op should be used to declare a local
+             common block called .LOCAL. This common block must
+             contain at least as many locations as the number of
+             formal parameters in the routine. Any routine which calls
+             this routine places the addresses of the formal parameters
+             in this common block. Also, s-pad register 0 is set to
+             the address of the .LOCAL block, and s-pad register 1 is
+             set to the number of parameters passed. If the subroutine
+             has no formal parameters, it is not necessary to declare a
+             .LOCAL block.
+
+
+
+                                            NOTE
+
+                       If the .LOCAL block is not declared by
+                       the ASMlOO programmer but is referenced
+                       inside   the routine (or by another
+                       routine), it is created at load time.
+                       This feature is used by the FPS-100
+                       Math Library but is not suggested for
+                       general use.
+
+
+
+         •   The $COMMON and $DATA pseudo-ops can also be used to
+             declare and initialize labeled common blocks. This
+             allows data to be shared between subroutines.
+
+
+
+In general then, in order to be callable from an FTNlOO routine, an
+ASMlOO routine must have the following format:
+
+
+             $TITLE pseudo-op
+             $COMMON/.LOCAL/ pseudo-op (if there are formal parameters)
+             $COMMON pseudo-op (if common blocks are used)
+             $DATA pseudo-op (if the common block is to be initialized)
+             code
+
+
+               •
+             $END pseudo-op
+
+
+For an example, refer to section 3. 9. 2.
+
+
+FPS 860-7428-001                 3     56
+3.7 CALLING FTNlOO ROUTINES FROM ASMlOO
+When an FTNlOO routine or an ASMlOO routine that conforms to the FTNlOO
+calling conventions is called, it expects the calling routine to
+conform to the conventions described in section 3.6. That is,
+parameters are passed by placing their addresses in the called
+routine's .LOCAL data block (by using the $CALL pseudo-op or by writing
+equivalent ASMlOO code). The $COMMON pseudo-op can also be used to
+create a common area used to pass data to the called routine.
+
+The general form of an ASMlOO program with a call to an FTNlOO routine
+is as follows:
+
+
+         $TITLE pseudo-op
+
+
+         $EXT pseudo-op
+         $COMMON pseudo-op
+         $DATA pseudo-op
+
+
+
+         $CALL pseudo-op
+
+
+
+         $END
+
+
+
+
+FPS 860-7428-001                3     57
+3.8 CALLING ASM!OO SUBROUTINES FROM THE HOST
+
+The following sections describe the procedures necessary to call ASM!OO
+subroutines from the host. Both the auto-directed calls (ADC) manner
+and the user directed calls (UDC) manner are considered.
+
+
+
+
+3. 8.1 AUTO-DIRECTED CALLS (ADC) TO ASMlOO SOBROU!INES
+
+If a subroutine is called in the ADC manner, data can be passed between
+host FORTRAN programs and ASM!OO subroutines as arguments or common
+blocks. However, only arguments and common blocks declared in
+host-callable routines are transferred from host to FPS-100 and back.
+The data is passed as specified in the ASMlOO subroutine. If a
+host-callable ASMlOO routine contains a common block which does not
+exist on the host, the common block is created on the host by the HA.SI
+subroutine which is generated by LODlOO. This is always done unless
+the user specifies otherwise with a $COMIC pseudo-op (refer to section
+3.4.10). Since the HA.SI created by LODlOO contains this common block. 1
+any discrepancies which exist between the ASMlOO routine and the host
+FORTRAN program cause meaningless data to be passed. Also, only
+labeled common blocks can be shared between host FORTRAN and ASMlOO
+subroutines.
+
+The creation of a HASI for this type of call is triggered by the use of
+the $SOBR pseudo-op (instead of the $ENTRY pseudo-op) to declare the
+subroutine's entry point. 'Ihe form of the actual call to the ASMlOO
+routine is exactly like that of a FORTRAN call.
+
+
+Example:
+
+           CALL MYSOB (A,B,2)
+
+
+The parameters A, B, and 2 are automatically transferred to and from
+the FPS-100 according to information supplied in the $PAR.AM pseudo-op.
+Since this is a FOR.'rRA.N-style call, the ASMlOO subroutine (in this
+case, MYSUB) m.ust conform to the FTN 100 calling conventions described
+in sec ti on 3. 6.
+
+Whenever possible, data should be passed between host programs and
+ASMlOO subroutines as common blocks rather than as arguments.. Data in
+common blocks is generally passed faster than that specified with
+$PARAH pseudo-ops.
+
+
+
+
+FPS 860-7428-001                3   -   58
+Another method of increasing the rate of data transfer is grouping the
+elements of a common block by type in the $COMMON pseudo-op. This is
+helpful because when data is actually transferred from host to FPS-100,
+only one kind of data (real or integer) can be transferred at a time.
+Grouping the elements in a $COMMON pseudo-op by type minimizes the
+number of data transfers necessary.
+
+
+Example:
+
+           $COMMON /X/ A(lOO)/R, J(lOO)/I, B(lOO)/R
+
+
+This requires three data transfers: one to transfer the real array A,
+one to transfer the integer array J, and one to transfer the real array
+B. However, suppose this statement had been written as follows:
+
+
+           $COMMON /X/ A(lOO)/R, B(lOO)/R, I(lOO)/I
+
+
+In this case, only two data transfers are necessary: one to transfer
+the real arrays A and B and one to transfer the integer array J. The
+actual data transfer by types is done internally; the ASMlOO
+programmer need not be concerned about it. Be aware, however, that
+grouping integer items together and real items together in $COMMON
+pseudo-ops results in faster data transfers.
+
+
+
+
+FPS 860-7428-001                 3     59
+!he programmer should also be aware that problems can arise when a
+progtam is called from the host with multiple occurrences of the same
+parameter. These problellSS can occur because parameters are passed to
+and from the FPS-100 in the order in which they were specified on the
+$PARAM pseudo-op. The following examples illustrate the problem.
+These examples use FTN 100 subroutines rather than ASMlOO subroutines;
+however, the problems apply to ASMlOO routines also.
+
+
+Examples:
+
+The following FTNlOO subroutine VADNZ is written to add two arrays, put
+the results in a third array, and set the first two to zero.
+
+
+               SUBROUTINE VADNZ(A,B,C,N)
+               DIMENSION A (N) ,B (N) ,C (N)
+               DO 10 I=l,N
+               C(I)=A(I)+B(I)
+               A(I )•O.
+            10 B (I)•O·
+               RETURN
+               END
+
+
+
+'I'he expected results are returned when a host FORTRAN program calls
+this subroutine using three different arrays •
+
+
+                    •
+
+
+            DIMENSION X(lOO) ,Y(lOO) ,Z (100)
+                    •
+
+
+            CAU. VADNZ (X, Y,Z, 100)
+
+
+                    •
+
+
+
+
+FPS 860-7428-001                       3       60
+Upon return from the subroutine, array Z contains the sum of X and y.
+But, suppose the programmer attempted to call VADNZ as follows:
+
+
+         CALL VADNZ(X,X,X,100)
+
+
+
+In this case, results are unpredictable. When arguments are passed
+from the host to the FPS-100, storage locations are reserved for each
+of the arguments, whether or not the arguments are unique. In the case
+of the last call, storage locations in the FPS-100 are set aside for
+three copies of array x. Upon completion of the subroutine, only one
+array X contains the sum of arrays X and x. In the host, the ultimate
+value depends on the order in which the arguments are trans£ erred back
+to the host from the FPS-100. The array X in the host contains the
+values of the last array X transferred.
+
+A similar problem occurs if elements of the same array are used as
+actual parameters in the call to a subroutine. For example, consider
+the following routine:
+
+
+            SUBROUTINE ADDN (I,J,K,N)
+            DIMENSION I(N),J(N),K(N)
+            DO 10 L=l,N
+         10 K(L)=I(L)+J(L)
+            RETURN
+            END
+
+
+
+Suppose the routine is called as follows:
+
+
+         CALL ADDN (JJ (1) ,JJ {2) ,JJ (3), 100)
+
+
+The user might expect array JJ to contain something similar to the
+Fibonacci series. However, instead of using one array JJ, three arrays
+are created in the FPS-100: one starting at JJ(l), one starting at
+JJ(2), and one starting at JJ{3). Thus, although the user might expect
+the results of the first addition to be available as an operand of the
+second, it is actually stored in a different array and is not used in
+subsequent calculations. Thus, the subroutine does not return the
+expected results •
+
+Difficulties arise not only from specifying the same variable for
+multiple formal parameters but also from specifying a variable as a
+formal parameter and as an element in comm.on.
+
+For more information regarding ADC type HASis, refer to the LODlOO
+Reference Manual.
+
+
+FPS 860-7428-001                   3      61
+3.8.2 USER DIRECTED CALLS (UDC) TO ASMlOO SUBROUTINES
+
+A user directed call to an ASMlOO subroutine is triggered by the use of
+the $ENTRY pseudo-op to declare the entry point. This type of call
+does not pass parameters to the FPS-100 (as With auto-directed calls).
+Since parameters are not passed automatically, this type of call can be
+much more efficient time-wise than an auto-directed call. It does,
+however, require that the user pass and return parameters in main data
+memory with APPUT, APGET, and other APXlOO subroutine calls (refer to
+the APXlOO Manual for descriptions of these calls).
+
+The actual form of the call to a user's ASMlOO subroutine is as
+follows:
+
+
+         CALL MYSUB (IA,2000,3000)
+
+
+
+In this call, IA, 2000, and 3000 are not parameters but rather
+addresses of parameters that were placed in main data memory earlier by
+the user. These addresses are placed in s-pad registers before control
+passes to the subroutine.
+Further information concerning user directed calls can be found in the
+LODlOO lteference Manual.
+
+
+
+
+FPS 860-7428-001               3     62
+3.9 SAMPLE PROGRAMS
+
+The following sections give examples of ASMlOO subroutines and host
+calling programs.
+
+
+
+
+3.9.1 UDC EXAMPLE
+Figure 3-1 illustrates a sample ASMlOO subroutine. 'lhe object code
+produced by the ASMlOO assembler using this subroutine is used as input
+to the LODlOO loader. If the routine is declared host-callable at load
+time~ LODlOO generates a UDC type HAS! (host-arithmetic processor
+software interface) and a load module. (Refer to the LODlOO Reference
+Manual for a complete description of the load process.)
+
+Figure 3-2 illustrates a host FORTRAN program used to call the ASMlOO
+subroutine. This program and the HAS! must be com.piled using the host
+FORTRAN compiler and linked using the host loader before program
+execution can occur. 'The ASMlOO routine can also be called by other
+ASMlOO routines.
+
+
+
+
+FPS 860-7 428-001               3     63
+         $TITLE    VCADD
+         $ENTRY    VCADD, 4
+"VECTOR ADD
+"ADDS VECTOR A     TO VECTOR B AND PUTS THE RESULT INTO VECTOR C
+"C(M) "' B (M) +   A(M)     FOR M = 0 TO N-1
+
+
+"S-PAD PARAMETERS
+         A     $EQU     0                        "BASE ADDRESS OF VECTOR A
+         B     $EQU     1                        "BASE ADDRESS OF VECTOR B
+         C     $EQU     2                        "BASE ADDRESS OF C
+         N     $EQU     3                        "NUMBER OF ELEMENTS IN C
+
+
+VCADD:   MOV A,A; SETMA                          "FETCH A{O)
+         MOV B ,B ; SETMA                        "FETCH B (0)
+         DEC C; DPX(O)<MD                        "SA VE A{O)
+LOOP:    INC A; SETMA                            "FETCH·A(M+l)
+         INC B ; SETMA;                          "FETCH B{M+l)
+           FADD DPX(O) ,MD                       "B(M) + A(M)
+         DPX(O)<MD;                              "SAVE A{M+l)
+             DEC N; FADD                         II SEE IF DONE?????
+         MI<FA; INC C; SETMA;                    "STORE C(M)
+             BNE LOOP                            "BRANCH IF NOT DONE
+         RETURN
+         $END
+
+
+
+                            Figure 3-1   UDC Subroutine
+
+
+
+
+FPS 860-7428•001                     3 -    64
+c
+c     TRE FOLLOWillG IS A HOST PROGRAM ILLUS'1'RATING THE CALL TO VCADD
+c
+      DIMENSION A(lOO),B(lOO),C(lOO)
+      INTEGER ADDRA,ADDRB,ADDRC
+c
+c... INITIALIZE THE FPS-100
+c
+      CALL APIN!T(0,0,ISTAT)
+      CALL APLLI('LMOD',4,7,1,1,D,D)
+c
+c••• INITIALIZE TRE INPUT    ARRAYS
+c
+      DO 10 I=l, 100
+      A(I )=FLOAT (I)
+      B(I)=A(I)
+10    CONTINUE
+c
+c••• PUT THE DATA IN THE FPS-100
+c
+      ADDRA=O
+      N=lOO
+      CALL APPUT(A,ADDRA,N,2)
+      ADDRB =ADDRA-+N
+      ADDRC =ADDRB-+N
+      CALL APPUT(B,ADDRB,N,2)
+      CALL APWD
+c
+C••• CALL VCADD
+c
+      CALL VCADD{ADDRA,ADDRB,ADDRC,N)
+      CALL AJ?WR
+c
+c•.• RETRIEVE THE DATA FROM TRE FPS-100
+c
+      CALL APGET (C,ADD RC , N, 2)
+      CALL APWD
+c
+c••• RELEASE   THE FPS-100
+c
+      CALL APB.I.SE
+      STOP
+      END
+
+
+
+            Firgure 3-2   Host Calling Program for tJDC Subroutine
+
+
+
+
+FPS 860-7428-001                      3   -   65
+3.9.2 ADC EXAMPLE
+
+Figure 3-3 illustrates   a sample ASMl 00 subroutine. The object code
+produced by the ASMlOO   assembler using this subroutine is used as input
+to the LODlOO loader.    If the routine is declared host-callable at load
+time, LODlOO generates   an ADC type HASI and a load module.
+
+Figure 3-4 illustrates a host FORTRAN program used to call the ASMlOO
+subroutine. This program and the HASI must be compiled using the host
+FORTRAN compiler and linked using the host loader before program
+execution can occur. The ASMlOO routine can also be called from an
+FTN 100 program. The $PARAM and $COMIC pseudo-ops can be removed if the
+routine is not designated as host-callable.
+
+
+
+
+                                                                            .'-.
+
+
+
+
+FPS 860-7428-001                 3     66
+        $T!TLE VCADD
+        $SUBR VCADD, 4
+        $PABAM 4, AA(#4)/R/IP,AB(#4)/R/IP,AC(#4)/R,.AN/I/IP
+        $COMMON /.LOCAL/ AA,AB ,AC ,.AN
+"VECTOR ADD
+"ADDS VECTOR A TO VECTOR B AND PUTS THE RESULT INTO VECTOR C
+"C(M) = B (M) + A(M)   FOR M = 0 TO N-1
+
+
+"S-PAD PARAMETERS
+        A   $EQU    0                          "BASE ADDRESS OF VECTOR A
+        B   $EQU    l                          "BASE ADDRESS OF VECTOR B
+        c $EQU      2                          "BASE ADDRESS OF C
+        N   $EQU    3                          "NUMB ER OF ELEMENTS IN C
+
+
+VCADD:   LDMA; DB=AA                           "LOAD ADDRESS OF A
+         LDMA; DB=AB                           "LOAD ADDRESS OF B
+         LDSPI A; DB=MD                        "SAVE ADDRESS OF A
+         LOMA; DB=AC                           "LOAD ADDRESS OF C
+         LDSPI B; DB=MD                        "SA VE ADDRESS OF B
+         LOMA; DB=AN                           uLOAD ADDRESS OF N
+         LOSPI C; DB=MD                        "SAVE ADDRESS OF C
+         MOV A,A; SETMA                        "FETCH A(O)
+         LDMA; DB=MD                           "LOAD N
+         DEC C                                 "FETCH B (O)
+         MOV B,B;SETMA; DPX(O)<MD              "SAVE A(O)
+         LOS PI N; DB=MD                       "SA VE VALUE OF N
+LOOP:    INC A; SETMA                          "FETCH A(M+l)
+         INC B; SETMA;                         "FETCH B (M+l)
+           FADD DPX(O) ,MD                     "B(M) + A(M)
+         DPX(O)<MD;                            "SAVE A{M+l)
+           DEC N; FADD                         "  SEE IF DONE?????
+         MI<FA; INC C; SETMA;                  "STORE C (M)
+           BNE LOOP                            "BRANCH IF NOT DONE
+         RETURN
+         $END
+
+
+
+                         Figure 3-3   ADC Subroutine
+
+
+
+
+FPS 860-7428-001                  3   -   67
+c
+c     THE FOLLOWING IS A HOST PROGRAM ILLUSTRATmG THE CALL TO VCADD
+c
+      DIMENSION A(lOO),B(lOO),C(lOO)
+c
+C••• INITIALIZE THE FPS-100
+c
+      CALL APINIT(O,O,ISTAT)
+      CALL APLLI ('LMOD',4,7,1,1,D,D)
+c
+c••• mITIALIZE     THE   mPUT ARRAYS
+c
+      00 10 I•l, 100
+      A(I )=FLOAT {I)
+      B(I)=A(I)
+10    CONTINUE
+c
+c
+c ••• CALL VCADD
+c
+      N=lOO
+      CALL VCADD(A,B,C,N)
+c
+c ••• RELEASE THE FPS-100
+c
+      CALL APRLSE
+      STOP
+      END
+
+
+
+            Figure 3-4 Host Calling Program for ADC Subroutine
+
+
+
+
+3. 9. 3 ADC EXAMPLE WITH COMMON BIDCKS
+
+Figure 3-5 illustrates the same ASMlOO routine as in Figure 3-3, except
+that it receives its input in a common block and places its output in
+another common block. lbe object code produced by the ASMlOO assembler
+using this subroutine is used as input to the LODlOO loader. If the
+routine is declared host-callable at load time, LODlOO generates an ADC
+type HAS! and a load module. lbe ASMlOO routine in Figure 3-5 is more
+efficient than the one in Figure 3-3.
+Figure 3-6 illustrates a host FOR1'RAN program used to call the ASMlOO
+subroutine. lb.is program and the HA.SI must be compiled using the host
+FORTRAN compiler and linked using the host loader before program
+execution can occur.
+
+
+
+
+FPS 860-7428-001                       3   -   68
+             $TITLE VCADD
+             $SUBR VCADD
+_,           $RADIX 10
+             $COMIO INPUT 2                     "THIS COMMON BLOCK IS INPUT ONLY
+             $COMMON /INPUT I PN ,PA(lOO) /R,PB (100) /R
+             $COMIC OUTPUT l                  "THIS COMMON BLOCK IS OUTPUT ONLY
+             $COMMON /OUTPUT/ PC(lOO)/R
+     "VECTOR ADD
+     "ADDS VECTOR A TO VECTOR B AND PUTS THE RESULT INTO VECTOR C
+     "C(M) = B(M) + A(M)     FORM• 0 TO N-1
+
+
+     "S-PAD PARAMETERS
+             A   $EQU       0                      "BASE ADDRESS OF VECTOR A
+             B   $EQU       l                      "BASE ADDRESS OF VECTOR B
+             C   $EQU       2                      "BASE ADDRESS OF C
+              ·N   $E~      3                      "NUMB ER. OF ELEMENTS IN C
+
+
+     VCADD:   LDMA; DB=PN                          "LOAD N
+              LDSPI A; DB=PA                       "LOAD ADDRESS OF A
+              LDSPI B; DB=PB                       "LOAD ADDRESS OF B
+              LDSPI N; DB=MD                       "SA VE N
+              MOV A,A; SETMA                       "LOAD A(O)
+              LDSPI C; DB=PC                       "LOAD ADDRESS OF C
+              MOV B ,B; SETMA                      "LOAD B (0)
+              DEC C; DPX(O)<MD                     "SAVE A(O)
+     LOOP:    INC A; SETMA                         "FETCH A (M+1)
+              INC B; SEn'.iA;                      "FETCH B (M+l)
+                FADD DPX(O) ,MD                    "B (M)   +   A(M)
+              DPX(O)<MD;                           "SAVE A(M+l)
+                DEC N; FADD                        " SEE IF DONE?????
+              MI<FA; INC C; SE'IMA;                "STORE C(M)
+                BNE LOOP                           "BRANCH !F NOT DONE
+              RETURN
+              $END
+
+
+
+                   Figure 3-5   ADC Subroutine with Common Blocks
+
+
+
+
+     FPS 860-7428-001                 3   -   69
+c
+c      THE FOLLOWING IS A HOST PROGRAM ILLUSTRATING TRE CALL TO VCADD
+c
+       COMMON /INPUT/ N,A(lOO),B(lOO)
+       COMMON /OUTPUT/ C(100)
+c
+c••• INITIALIZE TRE FPS-100
+c
+       CA.LL AP!NIT(O,O,!STAT)
+       CALL APLLI('LMOD',4, 7,1,1,D,D)
+c
+c••• IN!TIALIZE     THE INPUT ARRAYS
+c
+       DO 10 I•l, 100
+       A{I)•FWAT(I)
+       B(I)•A(I)
+10     CONTINUE
+c
+c
+C• • •CA.LL VCADD
+c
+       N=lOO
+       CALL VCADD
+c
+c••• RELEASE   THE FPS-100
+c
+       CA.U. APRLSE
+       STOP
+       END
+
+
+
+Figure 3-6     Host Calling Program for ADC Subroutine with Comm.on Blocks
+
+
+
+
+FPS 860-7428-001                       3   -   70
+                                  CRA.Pl'ER 4
+
+
+                         OPERATING PROCEDURES
+
+
+
+4. 1 USING ASMlOO
+
+ASMlOO is a two-pass assembler which assembles a file of source code
+into a relocatable object file.       Optionally, an assembly listing is
+produced.
+
+To call ASMlOO, the user normally enters the following (this may vary,
+however, depending on the host operating system):
+
+
+         ASMlOO
+
+
+ASMlOO responds by issuing the following:
+
+
+         ASMlOO
+         SOURCE FILE=
+
+
+
+The version and date indicate the version of the assembler and the date
+that it was created.
+
+The user responds by entering the desired program file name. ASMlOO
+then requests the name of the file to receive the relocatable object
+module as follows:
+
+
+         OBJECT FILE=
+
+
+
+Tile user responds by entering the desired object file name. ASMlOO
+then requests the name of the file to receive the assembly listing as
+follows:
+
+
+         LISTING AND ERROR FILE=
+
+
+
+The user replies by entering the name of the desired listing file.         If
+ASMlOO cannot find or assign the requested file, it displays the
+message "FILE NOT FOUND OR UNAVAILABLE 11 and repeats its request.
+
+
+
+FPS 860-7428-001                  4        l
+ASMlOO then displays:
+
+         LISTING?    (Y /N)
+
+
+A response of Y yields a full assembly listing, symbol table, and any
+error messages. An N suppresses the assembly and symbol table listings
+and writes any error messages to the listing file.
+
+Finally, if a listing is requested, ASMlOO displays the following:
+
+
+         LISTING RADIX?       (8,10,16)
+
+
+
+A response of 8 causes the assembly listing to be generated in octal;
+a 10 specifies decimal and a 16 hexadecimal.
+
+ASMlOO responds to invalid input with ???     and repeats the request.
+
+The following is an example of a dialogue with ASMlOO. The user
+intends to assemble an FPS-100 program on file FFT.AP and write the
+object output into file FFT.RB. The listing is placed on file FFT.LS.
+Of course, the precise details of how files and devices are named
+depends on the particular operating system being used.
+
+
+         ASMlOO
+         SOURCE FILE =
+         FFT .A:P
+         OBJECT FILE •
+         T!l!'T.RB
+         LISTING FILE    =
+         FFT.LS
+         LISTING?
+         !
+         LISTING ltAD!X?
+         !
+
+
+
+
+FPS 860•7428-001                    4 -   2
+4. 2 EXECUTION
+
+During execution, any errors detected during pass l are displayed
+first. The assembly listing (if requested) follows and is interspersed
+with pass 2 error messages.
+
+If a fatal error occurs, the message "RUN ABORTED" is displayed at the
+terminal and control is returned to the operating system.
+
+The assembler terminates with the message "ASS&"'!BLY COMPLETED".
+
+
+
+
+4.3 LISTING FILE FORMAT
+The assembly listing contains the following information for each
+program statement:
+
+
+first column       second column       third column         fourth column
+
+source             program             assembled            source
+code               source              program              statement
+line number        address
+                   (location
+                   counter)
+
+
+
+
+FPS 860-7428-001                   4   3
+For program instruction statements, the assembled data is presented as    \.____,,
+four numbers representing bits 0-15, 16-31, 32-47, and 48-63 of each
+program source word.
+
+At the end of pass two, ASMlOO displays:
+
+
+           (num) ERROR(S) FOR (title)
+
+
+The (num) is the number of errors detected, and (title) is specified by
+the $TITLE pseudo-op in the last routine assembled. Finally, ASMlOO
+displays the following:
+
+
+           SYMBOL    NAME
+
+
+
+The symbol table is displayed next, in the following format:
+
+
+ first column       second column       third column
+
+ symbol             symbol              symbol
+ nat:1.e            value               type
+
+                                            blank - local symbol
+                                            EXT - external symbol
+                                            ENT - entry symbol
+
+
+
+In all of the preceding occurrences where a number (location, data
+value, etc.) is printed on the listing, the radix is either octal,
+decimal, or hexadecimal, as specified by the user during the initial
+dialogue.
+
+
+
+
+FPS 86-0-7428-001                4      4
+4.4 SAMPLE ASMlOO LISTING
+
+Figure 4-1 contains a sample ASMlOO listing.
+
+
+
+ASMlOO REL.   i.oo   FIG.3-7                              VCADD   06/15/79   09:21    PAGE. 0001
+
+
+ 00001                             $T'I?L! VCADD
+ 00002                             $St!H VCADD
+ 00003                             $1ADIX   10
+ 00004                             $COMIO mtrr 2                      '"MIS COMMON BLOCX IS INPUT 0!1!.Y
+ 00005                             $COMMON tr.Im!tl PN,l'A(100)/1l,PlH100)/ll
+ 00006                             $COMIO Otrr!UT l                  "TRIS COMMON BLOCX IS OlJTl!UT ONLY
+ 00007                             $COMMON /OUTPUT/ l'C(lOO)/I.
+ 00008                    "VECTOB. ADD
+ 00009                    "ADDS V!CT01l A TO V!CT01t B AND PUTS 'l'!!E USm.T IN'?O V!CTOlt C
+ 00010                    "C(l!) • B(l!) + A(M) . F01l M • 0 TO N•l
+ 00011
+ 00012
+ 00013                    "S-PAD PAlUM!TDS
+ 00014          000000             A   $!Ql1       0                   "JASE ADDUSS 01' VECTOR A
+
+ 00015          000001             B   $EQU        l                   "'BASE ADDRESS OP' VECTOR B
+
+ 00016          000002             c   $EQtr       2                   "BASE ADDUSS 01' C
+
+ 00017          000003             N   $EQU        3                   "NtJKB!ll OF !LZMD'l'S DI C
+
+ 00018
+ 00019
+ 00020 OOOOOOX 000003 VCADl>:      tJ>MA.; DB•PR                       "LOAD N
+               102000
+               002000
+               000000
+ 00021 OOOOOU 001600               UISPI A; DB.PA                      "LOAD ADDRESS OP A
+              000000
+              002000
+              000001
+ 00022 000002% 001604              tJ>SPI B; DB.PB                     "LOAD ADDUSS OP B
+               000000
+               002000
+               000145
+ 00023 000003   001614             I.DSPI !I; DB-MD                    "SAV& N
+                000000
+                005000
+                000000
+ 00024 000004   040000             MOVA.A; SftMA                       "LOAD A(O)
+                000000
+                000000
+                000060
+
+
+
+
+                               Figure 4-1        Sample   ASM~OO   Listing
+
+
+
+
+FPS 860-7 42 8-00 l                              4        5
+      ASMlOO lll.•       1.00 P'IG.3-7                            VCADD   06/lS/79     09:%1      PAGE 0002
+
+          0002S OOOOOSX 001610             LDSl'I C; DB•PC                     "!.OAD ADDUSS OP' C
+                           000000
+                           002000
+                           000000
+          00026 000006     040104          MOV B,B; SE'rMA                     "!.OAD B(O)
+                           000000
+                           000000
+                           000060
+          00027 000007     001210          DEC C; D"PX(O)<MD                   "SAVE A(O)
+                           000000
+                           04S004
+                           000000
+       00028 000010        001100 LOO?:    UC A; SftMA.                       "mat     A.(M+l)
+                           000000
+                           000000
+                           000060
+       0002 9 0000 ll      OOllOS          INC B; SE'rMA;                      "?!TCJI B (MH )
+       00030               124000            P'ADD llPlt(O) ,MD                "B(M)   +   A(M)
+                           000400
+                           000060
+       00031 000012        00121S          DPX(O}<MD;                          "SAVE A.(M+l)
+       00032               100000            DEC I; P'ADD                      " SD I1' DONE?????
+                           045004
+                           000000
+       00033 000013        001110          MI<!'A; INC C; S'!TMA;             "STOl.E C (M)
+       00034               000655            Bl! LOOP                          ''llRABCa I!' NOT 00?1!
+                           000000
+                           000160
+       00035 000014 000000
+                    000340
+                    000000
+                    000000
+       00036
+       0000 EUOl.(S} P'OI. VCAJ>D
+
+       Sl!OOL      VAUra
+
+      Dll'IJ'?    ooooeo
+      n           000000
+      PA          000001
+      PB          000145
+      OU'fPO't'   000000
+      PC          000000
+      A           000000
+      B           000001
+      c           000002
+      N           000003
+      VCADD       000000   m
+      LOOP        000010
+
+
+
+                     Figure 4-l          Sample ASMlOO Listing (cont.)
+
+
+
+
+FPS 860-7428-001                             4          6
+                                  CHAPTER 5
+
+                            ERROR MESSAGES
+
+
+5.1 GENERAL INFORMATION
+ASMlOO error messages are printed in the listing following the illegal
+statement.
+
+Tilere are five basic error classes, which are listed in Table 5-1 along
+with the action taken by the assembler:
+
+
+
+
+                      Table 5-1       Message Category
+
+
+
+         CATEGORY                          DESCRIPTION
+
+            0         Out of range: an illegal numeric value
+                      was truncated to the proper range.
+
+            c         Conflicting definitions: the first
+                      definition was used.
+
+            M         Missing (or improper) argument: a value
+                      of zero was used.
+
+            B         Bad syntax: the bad op-code field or
+                      pseudo-op was ignored.
+
+            w         Warning of improper usage.
+
+
+
+
+FPS 860-7428-001                  5    -      1
+Tile actual diagnostic takes the following form:
+
+
+         ***   c msg nn ON LINE nnnnn
+
+
+
+In this ease, c is the error class, msg is the error message, nn is the
+error number, and nnnnn is the number of the erroneous line.
+
+
+
+
+                                     NOTE
+
+          On  some systems, the msg portion of the message is
+          not displayed. Only the error number is displayed.
+
+
+
+
+5.2 MESSAGES
+
+Tile assembler error messages, along with an explanation as to the
+possible causes and/or cures, are given in Table 5-2.
+
+
+
+
+FPS 860-7428-001                 5          2
+                       Table 5-2      Error Messages
+
+
+
+ERROR
+NUMBER   CATEGORY       MESSAGE                        EXPLANATION
+
+  1         W       LINE BUFFER               An instruction statement is
+                    OVERFLOW                  too long (600 characters maxi-
+                                              mum) for the listing buffer.
+
+  2         C       MULTIPLY DEFINED          A symbol can be defined only
+                    S'YMBOL                   once in a program.
+
+  3         C       CONFLICTING               Two op-codes are used in an
+                    OP-CODES                  instruction statement which
+                                              used the same instruction word
+                                              bit fields.
+
+  4         W       S-PAD ADDRESS             An s-pad address is outside
+                    TRUNCATED                 the legal range of 0-15 and
+                                              was truncated to 4 bits.
+
+  5         0       BRANCH ADDRESS            A branch address is more than
+                    OUT OF RANGE              16 locations lower or 15 loca-
+                                              tions higher than the current
+                                              location.
+
+  6         c       CONFLICTING               Only one branch address can be
+                    BRANCH ADDRESSES          used in any given instruction
+                                              statement.
+
+  8         c       CONFLICTING DATA          Only one value can be given to
+                    PAD INDEXES               each data pad index (XR, Xl-l,
+                                              YR, YW) per instruction
+                                              statement.
+
+  9         M       BAD OR MISSING            The assembler cannot process
+                    EXPRESSION                an expression.
+
+ 10         M       BAD OR MISS ING           A floating adder op-code has
+                    FADD ARG                  an invalid Al or A2 operand.
+
+ 11         M       BAD OR MISSING            The FMUL op-code has an
+                    AMtJL ARG                 invalid Ml or M2 operand.
+
+ 13         B       VALUE FIELD               Only one op-code which uses a
+                    CONFLICT                  16-bit VALUE field operand can
+                                              be used per instruction
+                                              statement.
+
+
+
+
+FPS 860-7 428-001                 5       3
+                    Table 5-2    Error Messages (cont.)
+
+
+
+ERROR
+NUMBER   CATEGORY         MESSAGE                       EXPLANATION
+ 15         B       UNDEF !NED 0 P-CODE       An op-code name is not a
+                                              legal FPS-100 instruction.
+ 16        M         EXTERNAL SYMBOL          An external symbol cannot be
+                     IN EXPRESSION            used to form an expression.
+
+ 17        M        UNDEFINED USER            A user symbol is referenced
+                    Sn!BOL                    which was not defined.
+ 18        M        NUMBER TOO LARGE,         The number specified cannot
+                    TRUNCATED                 be represented in the number
+                                              of bits allowed for this
+                                              value.
+
+ 20        B        UNRECOGNIZED              A statement line is neither a
+                    STATEMENT                 comment, instruction, nor
+                                              pseudo-op statement.
+
+ 22        M        EXTERNAL SYMBOL           An external symbol cannot be
+                    NOT ALLOWED               used as an argument for this
+                                              op-code.
+
+ 23                 MISSlllG $END             A    program must terminate with
+                                              a $END pseudo-op.
+
+ 24        0        DATA PAD INDEX            A data pad Index must be
+                    OUT OF RANGE              between -4 and +3 inclusive.
+
+ 25        B        BAD COMMON                The $COMMON statement is
+                     STATEMENT                unacceptable to the assembler.
+
+ 26        B        BAD DATA                  The $DATA stateJD.ent is
+                    STATEMENT                 unacceptable to the asseJD.bler.
+
+ 27        B         $COMIO   STATEMENT       The $COMIO statement does not
+                    our   OF ORDER OR         appear before its associated
+                     ILLFORMATrED             $COMMON st:atement or is not
+                                              formatted properly.
+
+ 28         B       BAD PARAM                 The $PABAM statement is
+                     STATEMENT                unacceptable to the assembler.
+
+ 29         B       SUBROUTINE NAME           An external is referenced but
+                    MUST BE DECLARED          not declared.
+                     EX?ERNAL
+
+
+
+FPS 860-7428-001                  5       4
+                    Table 5-2   Error Messages (cont.)
+
+
+
+ERROR
+NUMBER   CATEGORY         MESSAGE                          EXPLANATION
+
+ 30        w        BAD OPl'ION -            An illegal parameter is spec-
+                    DEFAULT VALUE            ified, causing the assembler
+                    USED                     to assume the default value.
+
+ 31        M        BAD FLOATING PT.         A floating-point number is
+                    CONSTANT                 unacceptable to the assembler.
+
+ 32        w         ILLEGAL PSEUDO-OP       If used, A $TITLE pseudo-op
+                     POSITION                must appear first in a
+                                             program, followed by any $EXT
+                                             or $ENTRY pseudo-ops.
+
+ 35        M        BAD PARAMETER            A bad parameter is fotmd on a
+                                             pseudo-op statement.
+
+ 36         c        DATA PAD BUS            Only one data source can be
+                     CONFLICT                enabled onto the data pad bus
+                                             per instruction statement.
+
+ 37        M        MISSING S-PAD ARG        An s-pad op-code is missing
+                                             its s-pad register address.
+
+ 39        c         XW /Y.W CONFLICT        If the value field is used in
+                                             an instruction, an op-code
+                                             which writes into data pad Y
+                                             (such as DPY(2) < EM) can be
+                                             used also only if:
+
+                                                  •   no write into data pad X
+                                                      is done
+
+                                                      or
+
+                                                  •   the indexes are the same
+                                                      for the writes into both
+                                                      DPX and DPY
+
+                                             examples:
+                                             legal:    JSR SQRT;         uses the
+                                                       DPY(2)<EM         value
+                                                                         field and
+                                                                         a store
+                                                                         into DPY.
+
+
+
+
+FPS 860-7428-001                  5      5
+                    Table 5-2   Error Messages (cont.)
+
+
+
+ERROR.
+NUMBER   CATEGORY         MESSAGE                    EXPLANATION
+
+  39        c        XW/YW CONFLICT         Legal:     JSR SQRT; uses the
+                     (cont.)                           DPX(2)<FA value
+                                                       DPY(2)<EM field, and
+                                                                 both data
+                                                                 pad write
+                                                                 indexes
+                                                                 are the
+                                                                 same.
+
+                                            illegal: JSR SQRT; uses the
+                                                     DPX(-l)<FA value
+                                                     DPY(2)<EM field, and
+                                                                the two
+                                                                data pad
+                                                                write
+                                                                indexes
+                                                                are
+                                                                different.
+
+ 43                  READ ERROR              There is a file I/0 error.
+
+ 44                  SYMBOL TABLE            Too many user symbols.
+                     OVERFLOW
+
+ 45          B       BAD OR. MISSING         A symbol is missing or
+                     S!MBOL STRING           illegal.
+
+ 46          0       EXPRESSION STACK        Too many parenthesis in an
+                     OVERFLOW                expression.
+
+ 47         B        BAD $ENTRY              Incorrect $EN!RY statement or
+                                             the $ENTRY symbol is also
+                                             found in a $EX! •
+
+ 48          B       BAD $VAL                Incorrect $VAL statement.
+
+ 49         w        BAD $TITLE              Incorrect syntax in a $TITLE
+                                             statement.
+
+ 50         w        EXTRANEOUS              Extraneous characters are
+                     BROUHAHA                found with an op-code.
+
+ 51                  BAD OR MISSING          Incorrect punctuation.
+                     DELIMrtER.
+                                                                              -.._ .. /
+
+
+
+
+FPS 860-7428-001                  5 -   6
+                    Table 5-2    Error Messages (cont.)
+
+
+
+ERROR
+NUMBER   CATEGORY        MESSAGE                     EXPLANATION
+
+ 52        M        BAD OR MISSING            A data pad argument is
+                    DATA PAD (BUS ) ARG       missing or incorrect.
+
+ 53        B         UNRECOGNIZED             An illegal pseudo-op is
+                     PSEUDO-OP                encountered.
+
+ 54        B        Fll.E NOT FOUND OR        'Tile specified file is not
+                    NOT AVAll.ABLE            found or is not available.
+
+ 55        B        NESTED PSUEDO...OP        The specified pseudo-op cannot
+                    NOT ALLOWED               be nested.
+
+ 56        W         $ENDBOX WITHOUT          A $BOX must occur before an
+                     $BOX                     $ENDBOX.
+
+ 57        W·        DIVISION BY ZERO         Result is 65,535.
+
+ 58        w         TOO MANY LINES FOR       More lines than possible are
+                     INSTRUCTION              specified for one instruction.
+
+ 59        w        MULTIPLE LABELS           Attempt to put more than one
+                                              label on a line.
+
+
+
+
+FPS 860-7428-001                   5      7
+                                   INDEX
+
+
+
+Abbreviations, opcode 3-4                  $ENDIF pseudo-op 3-52
+Absolute addressing 2-8                    $ENDLIB pseudo-op 3-53
+Absolute entry points 3-33                 Entry point 3-31,32,33
+ADC example 3-67                           $ENTRY pseudo-op 3-31,63
+ADC subroutine 3-32,37,59,68,70            $EQU pseudo-op 3-46
+Addressing modes 2-7                       Error file 4-1
+ASMlOO 4-1                                 Error messages 5-1
+ASMlOO and host FORTRAN                    Example programs 3-64
+   communication 3-59                      Execution 4-3
+Assembly listing 4-2                       Ex:presions 2-5
+Auto-directed calls 3-32,59                $EXT pseudo-op 3-44
+                                           External symbols 2-5; 3-44,46
+$BOX pseudo-op 3-53                        External variables 3-55
+Branch op-code group 3-8
+                                           FADD pushers 3-55
+$CALL pseudo-op 3-48                       FFT cosine table constants 3-27
+Calling FTNlOO routines from               Label field 3-2
+   ASMlOO 3-58                             File assignment, programmed 2-3
+Character set 2-9                          File names 2-3
+$COMIO pseudo-op 3-35,59                   FLAG 3-23
+Comment field 3-28                         Floating adder op-code group 3-9
+Comment statements 3-1                     Floating-point multiply op-code
+Comments 3-53                                 group 3-11
+Common blocks 3-59,39,69                   EMUL pushers 3-55
+$COMMON pseudo-op 3-39, 57, 60             Formal parameters 3-37
+Communication between host and             $FP pseudo-op 3-45
+   ASMlOO 3-59                             FTNlOO callable subroutines 3-57
+Conditional assembly 3-52
+Constants, table memory 3-24                   $GLOBAL pseudo-op 3-33
+Control functions 3-24                         Global symbol 3-31,32,33
+Conventions 1-2
+Crea.ting F!NlOO callable ASMlOO               BASI 3-31
+   subroutines 3-57                            Host callable routines 3-31,32
+                                               Host calling program for ADC
+Data initialization 3-40                          subroutine 3-69,71
+Data pad address op-code                       Host calling program for UDC
+   group 3-7                                      subroutine 3-66
+Data pad bus op-code group 3-15                Host FORTRAN and ASMlOO
+Data pad X op-code group 3-12                     communication 3-59
+Data pad y op-code group 3-13                  Host panel 3-19
+$DATA pseudo-op 3-40
+Data transfer, direction 3-35                  I/O op-code group 3-21
+Default radix 3-48                             $IF pseudo-op 3-52
+Diagnostics 5-1                                Initial priority 3-29
+Double precision 3-34                          !NOUT 3-22
+Duplicate parameters 3-61                      $INSERT pseudo-op 3-51
+                                               Instruction statement 3•2
+Elementary Function Tables 3-27                $INTEGER pseudo-op 3-33
+$END pseudo-op 3-54                            Integers 2-4
+$END!OX pseudo-op 3-53                         Interrupt Service routine 3-30
+
+
+FPS 860-7428-001               I           l
+                                    INDEX
+
+
+
+IOMEM 3-22                                  Related manuals 1-2
+$ISR pseudo-op 3-30                         Relative addressing 2-7
+                                            Relocation of symbols 2-8
+$LIB pseudo-op 3-53                         Run priority 3-29
+Library end blocks 3-53
+Library start blocks 3-53                   S-pad op-code group 3-5
+$LIST pseudo-op 3-54                        Sample ASMlOO listing 4-5
+Listing and error file 4-1                  Sample programs 3-64
+Listing file format 4-3                     SENSE 3-23
+Listing radix 4-2                           SETEXIT 3-17
+load REG, read REG 3-21                     SETPSA 3-17
+$LOC pseudo-op 3-47                         Single precision integers 2-4
+.LOCAL common block 3-57                    Size of installed FFT cosine
+.LOCAL data block 3-32                         table 3-27
+Location counter 2-6; 3-2,47                Slaved tasks 3-29
+                                            Source file 4-1
+Meiaory address op-code group 3-7           Source program statements 3-1
+Memory input op-code group 3-14             Special characters 2-l
+Messages 5-1                                Special interrupts 3-20
+Minimal machine resources 3-29              Special operation op-code
+Multiple occurrences of                        group 3-16
+   parameters 3-61                          Special tests 3-16
+                                            Standard arithmetic
+$NOLIST pseudo-op 3-54                         relations 2-6
+                                            Standard arithmetic
+Object file 4-1                                operations 2-6
+Op-code abbreviations 3-4                   Statement order 3-56
+Op-code field 3-3                           Statements, program 3-1
+Operands 2-6                                $SUBR pseudo-op 3-32,59
+Operating procedures 4-1                    Subroutine calls 3-48
+Operation code ~ield 3-3                    Supervisor tasks 3-28
+Operators 2-6                               Symbol names 2-3
+Order of Statements 3-56                    Symbol relocation 2-8
+                                            Symbols, table memory 2-4
+$PAGE pseudo-op 3-53                        SYMLIB 2-4
+$PA.BAM pseudo-op 3-37
+Priority 3-29                               Table memory 3-24
+Program communication 3-59                  Table memory address op-code
+Program name 3-30                              group 3-7
+Program source 3-18                         Table memory symbol 2-4
+Program statements 3-1                      Task col111J1Unication block 3-28
+Programmed file assignment 2-3              $TASK pseudo-op 3-28
+PS odd and even 3-19                        TCB 3-28
+Pseudo-op.eration. statements 3-28          $TITLE pseudo-op 3-30
+Pushers 3-55                                $TRIPLE pseudo-op 3-34
+
+Ba.dices 2-4                                UDC example 3-64
+Ba.dix 4-2                                  UDC subroutine 3-31,63,65
+ $RADIX pseudo-op 3-48                      Unary operations 2-6                -..____, . /
+
+ $REAL pseudo-op 3-34                       User directed calls 3-31, 63
+
+
+FPS 860-7428-001                I           2
+                       INDEX
+
+
+
+Using ASMlOO 4-1               $VAL pseudo-op 3-44
+
+
+
+
+FPS 860-7428-001   I    -      3
+                              READERS COMMENT FORM
+
+
+
+Your comments will help us improve the quality and usefulness of our
+publications. To mail: fold the form in three parts so that Floating
+Point Systems' mailing address is visible, then seal.
+
+
+                                                           Date
+                                              Department - - - - - - - -
+                                                      Telephone
+
+
+I used this manual •••                          I found this material •••
+
+(   )   as an introduction to the subject                           YES     NO
+(   )   as an aid for advanced training
+(   )   to instruct a class                    accurate/complete    (   )   (    )
+(   )   to learn operating procedures          written clearly      (   )   (    )
+(   )   as a reference manual                  well illustrated     (   )   (    )
+(   )   other                                  well indexed         (   )   (    )
+
+
+
+Please indicate below, listing the pages, any errors you found in the
+manual. Also indicate if you would have liked more information on a
+certain subject.
+~---------------~-----------------~---~--~~-
+
+                                                                                                                                                               First Class
+                                                                                                                                                            Permit No. A-737
+                                                                                                                                                               Portland,
+                                                                                                                                                                Oregon
+
+
+
+
+                                                                    BUSINESS REPLY
+                                                                    No postage stamp necessary if mailed in the United States
+
+
+
+
+                                                                    Postage will be paid by:
+
+                                                                    FLOATING POINT SYSTEMS, INC.
+                                                                    P. 0. Sox 23489
+                                                                    Portland, Oregon 97223                                                              -····             5 •.
+
+
+
+
+                                                                    Attention: Technical Publications
+-   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   _   __..   -   -   -   -   -   -   -   "==*'   -   --   ~   -   -   -   -   -   -   ..-   -   -   -   -   -
+  ..
+~--
+ -
+      -   --
+
+
+          --
+                   FLOATING POINT
+                   SYSTEMS, INC.
+      '        '
+
+
+
+
+CALL TOLL FREE 800-54 7-1445
+PO. Box 23489, Portland, OR 97223
+(503) 641-3151, TLX 360470 FLOATPOINT PTL
+
