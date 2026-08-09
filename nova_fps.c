@@ -1782,20 +1782,70 @@ for (i = 0; i < 1024; i++)
     fps_tm[1024 + i] = fps_double_to_38bit (cos (pi2 * (double)i / 1024.0));
 
 /* Math constants (from SYMSRC.APS, octal addresses converted to decimal) */
-fps_tm[4097] = fps_double_to_38bit (1.0);       /* !ONE   oct 10001 */
-fps_tm[4098] = fps_double_to_38bit (2.0);       /* !TWO   oct 10002 */
-fps_tm[4345] = fps_double_to_38bit (0.0);       /* !ZERO  oct 10371 */
-fps_tm[4385] = fps_double_to_38bit (3.0);       /* !THREE oct 10441 */
-fps_tm[4386] = fps_double_to_38bit (4.0);       /* !FOUR  oct 10442 */
-fps_tm[4387] = fps_double_to_38bit (5.0);       /* !FIVE  oct 10443 */
-fps_tm[4388] = fps_double_to_38bit (6.0);       /* !SIX   oct 10444 */
-fps_tm[4389] = fps_double_to_38bit (7.0);       /* !SEVEN oct 10445 */
-fps_tm[4390] = fps_double_to_38bit (8.0);       /* !EIGHT oct 10446 */
-fps_tm[4391] = fps_double_to_38bit (9.0);       /* !NINE  oct 10447 */
-fps_tm[4392] = fps_double_to_38bit (10.0);      /* !TEN   oct 10450 */
-fps_tm[4393] = fps_double_to_38bit (16.0);      /* !SIXTN oct 10451 */
-fps_tm[4375] = fps_double_to_38bit (0.5);       /* !HALF  oct 10427 */
-fps_tm[4227] = fps_double_to_38bit (1.41421356); /* !SQRT2 oct 10203 */
+    /* Table Memory ROM math constants.
+       Addresses come from SYMSRC.APS, whose assembled form this project
+       reproduces byte-for-byte, so they are the real ones rather than
+       inferred.  All 53 scalar constants are here; previously only 14
+       were, and microcode touching !PI, !E, !THIRD, !SQRT3, any of the
+       logs or any reciprocal silently read zero.
+       Not set here: !DIV, !SQRT, !SNCS, !LOG, !EXP and !ATAN are the
+       base addresses of the function-generation coefficient tables, and
+       !FFTSZ/!FFTX2/!FFTX4/!FFTX8 are sizes, not values.  Note !LOG2E
+       shares !EXP's address, so log2(e) is the first word of the EXP
+       table. */
+    fps_tm[ 4345] = fps_double_to_38bit (0                   ); /* !ZERO   10371 */
+    fps_tm[ 4097] = fps_double_to_38bit (1                   ); /* !ONE    10001 */
+    fps_tm[ 4098] = fps_double_to_38bit (2                   ); /* !TWO    10002 */
+    fps_tm[ 4385] = fps_double_to_38bit (3                   ); /* !THREE  10441 */
+    fps_tm[ 4386] = fps_double_to_38bit (4                   ); /* !FOUR   10442 */
+    fps_tm[ 4387] = fps_double_to_38bit (5                   ); /* !FIVE   10443 */
+    fps_tm[ 4388] = fps_double_to_38bit (6                   ); /* !SIX    10444 */
+    fps_tm[ 4389] = fps_double_to_38bit (7                   ); /* !SEVEN  10445 */
+    fps_tm[ 4390] = fps_double_to_38bit (8                   ); /* !EIGHT  10446 */
+    fps_tm[ 4391] = fps_double_to_38bit (9                   ); /* !NINE   10447 */
+    fps_tm[ 4392] = fps_double_to_38bit (10                  ); /* !TEN    10450 */
+    fps_tm[ 4393] = fps_double_to_38bit (16                  ); /* !SIXTN  10451 */
+    fps_tm[ 4375] = fps_double_to_38bit (0.5                 ); /* !HALF   10427 */
+    fps_tm[ 4376] = fps_double_to_38bit (0.33333333333333331 ); /* !THIRD  10430 */
+    fps_tm[ 4377] = fps_double_to_38bit (0.25                ); /* !FORTH  10431 */
+    fps_tm[ 4378] = fps_double_to_38bit (0.20000000000000001 ); /* !FIFTH  10432 */
+    fps_tm[ 4379] = fps_double_to_38bit (0.16666666666666666 ); /* !SIXTH  10433 */
+    fps_tm[ 4380] = fps_double_to_38bit (0.14285714285714285 ); /* !SVNTH  10434 */
+    fps_tm[ 4381] = fps_double_to_38bit (0.125               ); /* !EGHTH  10435 */
+    fps_tm[ 4382] = fps_double_to_38bit (0.1111111111111111  ); /* !NINTH  10436 */
+    fps_tm[ 4383] = fps_double_to_38bit (0.10000000000000001 ); /* !TENTH  10437 */
+    fps_tm[ 4384] = fps_double_to_38bit (0.0625              ); /* !SXNTH  10440 */
+    fps_tm[ 4227] = fps_double_to_38bit (1.4142135623730951  ); /* !SQRT2  10203 */
+    fps_tm[ 4370] = fps_double_to_38bit (1.7320508075688772  ); /* !SQRT3  10422 */
+    fps_tm[ 4371] = fps_double_to_38bit (2.2360679774997898  ); /* !SQRT5  10423 */
+    fps_tm[ 4372] = fps_double_to_38bit (3.1622776601683795  ); /* !SQT10  10424 */
+    fps_tm[ 4230] = fps_double_to_38bit (0.70710678118654746 ); /* !ISQT2  10206 */
+    fps_tm[ 4394] = fps_double_to_38bit (0.57735026918962584 ); /* !ISQT3  10452 */
+    fps_tm[ 4395] = fps_double_to_38bit (0.44721359549995793 ); /* !ISQT5  10453 */
+    fps_tm[ 4396] = fps_double_to_38bit (0.31622776601683794 ); /* !ISQ10  10454 */
+    fps_tm[ 4367] = fps_double_to_38bit (1.2599210498948732  ); /* !CBT2   10417 */
+    fps_tm[ 4368] = fps_double_to_38bit (1.4422495703074083  ); /* !CBT3   10420 */
+    fps_tm[ 4369] = fps_double_to_38bit (1.189207115002721   ); /* !QDRT2  10421 */
+    fps_tm[ 4303] = fps_double_to_38bit (1.4426950408889634  ); /* !LOG2E  10317 */
+    fps_tm[ 4361] = fps_double_to_38bit (0.3010299956639812  ); /* !LOG2   10411 */
+    fps_tm[ 4319] = fps_double_to_38bit (0.43429448190325182 ); /* !LOGE   10337 */
+    fps_tm[ 4318] = fps_double_to_38bit (0.69314718055994529 ); /* !LN2    10336 */
+    fps_tm[ 4359] = fps_double_to_38bit (1.0986122886681098  ); /* !LN3    10407 */
+    fps_tm[ 4358] = fps_double_to_38bit (1.1447298858494002  ); /* !LNPI   10406 */
+    fps_tm[ 4360] = fps_double_to_38bit (2.3025850929940459  ); /* !LN10   10410 */
+    fps_tm[ 4355] = fps_double_to_38bit (2.7182818284590451  ); /* !E      10403 */
+    fps_tm[ 4356] = fps_double_to_38bit (0.36787944117144233 ); /* !INVE   10404 */
+    fps_tm[ 4357] = fps_double_to_38bit (7.3890560989306495  ); /* !ESQ    10405 */
+    fps_tm[ 4354] = fps_double_to_38bit (3.1415926535897931  ); /* !PI     10402 */
+    fps_tm[ 4365] = fps_double_to_38bit (6.2831853071795862  ); /* !TWOPI  10415 */
+    fps_tm[ 4362] = fps_double_to_38bit (0.31830988618379069 ); /* !INVPI  10412 */
+    fps_tm[ 4298] = fps_double_to_38bit (1.5707963267948966  ); /* !PI2    10312 */
+    fps_tm[ 4347] = fps_double_to_38bit (0.78539816339744828 ); /* !PI4    10373 */
+    fps_tm[ 4363] = fps_double_to_38bit (0.017453292519943295); /* !PI180  10413 */
+    fps_tm[ 4364] = fps_double_to_38bit (9.869604401089358   ); /* !PISQ   10414 */
+    fps_tm[ 4366] = fps_double_to_38bit (1.7724538509055159  ); /* !SQTPI  10416 */
+    fps_tm[ 4373] = fps_double_to_38bit (0.57721566490153287 ); /* !GAMMA  10425 */
+    fps_tm[ 4374] = fps_double_to_38bit (1.6180339887498949  ); /* !PHI    10426 */
 }
 
 
