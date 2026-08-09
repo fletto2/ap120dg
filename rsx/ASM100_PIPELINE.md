@@ -6,23 +6,51 @@ containing the reconstruction, assemble a source that shipped on the
 tape, and compare the object it produces with the object that shipped
 beside it.
 
-**Result: byte-identical, on two sources.**
+**Result: all nine libraries reproduced. 376 modules, 0 errors.**
 
-| source | modules | errors | vs shipped |
-|---|---|---|---|
-| `SYMSRC.APS` -> `SYMLIB.APO` | 66 | 0 | identical (7199 bytes) |
-| `DGNSRC.APS` -> `DGNLIB.APO` | 11 | 0 | identical (10592 bytes) |
+| source | modules | vs shipped |
+|---|---|---|
+| `SYMSRC` -> `SYMLIB` | 66 | identical |
+| `DGNSRC` -> `DGNLIB` | 11 | identical |
+| `APFSRC` -> `APFLIB` | 34 | identical |
+| `UTLSRC` -> `UTLLIB` | 39 | identical |
+| `IPRSRC` -> `IPRLIB` | 13 | identical |
+| `AMLSRC` -> `AMLLIB` | 33 | identical |
+| `BABSRC` -> `BABLIB` | 60 | identical |
+| `SIGSRC` -> `SIGLIB` | 32 | identical **except `***FPB`** |
+| `BAASRC` -> `BAALIB` | 88 | identical **except `***FPB`** |
 
-sizes after stripping the trailing spaces RSX pads onto output records.
+sizes compared after stripping the trailing spaces RSX pads onto output
+records.
 
-`SYMSRC` is only `$EQU` constant definitions, so on its own it proves
-little about the assembler -- it never emits an instruction. `DGNSRC` is
-the diagnostic library: real AP microcode, so instruction encoding,
-symbol resolution, relocation records and multi-block modules are all
-exercised. It is also the library whose `APFET` module carries two
-`***CODE` blocks, the case that exposed a relocation bug in `lnk100.py`.
+## The two that differ are the tape's inconsistency, not the pipeline's
 
-Either way the run exercises `INFILE`, `PAKS` and `DATTIM` from the
+`SIGLIB.APO` and `BAALIB.APO` mark their parameter blocks `***FPB`;
+everything this ASM100 produces marks them `***PB`. Replace one string
+with the other and both become byte-identical -- the byte counts confirm
+it, SIG short by exactly 26 and BAA by exactly 88, which are the counts
+of the marker.
+
+ASM100 REL 1.00 -- the source that shipped on this same tape -- can only
+write `***PB`: there is one FORMAT for it, at line 1384,
+`5005 FORMAT ( 4X,2H12,1X,6A1,6X,5H***PB)`, and the string `FPB` does not
+occur anywhere in the file.
+
+The decisive evidence is internal: `BABSRC` uses `$PARAM` 59 times and
+its shipped object carries 59 `***PB`, matching REL 1.00 exactly, while
+`BAASRC` uses it 88 times and its shipped object carries 88 `***FPB`.
+Same tape, same pseudo-op, different marker. So `SIGLIB` and `BAALIB`
+were assembled by a **later ASM100 than the one distributed beside
+them**. `lnk100.py` already accepted both spellings, which is why this
+had never surfaced.
+
+`SYMSRC` alone would prove little -- it is only `$EQU` definitions and
+never emits an instruction. The rest are real microcode, so instruction
+encoding, symbol resolution, relocation records and multi-block modules
+are all exercised, including `APFET` with its two `***CODE` blocks, the
+case that exposed a relocation bug in `lnk100.py`.
+
+Every run exercises `INFILE`, `PAKS` and `DATTIM` from the
 reconstruction; a defect in any of them changes or prevents the output.
 
 ## The build
