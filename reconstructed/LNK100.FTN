@@ -740,10 +740,18 @@ C
 50      CONTINUE
         IF (MODE .EQ. 1) GO TO 200
 C
-C------ E FORMAT
+C------ E FORMAT (MANUAL SECTION 4.4, FIGURE 4-3)
+C
+C       THE FILE OPENS WITH THE NUMBER OF PROGRAM WORDS, THEN FOUR
+C       VALUES PER LINE.  THE VALUES ARE **DECIMAL**, ZERO PADDED TO
+C       FIVE DIGITS AND EACH FOLLOWED BY A PERIOD -- NOT OCTAL.  THE
+C       FIGURE'S FIRST WORD IS 16384. WHICH IS 040000 OCTAL, AND ITS
+C       LAST FIELD 00048. WHICH IS 60 OCTAL.  FIGURE 4-4 CONFIRMS THE
+C       LEADING COUNT: THE A FORMAT EMITS "DATA CODE(1) / 8/".
+C
+        CALL PUTDEC (LUN,NCODE,1)
         DO 100 I=1,NCODE
-          WRITE (LUN,900) (CODE(J,I),J=1,4)
-900       FORMAT (4(1X,O6))
+          CALL PUTDEC (LUN,CODE(1,I),4)
 100     CONTINUE
         RETURN
 C
@@ -1005,5 +1013,72 @@ C
         IF (NUNDEF .LE. 0) RETURN
         WRITE (ITTO,1020) NUNDEF
 1020    FORMAT (1X,I3,' UNDEFINED SYMBOLS')
+        RETURN
+        END
+C
+C
+C****** PUTDEC = WRITE N VALUES AS ZERO-PADDED DECIMAL WITH PERIODS **
+C
+C       FORTRAN IV HAS NO I5.5 EDIT DESCRIPTOR, SO THE DIGITS ARE BUILT
+C       BY HAND.  FIGURE 4-3 SHOWS FIELDS LIKE "16384." AND "00048.",
+C       FIVE DIGITS ZERO PADDED, EACH FOLLOWED BY A PERIOD, TWO SPACES
+C       BETWEEN FIELDS.
+C
+        SUBROUTINE PUTDEC (LUN,V,N)
+        INTEGER LUN,V(4),N
+        LOGICAL*1 OUT(40),BL,DOT
+        INTEGER I,J,P
+        DATA BL/' '/,DOT/'.'/
+        P = 0
+        DO 40 I=1,N
+          CALL DIG5 (OUT,P,V(I))
+          P = P + 5
+          P = P + 1
+          OUT(P) = DOT
+          IF (I .GE. N) GO TO 40
+          P = P + 1
+          OUT(P) = BL
+          P = P + 1
+          OUT(P) = BL
+40      CONTINUE
+        WRITE (LUN,900) (OUT(J),J=1,P)
+900     FORMAT (1X,40A1)
+        RETURN
+        END
+C
+C
+C****** DIG5 = FIVE DECIMAL DIGITS OF AN UNSIGNED 16-BIT WORD ********
+C
+        SUBROUTINE DIG5 (OUT,P,V)
+        LOGICAL*1 OUT(40),ZERO
+        INTEGER P,V,I,K,D,HI,LO
+        DATA ZERO/'0'/
+C
+C       THE WORD IS UNSIGNED: FIGURE 4-3 CARRIES 43008. AND 32768.,
+C       BOTH OF WHICH HAVE BIT 15 SET.  A NEGATIVE INTEGER*2 CANNOT
+C       SIMPLY HAVE 65536 ADDED TO IT, SO SPLIT THE VALUE AND ADD
+C       32768 AS 3*10000 + 2768 WITH A CARRY.
+C
+        IF (V .LT. 0) GO TO 20
+        HI = V / 10000
+        LO = V - HI*10000
+        GO TO 30
+20      LO = V + 32767
+        LO = LO + 1
+        HI = LO / 10000
+        LO = LO - HI*10000
+        HI = HI + 3
+        LO = LO + 2768
+        IF (LO .LT. 10000) GO TO 30
+        LO = LO - 10000
+        HI = HI + 1
+30      OUT(P+1) = ZERO + HI
+        K = 1000
+        DO 40 I=1,4
+          D = LO / K
+          OUT(P+I+1) = ZERO + D
+          LO = LO - D*K
+          K = K / 10
+40      CONTINUE
         RETURN
         END
