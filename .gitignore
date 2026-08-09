@@ -6,3 +6,10 @@ rsx/*.gz
 rsx/*.dsk
 rsx/*.rk
 rsx/console.log
+
+# build products extracted from the RSX transfer volume
+*.OBJ
+*.TSK
+*.OLB
+*.MAP
+HASI
