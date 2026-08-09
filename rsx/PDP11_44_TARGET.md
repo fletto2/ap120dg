@@ -147,6 +147,30 @@ Two reasons to want V4.x rather than a V3 pack:
 Against that, FPS wrote for V3.2 (INSTAL.TXT says so on every page), so
 anything built under V4 needs re-checking against the install notes.
 
-Known wrinkle: attaching a freshly created RK07 container reports
-`Container has 53790 sectors, drive has: 210 sectors`. Unresolved --
-the drive type appears not to take effect before the attach.
+The RK07 attach wrinkle noted earlier is resolved: it was stale
+container files left from a run before the geometry was set, not a
+configuration fault. On a clean file the drive comes up correctly --
+`sectors=22, heads=3, cylinders=815`, which is 53,790 blocks.
+
+### The V4.0 kit has everything the generation needs
+
+Scanning the five RL02 images for the components the V3.1 pack lacks:
+
+| image | carries |
+|---|---|
+| `rsxm32` | `SYSGEN`, `RSXMC`, `EXEMC`, **`SYSVMR`**, `RSX11M` |
+| `mcrsrc` | `SYSGEN`, `RSXMC`, `EXEMC`, `RSX11M`, **`DMDRV`** |
+| `excprv` | `SYSGEN`, `RSXMC`, `EXEMC`, `RSX11M`, **`RK611`** |
+| `hlpdcl` | `SYSGEN`, `RSXMC`, `EXEMC`, `RSX11M` |
+| `rlutil` | `SYSGEN`, `RSX11M` |
+
+`DMDRV` is the DM: driver and `RK611` its controller support -- exactly
+what has to be selected during the generation to make the RK07/RK06
+volumes usable. Compare the V3.1 pack, where `EXEMC`, `SYSVMR`, `RSXMC`
+and `SYSGEN` are all absent.
+
+So the generation is viable, and it is the next piece of work. It is a
+long interactive dialogue rather than a command file, so it wants to be
+approached as its own task: boot `rsxm32` on the replica, run `@SYSGEN`,
+and answer for an 11/44 with 4 MB, DM: on an RK611, DZ11 with sixteen
+lines, a DELUA and a TU58.
