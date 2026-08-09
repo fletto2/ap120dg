@@ -187,3 +187,27 @@ exactly how FPS's own descriptors read -- ASM100's root lists
 Watch for the diagnostic: a TKB undefined-symbol *diagnostic* still
 produces a task image, so the build looks like it worked and only fails
 when the code path is reached.
+
+## Coverage summary
+
+| stage | libraries | result |
+|---|---|---|
+| ASM100 -> `.APO` | 9 of 9 | byte-identical to the shipped objects (SIG and BAA modulo `***FPB`) |
+| LNK100 -> E module | 9 of 9 | identical to `lnk100.py` |
+| LOD100 -> load module | 4 of 9 | identical to `lod100.py` |
+
+376 modules assembled, 0 errors.
+
+**LOD100 covers four because of capacity, not correctness.** It holds
+`CODE(4,1200)`, and IPR, SIG, AML, BAA and BAB all exceed 1200
+instructions (BAB is 2273). Raising it to 1600 makes TKB report
+`SEGMENT LOAD HAS ADDRESS OVERFLOW: ALLOCATION DELETED` -- the task no
+longer fits 64 KB with the reconstruction's four-branch overlay tree.
+Every unit already carries only the commons it references, so the fix is
+a deeper tree, which is what the original had: INSTAL.TXT 9.14 is a much
+deeper descriptor than this one. Separate I- and D-space would also do
+it and the 11/44 supports it, but the V3.1 task builder cannot emit it.
+
+LNK100 has no such limit -- it takes `CODE(4,2400)` and still builds with
+**no** overlay descriptor at 116 blocks and 29024 words, which is what
+`LNK10.CMD` implies.
