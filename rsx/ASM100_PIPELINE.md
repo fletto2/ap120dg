@@ -156,3 +156,34 @@ console send queue entirely:
 `ASSIGN` with no `OPEN` leaves the unit unconnected, and the first READ
 then either reports no such file or falls back to the terminal and blocks
 forever. Using INFILE is also what `LNK10.CMD` implies by linking LIB100.
+
+## LOD100 too: the whole toolchain on the real machine
+
+    DGNSRC.APS --ASM100--> DGNOBJ.APO --LNK100--> DGNLNK.LM
+                           identical to           identical to lnk100.py
+                           shipped DGNLIB.APO       (283 lines)
+                                      \--LOD100--> DGNLOD
+                                                   identical to lod100.py
+                                                   (1160 words)
+
+All three tools built on RSX-11M, all linking a LIB100 that carries the
+reconstructed FDUTIL. LOD100 reports `282 INSTRUCTIONS, HIGH= 431` and 3
+undefined symbols -- the same counts LNK100 and `lnk100.py` report.
+
+### Getting LOD100 to link INFILE
+
+`LOAD` sits in an overlay branch, and naming LIB100 in the root factor is
+*not* enough: TKB still says `1 UNDEFINED SYMBOLS SEGMENT LOAD` and the
+call lands on address 0, which shows up as `ODD ADDRESS TRAP AT PC =
+000002` the first time a file is opened. The modules have to be named:
+
+    LOADB: .FCTR LOD100/LB:LOAD:LODFIL:LOADMP-LIB100/LB:INFILE:DUTIL
+
+`DUTIL` is ADUTIL's module, needed because INFILE calls `IAND16`. This is
+exactly how FPS's own descriptors read -- ASM100's root lists
+`LIB100/LB:DUTIL:ICMP16:...` by name, and DBG100 carries a whole factor
+`INFIL: .FCTR LB:'$LUIC'LIB100/LB:INFILE`.
+
+Watch for the diagnostic: a TKB undefined-symbol *diagnostic* still
+produces a task image, so the build looks like it worked and only fails
+when the code path is reached.
