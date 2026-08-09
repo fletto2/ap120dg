@@ -265,6 +265,8 @@ static t_uint64 fps_m1, fps_m2;           /* Multiplier inputs */
 static t_uint64 fps_inbs;                /* I/O input bus */
 static t_uint64 fps_dpbs;                /* Data Pad bus */
 static t_uint64 fps_cb;                   /* Control Buffer (current instruction) */
+static int32 fps_trace = 0;               /* per-cycle trace to stdout */
+static int32 fps_trace_n = 0;             /* cycles remaining to trace */
 
 /* AP memory (allocated dynamically, fps_ps is extern for loader) */
 t_uint64 *fps_ps;                         /* Program Store (64-bit words) */
@@ -287,7 +289,8 @@ static int32 fps_ctl05_done;            /* Subdevice 2: CTL05 DONE */
 
 /* Execution state */
 static int32 fps_spcond;                 /* S-pad condition code */
-static int32 fps_facond;                 /* Float adder condition */
+static int32 fps_facond;                 /* Float adder condition (current) */
+static int32 fps_facond_br;              /* ...as the branch field sees it */
 
 /* Function prototypes */
 int32  fps_io (int32 pulse, int32 code, int32 AC);
@@ -343,6 +346,8 @@ REG fps_reg[] = {
     { FLDATA (C05DONE,  fps_ctl05_done, 0) },
     { FLDATA (DISABLE,  dev_disable,INT_V_FPS) },
     { FLDATA (INT,      int_req,    INT_V_FPS) },
+    { ORDATA (TRACE,    fps_trace,       1) },
+    { DRDATA (TRACEN,   fps_trace_n,    32) },
     { BRDATA (SPAD,     fps_spad, 8, 16, SP_SIZE) },
     { BRDATA (SRS,      fps_srs, 8, 16, SRS_SIZE) },
     { NULL }
@@ -1054,6 +1059,15 @@ if (mant & 0x08000000)                                 /* Sign extend 28-bit */
 return mant;
 }
 
+/* 38-bit AP float -> double, for tracing only. */
+static double fps_38bit_to_double (t_uint64 val)
+{
+int32 exp = fp_get_exp (val);
+int32 mant = fp_get_mant (val);
+if (mant == 0) return 0.0;
+return (double)mant / 268435456.0 * pow (2.0, (double)(exp - FP_EXP_BIAS));
+}
+
 static t_uint64 fp_pack (int32 exp, int32 mant)
 {
 return ((t_uint64)(exp & FP_EXP_MASK) << FP_EXP_SHIFT) |
@@ -1147,17 +1161,33 @@ if (fps_psa >= PS_SIZE) {
 instr = fps_ps[fps_psa];
 fps_cb = instr;
 
+if (fps_trace && fps_trace_n != 0) {
+    printf ("[%4d] %06o,%06o,%06o,%06o",
+            fps_psa,
+            (int32)((instr >> 48) & 0xFFFF), (int32)((instr >> 32) & 0xFFFF),
+            (int32)((instr >> 16) & 0xFFFF), (int32)(instr & 0xFFFF));
+    }
+
 
 /* Pipeline shift: FAB2→FA every cycle (unconditional, per SIM100 line 1338).
    This must happen before any early returns (HALT, JMP, RETURN, etc.)
    so that the pipeline advances even on control flow instructions. */
 fps_fa = fps_fab2;
+/* FACOND is a TWO-BIT code, not a sign: SIM100 line 1347 takes
+   FACOND = MOD(FAB2(7),4) from the adder's condition element, and the
+   branch tests read it as bit0 = zero, bit1 = negative.  That is why
+   BFGT is "FACOND .EQ. 0" (positive and non-zero) rather than a
+   greater-than comparison. */
+/* The branch field runs BEFORE this update and reads the condition out
+   of STATUS(1) (SIM100 line 1233), which was written at label 30000 at
+   the end of the PREVIOUS cycle -- so a branch tests the adder condition
+   as of one cycle earlier, not the result landing in FA right now. */
+fps_facond_br = fps_facond;
+fps_facond = 0;
 if (fps_fab2 == 0)
-    fps_facond = 0;
-else if (fp_get_mant(fps_fab2) < 0)
-    fps_facond = -1;
-else
-    fps_facond = 1;
+    fps_facond |= 1;                                    /* zero */
+else if (fp_get_mant (fps_fab2) < 0)
+    fps_facond |= 2;                                    /* negative */
 
 
 
@@ -1241,16 +1271,37 @@ switch (cond) {
     case 3:  branch = 1; break;                          /* BINTRQ - interrupt request */
     case 4:  branch = 1; break;                          /* BION - I/O ready (stub: always) */
     case 5:  branch = 0; break;                          /* BIOZ - I/O not ready */
-    case 6:  branch = (fps_facond != 0); break;          /* BFPE - float error */
-    case 8:  branch = (fps_facond == 0); break;          /* BFEQ - float equal */
-    case 9:  branch = (fps_facond != 0); break;          /* BFNE - float not equal */
-    case 10: branch = (fps_facond >= 0); break;          /* BFGE - float >= 0 */
-    case 11: branch = (fps_facond > 0);  break;          /* BFGT - float > 0 */
+    case 6:  branch = 0; break;                          /* BFPE  - FP error not modelled */
+    /* SIM100 dispatches I=CONDF+1 to labels 11110..11113, so:
+         8  FACOND .EQ. 2          negative            BFLT
+         9  FACOND .NE. 2          not negative        BFGE
+        10  MOD(FACOND,2) .EQ. 0   not zero            BFNE
+        11  FACOND .EQ. 0          positive non-zero   BFGT
+       BFEQ is NOT here -- it lives in the STEST field below. */
+    case 8:  branch = (fps_facond_br == 2); break;          /* BFLT */
+    case 9:  branch = (fps_facond_br != 2); break;          /* BFGE */
+    case 10: branch = ((fps_facond_br & 1) == 0); break;    /* BFNE */
+    case 11: branch = (fps_facond_br == 0); break;          /* BFGT */
     case COND_BEQ:  branch = (fps_spcond == 0); break;   /* s-pad EQ */
     case COND_BNE:  branch = (fps_spcond != 0); break;   /* s-pad NE */
     case COND_BGE:  branch = (fps_spcond >= 0); break;   /* s-pad GE */
     case COND_BGT:  branch = (fps_spcond > 0);  break;   /* s-pad GT */
     default:        break;
+    }
+
+/* STEST field (SIM100 label 11500): when SOP=1 and SPS=0 the SPD field
+   selects a further test, and this is where BFEQ lives -- MOD(FACOND,2)
+   .EQ. 1, i.e. the adder result was zero.  Without it a loop that exits
+   on "count reached zero" never exits. */
+if (sop == 1 && sps == 0) {
+    switch (spd) {
+        case 0: branch = ((fps_facond_br & 1) == 1); break;   /* BFEQ  */
+        case 1: branch = (((fps_spcond >> 1) & 1) == 1); break;/* s-pad negative */
+        case 2: branch = ((fps_spcond & 1) == 1); break;      /* s-pad zero */
+        case 3: branch = ((fps_spcond & 1) == 0); break;      /* s-pad non-zero */
+        /* 12-15 test a bit of the FLAG register, which is not modelled */
+        default: break;                              /* 4-7 DPBS/status, 12-15 FLAG */
+        }
     }
 
 /* S-pad operation (when DF=0) */
@@ -1651,6 +1702,20 @@ if (!use_value) {
         }
     }
 
+if (fps_trace && fps_trace_n != 0) {
+    printf ("  FA=%.6g MD=%.6g DPX0=%.6g DPY0=%.6g MA=%o TMA=%o"
+            " SP=[%d %d %d %d %d %d %d] fc=%d\n",
+            fps_38bit_to_double (fps_fa),
+            fps_38bit_to_double ((fps_md && fps_ma < MD_SIZE) ? fps_md[fps_ma] : 0),
+            fps_38bit_to_double (fps_dpx[fps_dpa & 3]),
+            fps_38bit_to_double (fps_dpy[fps_dpa & 3]),
+            fps_ma, fps_tma,
+            fps_spad[0], fps_spad[1], fps_spad[2], fps_spad[3],
+            fps_spad[4], fps_spad[5], fps_spad[6], fps_facond);
+    if (fps_trace_n > 0)
+        fps_trace_n--;
+    }
+
 /* Advance PSA (unless already set by RETURN) */
 if (!psa_set) {
 fps_psa = (fps_psa + 1) & 0xFFF;
@@ -1777,7 +1842,7 @@ memset (fps_dpy, 0, sizeof (fps_dpy));
 fps_fa = fps_fab1 = fps_fab2 = fps_fm = fps_fmb1 = fps_fmb2 = fps_fmb3 = 0;
 fps_a1 = fps_a2 = fps_m1 = fps_m2 = 0;
 fps_inbs = fps_dpbs = fps_cb = 0;
-fps_spcond = fps_facond = 0;
+fps_spcond = fps_facond = fps_facond_br = 0;
 /* Don't zero PS, MD, or SPAD on reset -- preserve loaded programs and state */
 /* Initialize table memory ROM on first reset */
 fps_init_table_memory ();
