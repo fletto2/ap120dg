@@ -92,3 +92,34 @@ races. This is how FPS drove it too.
   527.
 - **A task image must be contiguous**, so a built `.TSK` cannot be copied
   onto a fresh volume and run -- `INS -- FILE NOT CONTIGUOUS`.
+
+## LNK100 and LOD100 under their own command files
+
+`INSTAL.TXT` 9.13 and 9.14 give `LNK10.CMD` and `LOD10.CMD` verbatim, and
+both reconstructions now build under them, against a real LIB100:
+
+    FOR LNK100=LNK100/-I4/-SN/-VA          ! $FOR1
+    TKB @LNK100                            ! LNK100/CP,LNK100=LNK100,LIB100/LB
+                                           ! / , UNITS=12 , //   -- no ODL
+    FOR LOD100=LOD100/-I4/-SN              ! $FOR2, note: no /-VA
+    LBR LOD100/CR:1000:256:256
+    LBR LOD100/IN=LOD100
+    TKB @LOD100C                           ! LOD100/CP,LOD100=LOD100/MP
+                                           ! UNITS=17 , ACTFIL=8 , //
+
+LNK100.TSK comes out at 66 blocks with **no** overlay descriptor, which is
+what `LNK10.CMD` implies -- the original fit unaided and so does this.
+LOD100.TSK is 145 blocks under its ODL, which `LOD10.CMD` does supply.
+
+**These two files independently confirm the FDUTIL unit mapping.**
+`LNK100.CMD` asks for `UNITS=12` and `LOD100.CMD` for `UNITS=17`. Under
+the file-number+7 rule those are exactly the highest unit each tool can
+reach: LNK100 uses file numbers up to 5, LOD100 up to 10. Nothing else
+explains why a linker would need seventeen logical units.
+
+**Open**: running LNK100 on the assembled objects is not working yet. A
+bare `L DGNOBJ.APO` fails with `NO SUCH FILE` from `LODFIL`, and
+`L DK1:DGNOBJ.APO` gets past the lookup but then hangs without reaching
+`LOAD COMPLETE`. So the reconstruction's `ASSIGN`-plus-implicit-open path
+behaves differently from ASM100's `ASSIGN`-plus-explicit-`OPEN`, and it
+does not pick up `SY:`. That is the next thing to chase.
