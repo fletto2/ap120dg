@@ -237,12 +237,15 @@ Neither LNK100 nor LOD100 is on the FPS-100 software tape. The tape is a
 not the FPS distribution tape (which per INSTAL.TXT §2.1 carries MAGTAP as
 file 0 and a names file with pass numbers), and not a post-install disk
 (there are zero build products among its 182 files). The install was never
-run on that disk, so the deletions in `PDS100.CMD` do not explain the
-absence. LNK100 and LOD100 are missing both source *and* build driver
-(`LNK100.FTN`, `LNK10.CMD`, `LOD100.FTN`, `LOD10.CMD`, plus `LIB100.CMD`)
-while all six sibling PDS tools have both -- a missing product tier.
-`INSTAL.TXT` §9.13 and §9.14 do reproduce the two build command files
-verbatim, and §9.14's overlay descriptor lists LOD100's ~50 module names.
+run on that disk in full. But both tools **were shipped**: `SHORT.DAT` on
+the tape is the distribution's own short index (08-Apr-1981, model
+100S-4K-DE04) and lists `LNK100.FTN` as file 66 and `LOD100.FTN` as file
+62. Exactly 9 of its 189 manifest files are absent from the 1986 dump --
+those two plus `FDUTIL.FTN`, `LIB100.CMD`, `LNK10.CMD`, `LOD10.CMD`,
+`LODTST.DAT`, `LODSYS.INP` and `LODMIN.INP` -- and the absences correlate
+with the install's own deletion commands. `INSTAL.TXT` §9.13 and §9.14
+reproduce the two build command files verbatim, and §9.14's overlay
+descriptor lists LOD100's ~54 module names.
 
 ## SimH AP-120B Emulator (`nova_fps.c`)
 

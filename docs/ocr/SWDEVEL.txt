@@ -1,0 +1,3381 @@
+FLOATING POINT
+SYSTEMS, INC.
+~ ARRAY TRANSFORM PROCESSOR
+EallEEN  sorTwARE (R
+N DEVELOPMENT - N
+EEN|  PACKACE
+B VANUALS [
+o [y
+- o | FLOATING POINT
+| | ~ SYSTEMS,  INC.
+| SOFTWARE
+| - DEVELOPMENT
+T PACKAGE
+ MANUALS
+©Floating Point Systems 1976 ” | - |
+All Rights Reserved ' ’
+Printed in the United State.s of America |
+PO BO).( 234.8'9 PORTLAND. OR97223 1OOO SW. NTH STREET. BE/\VERTON.OR?7OOSV (5036413151 TLX 360470 FLOATPOINT PTL
+| SOFTWARE DEVELOPMENT PACKAGE MANUALS : '
+- | FPS-7202 | : S
+This document contains four (4) manuals: ».‘ : : :
+1. HOW TO PROGRAM THE AP-120B B o |
+' Manual - : ' o
+| FPS-7303 '
+March 1976 o | | - o
+| 2. AP-120B APAL - Array Processor Assembly Language
+‘ Manual - - : , : ' | :
+FPS-7275-01 | ' | |
+., Revised February 26; 1976 '
+3. AP-120B APLINK - Array Processor‘Linking Loader
+S Manual - S ‘
+' FPS-7276-01 ‘ ' -
+o Re?ised Feburary 26, 1976 >. |
+4, AP-120B DEBUG - Array Processor Debugger |
+‘ Manual - : ' - | |
+- FPS-7277-01 -
+‘ Revised February 26, 1976 o :
+' - ' TABLE OF CONTENTS '
+HOW TO PROGRAM THE AP-120B
+- Section 1 - Meet the AP ... again : 1-1
+. Section 2 - Loops 2-1
+Section 3 - Caveat Programmer h N 3-1
+AP-120B APAL - ARRAY PROCLESSOR ASSEMBLY LANGUAGE MANUAL
+Section 1 - Introduction APAL 1-1
+Section 2 - Basic Syntax APAL 2-1
+Section 3 - Source Program Statements APAL 3-1 :
+v Section 4 - Operating Procedures APAL 4-1
+Section 5 - Error Messages . - APAL 5-1
+Appendix A ' APAL A-1
+Appendix B : APAL B-1
+- Appendix C _ _ - APAL C-1
+AP-120B APLINK - ARRAY PROCESSOR LINKING LOADER MANUAL
+Section 1 - Introduction APLINK 1-1
+Section 2 - (Presently Omitted)
+‘Section 3 - Operating Procedure APLINK 3-1
+Section 4 - Error Messages APLINK 4-1
+: Appendix A : : APLINK A-1
+Appendix B o APLINK B-1
+AP-120B APDEBUG QvARRAY PROCESSOR DEBUGGER MANUAL _
+Appendix A ' APDEBUG A-1
+. } Documentation Ugdaté ‘
+‘Abstract: These pages refléct'program changes
+in Software Update #1 and replace
+corresponding pages in the Software
+' - Development Package Manuals. Changed
+~ or newly added material is identified
+I by a bar along the outside margin of
+' : the page. - .
+'~ Manuals Affected: APAL #7275-01 February 26, 1976
+’ : Pages: 4-1 _ :
+. : 4-1a
+| - 4-2 |
+. APLINK #7276-01  February 26, 1976
+. - Pages: i :
+. 3-1 : - ,
+o 3-1la : ,
+‘ ‘ 3-4
+o : 3-5 ‘
+. : . S 3-5a '
+’ . 3-6
+: 3-7 ‘ ' '
+
+_ _ A-1
+
+: | | | APDEBUG #7277-01 February 26, 1976
+
+: Pages: A-1 - -
+,' | HOW TO -
+.  PROGRAM THE AP-120B |
+| | FPS-7303 | ‘ |
+FPS-7303 - -
+- ©FrLoaTinG PoINT SysTems, Inc.. 1976 |
+
+AcL RigHTs RESERvED ~ v o
+PUBLISHED IN THE UNITED STATES OF AMERICA
+
+MarcH 1376 o . S
+TABLE OF CONTENTS
+SECTION 1 MEET THE AP.....AGAIN ' ’ 1-1
+1.1 Introduction o - 1-1
+_ 1.2 Basic Overview ' ' 1-1
+1.3 Referencing Memory - 1-3
+1.4 S-Pad Mnemonics 1-3.
+} ’ 1.5 Other Pseudo-Ops o : ' 1-4
+SECTION 2 LOOPS | : ; |
+' 2.1 A Poor Loop | 2-1 )
+: 2.2 Determining Length of Loop 2-3
+2.3 Writing a Real Memory-Limited Loop 2-3
+' 2.4 Writing Intros . 2-4
+: : 2.5 A Dot Product Program 2-6 ‘
+_ 2.6 Notation : 2-8 l
+. - 2.7 Dropping Out One Early _ 2-11 _
+A ' 2.8 Interaction Between Columns - 2-13
+2.9 Changing DPA 2-14
+- 2.10 Non-Memory-Limited Loops 2-15
+' 2.11 A 1-Cycle Loop. _ 2-15
+SECTION 3 CAVEAT PROGRAMMER (Let the Programmer
+. ‘ Beware) . o 3-1
+' 3.1 Calling Another Sub-routine 3-1
+3.2 Other Things to Watch Out For 3-1
+- SECTION 1 S
+MEET THE AP......AGAIN o _
+1.1 INTRODUCTION - | - . |
+'The purpose of this manual is to illustrate the way to use the
+AP most efficiently, i.e., to write good loops. It assumes that
+‘the reader has already read the Processor Handbook (especially
+Section 3) and the Software Development Package Manual (APAL,
+Sections 2 and 3), and has at least a passing acquaintance with
+the AP instruction set. . : .
+The first section presents a short review of the basic elements _
+of the Array Processor from the programmer's point of view.
+The second section covers methods and techniques of writing loops.
+- The third section consists of a set of common pitfalls to avoid.
+The review in this section of the basic AP instructions is not
+meant to be all-inclusive. It is intended to briefly cover
+the most-often-used things. Further details can be found in
+the other manuals.
+This manual assumes the use of the AP's 333ns interleaved mémory.
+1.2 BASIC OVERVIEW ‘ ‘
+1.2.1 Arithmetic. Both the Floating Adder and Floating Multiplier t
+need explicit instructions (e.g., FADD and FMUL, respectively) to _
+push their respective answers out of the pipelines. Given these
+. "pushers'", the Floating Adder result (FA) will be available 2 , '
+cycles after the original instruction, and the Floating Multiplier :
+result (FM) will be available 3 cycles after the original instruction: :
+0. FADD DPX,DPY "add" 0. FMUL DPX,DPY "multiply f
+1. FADD "push 1. FMUL ""push
+- 2. DPX(1)<FA "'store answer 2. FMUL "push
+, _ ) , 3. DPY(1)<FM "store answer
+The empty FADD and FMUL "pushers" can also be real Adder or
+Multiplier operations, thus producing new answers each cycle. :
+If the "pushers" do not directly follow the original instructions,
+- FA will come out 1 cycle after the first FADD pusher, and FM will
+come out 1 cycle after the second FMUL pusher. Both FA and FM will
+.remain available for succeeding cycles until a new FA or FM is
+pushed out. ' N , _
+The arguments for Addér and Multiplier instructions consiSt of one |
+" from column A and one from Qolumn B, (in that order): '
+- COLUMN A (Al or M1) COLUMN B (A2 or M2)
+R FMl 0 Fa
+' . DPX DPX
+DPY , } DPY
+: 11
+The Adder has additional arguments of ZERO and NC (no change),‘which
+can be used in either or both columns. ' : _ '
+1.2.2 Main Data‘Memory_ Reading from memory requires one of the
+following instructions: SETMA, INCMA, DECMA, or LDMA. In practice,
+it is usually done by the SETMA instruction. The result, MD, comes
+out three cycles later and is also available for succeeding cycles
+until a new MD comes out. No '"pushers'" are needed. Writing into
+memory requires one of the above instructions plus MI<source, where
+source is FA, FM, or DB. ' This goes on the same line as SETMA, and
+gets done in that cycle. Memory can be referenced every 2 cycles,
+for either a read or write. ' , -
+
+~1.2.3 Table Memory. Table memory is usually referenced by the '
+SETTMA or LDTMA instruction. Two cycles later, TM is available
+and remains so until 2 cycles after the next instruction affecting
+TMA. Such instructions can occur in every cycle, producing a new
+TM every cycle. , . . _
+1.2.4 Data Pad. DPX and DPY each contain 32 registers, 8 of which
+are accessible from any given DPA. That is, one can reference DPX
+from DPX(DPA-4) to DPX(DPA+3), and similarly for DPY. '
+
+- The Data Pad Bus is usually used to store data from memory or from
+one Data Pad register into another, or to utilize a value, e.g.,
+in conjunction with a load operation: .
+o DPX(1)<DB; DB=DPY(-2) ~ (This can be shortened to
+
+_ ) - DPX(1)<DPY(-2).) ‘
+| DPX<D3; DB=MD - (Or DPX<MD)
+
+' LDDPA; DB=3 * (This sets DPA=3) |
+Storing into Data Pad from FA or FM does ndt use the Data Pad Bus.
+This is important, as it leaves DB free for other uses.
+
+1.2.5 S-Pad. S-Pad registers are usually used as address pointers
+or counters, and thus to pass parameters to a program. An S-Pad
+operation must accompany a SETMA (or SETDPA, SETTMA, etc.)
+instruction. An S-Pad operation must also precede a conditional
+branch (BGT, BNE, etc.) by one cycle. That is, conditional
+branches are based on the S-Pad Function (SPFN) of the S~Pad . .
+operation in.the previous cycle. . : : v
+The fastest way to get an integer into S-Pad is to use the LDSPI
+instruction: ) . LDSPI COUNT; DB=5
+This puts S5 into an S-Pad register called COUNT. The value 1is
+‘assumed to be octal unless a decimal point is added.
+DB=15. (note point).is equivalent to DB=17 (octal), or to
+- DB=@FX (hex). Hexadecimal numbers must start with a numeric digit '
+and end with "X'". ‘ ' ,
+Although the Flbating Adder operation I'SUB Al,A2 will do Al-AZ2, the
+.S-Pad operation SUB subtracts in the opposite direction, i.e.,
+SUB PIECE,TOTAL will do: : |
+(contents of S-Pad TOTAL) minus'(contents of S-Pad PIECE).
+| 1-2 |
+1.3 REFERENCING MEMORY .
+In order to read something out of memory, or write into it, the
+location in memory where this will occur must be provided. The
+- SETMA instruction gets this necessary information from the S-Pad
+function (3PFN) of the same cycle. Therefore, one needs to
+construct an S-Pad operation which will result in a pointer
+to the appropriate memory location. Generally this takes the
+form of adding increments to pointers. For example, if there ‘
+was a 4-element vector in memory locations 100, 102, 104, 106, .
+one would need an S-Pad register (say, APTR) containing the
+base address (100), and another S-Pad register (AINC) containing
+the increment between elements (2). Then, if one wanted to read
+the element in location 102, the appropriate instruction would be
+ADD AINC,APTR; SETMA. Now APTR would contain 102. 1If one wrote
+another ADD AINC,APTR; SETMA the contents of memory location 104
+would be read. , . a _
+Consider the following instruction: MOV APTR,APTR. This doesn't
+seem to accomplish much, but in the light of the above discussion,
+it can be seen that its SPFN could be useful for a SETMA. " This
+is how one would get the first element of a vector. ,
+All of the above .is correspondingly trus for writing into memory.
+1.4 S-PAD MNEMONICS ' ' , '
+S-Pad names such as APTR, AINC, N are really only temporary names
+for the 16 S-Pad registers. A statement such as DEC N will not
+mean anything to the assembler unless the program has equated
+- the mnemonic "N" with a specific S-Pad register, such as S-Pad
+0. This is done by the following assembler pseudo-op: N $EQU O.
+All S-Pad names used in a program must be declared in this '
+manner before using them in an instruction. Thus, programs
+- generally begin with lists like: - '
+: APTR $EQU O ‘ :
+_ AINC $EQU 1 o : _
+o - BPTR $EQU 2
+: . BINC $EQU 3 v ,
+; N " JEQU 4
+- These S-Pad numbers should not be confused with the contents of the
+S-Pads. ADD BINC,BPTR would not add 3 to 2 (using the abave list),
+but would add the contents of S-Pad 3 to the cqntents of 3-pad 2.
+There can be more than one name for an S-Pad register. If you
+had 2 different vectors, A and B, and wished to use the mnemonics
+AINC and BIIC for their increments, you could use the same S-Pad
+register if the increment for both is the same in all cases, by
+- declaring: o ' ‘
+: AINC SEQU 1. -
+- ' BINC $EQU 1 . ' , .
+’ ) 1-3
+1.5 OTHER PSEUDO-OPS
+- Besides the $EQU péeudo—op, the typical program includes $TITLE and
+- QENTRY pseudo-ops at the very beginning, and an $END at the very
+end. A basic program with one loop would have the following form:
+~ $TITLE name | |
+o $ENTRY name S
+' ~ S-Pad mnemonic $EQU o
+' ‘ . . -1 A 1 o
+» ‘ . _ . 2
+- name: (code) ' _
+1" . .
+_ " L {}”intro” to louop and any initializations
+- " J_ and pointer adjustments)
+. " ) . .
+‘loop: (code) ' _ ,
+. 1" . ' . .
+. 1" )
+| - $END » | |
+See fhe software manual for explanations of these pseudo-ops. |
+1-4
+SECTION 2
+LOOPS S o
+2.1 A POOR LOOQP _— .
+The loop is where the potential of the AP comes into full bloom.
+For example, one way (lengthy but workable) to write a dot
+product program is as follows: - _
+Given: Vectors A and B in Main Data memory, with elements of
+' each vector in equally spaced locations in memory (e.g.
+‘ - even-numbered locations). o '
+Produce: N ' _
+c= Ap-Bn :
+, m=1. o _ . ‘ ‘
+- Parameters passed in S-Pad: . ‘
+: S-Pad Name Contains: :
+APTR base address of vector A
+' BPTR base address of vector B
+XINC increment (number of locations from one
+: ' element to the next) (same for both vectors)
+N number of elements in each vector
+CPTR ~ - address of answer ‘ :
+DOTPROD: SUB XINC,APTR (*see below) :
+: - SUB XINC,BPTR (*see below) o ,
+" FADD ZERO, ZERO ' "initialize FA=0 ,
+' FADD o
+- LOOP: ADD XINC,APTR; SETMA 'get mth element of vector A
+_ NOP 3 " : from memory ,
+o NOP -
+- DPX<MD "MD=Ap, store into DPX
+ADD XINC,BPTR; SETHMA ''get mth element of vector B
+v NOP . : : : .
+NOP - : _
+FMUL DPX,MD "MD=Bpn, do An.Bnp
+FMUL : :
+FMUL . S ' _
+FADD FM,FA "add product to sum of products
+FADD - ’ ‘ _ _ ‘
+‘ DEC N ""decrement counter ‘
+BGT LOOP "branch back if not done yet
+_ : "(i.e. if N>0) .
+DONE: MOV CPTR,CPTR; SETMA; MI<FA
+- "otherwise, store answer
+*This 1s so that the first time through the loop, ADD XINC,APTR and
+ADD XINC,BPTR will not move the pointer to the second element,
+passing up the first altogether. ’
+, 2-1
+- To begin with, this program can certainly be shortened by combining
+instructions and overlapping memory fetches. Thus:
+DOTPROD: FADD ZERO,ZERO; SUB XINC,APTR '
+- FADD; SUB XINC,BPTR
+"LOOP: ADD XINC,APTR; SETMA "get Ap ,
+NOP : .
+' ADD XINC,BPTR; SETMA "get By '
+DPX<MD = "store A, in DPX
+: NOP » _
+.. - FMUL DPX,MD , "do Ap.Bp
+. ‘ FMUL ' , :
+FMUL _
+~ FADD FM,FA; DEC N "add prod to sum of products
+‘ ' " and decrement counter .
+- FADD; BGT LOOP ’ ~ '""test if done. If not, branch
+oo ‘ . to LOOP
+DONE: © MOV CPTR,CPTR; SETMA; MI<FA - - :
+_ : "if so, store answer
+Note the extra FMUL's and FADD's, described as 'pushers.'" These
+‘'push the answers through the pipelines, so that FM and FA will
+contain what they are intended to contain. This is pointed out :
+because the beginning AP programmer is likely to forget to put
+"pushers'" in his code. o
+Now the loop of the evolving dot product program is 10 cycles leng.
+This means that each new pair of elements costs 10 more cycles.
+Although better than the initial example, which had a 1l4-cycle
+loop, this can actually be cut down to a mere 4 cycles!
+2-2
+2.2 DETERMINING LENGTH OF LOOP o ' ' | ‘
+One might éuppose that the length of a program loop depends on
+what one is trying to do. This is true, but not in the way one )
+would think. The AP programmer decides ahead of time how many
+cycles his loop should contain, and then fits everything into
+that framework. How does he pick the magic number? Most ' ,
+commonly, loops are memory-limited. Recall that one can reference
+memory (to read or to store) every 2 cycles. If one has 2 memory
+references to do (e.g., '"get A" and ''get B'"), then the loop will
+be at least 4 cycles long (2 per memory reference). And, unless
+one has more than 4 different FMUL's, 4 different FADD's, or 4
+different S-Pad operations to do, the loop should be, at most, 4
+cycles. A lot can be done in 4 cycles when one can do a T'loating
+Multiplier operation, a Floating Adder operation, an S-Pad :
+operation, a branch, a memory reference, a Data Pad Bus transfer, etc.,
+in each cycle. - _
+2.3 WRITING A REAL MEMORY-LIMITED LOOP '
+Before continuing‘with the transformation of the dot product ,
+program, another example will be utilized.
+Given: Vectors A and B in Main Data memory, length=N elements
+Produce: Vector C (in memory), where 5 '
+. ' ' C =A"+B for m=1 to N
+. . . . m m m
+Parameters: S-Pad Name Contains v ' :
+- APTR base address of A '
+BPTR : base address of B
+" CPTR base address of C
+' XINC increment (same for all vectors in this .
+: ‘ example) ' .
+. - N , number of elements ' _
+Note that there should be 3 memory references in the loop: '"get A",
+"get B'", and "store C'". (Unlike the Jdot product which accumulated :
+a running sum in the Adder, this program needs to store an answer
+after each set of computations. For the dot product, storing was
+not a repeated process, and hence not included in its loop). Three
+memory references, one every other cycle, means the loop would be
+6 cycles long. It would start like this:
+1) ---(nothing here, but couht a cycle) o
+C 2) ADD XINC,APTR; SETMA "get A
+_ 3) -—- ‘ o o . . .
+4) ADD XINC,BPTR; SETMA "get B 3 _
+5) DPX<MD - "store A in DPX _
+, 6) FMUL DPX,MD - "do A*A :
+(The reason for-Starting on the second line will be explained later .)
+o 2-3
+Now it has run out of cydles, but there is still more to do, so it
+starts back up at the first cycle. which is where the end will
+~ branch to, when it gets around to. testing if it's done. »
+S TN
+LOOP: 1) —-- _ FMUL - "B is available here, but
+| | ! ____"not_needed yet i
+2) ADD XINC,APTR: SETMA '  FMUL
+‘ 3y ——— - FADD FM,MD  "add B to AZ?
+4) ADD XINC,BPTR; SETMA FADD - .
+. /
+_ 5) DPX<MD /; [DEC N "answer is available here
+: . P } _ : "but can't reference mem.
+- . _!yet to store it
+- 6) FMUL DPX,MD L +ADD XINC,CPTR; SETMA; MI<FA;
+. : \ . » ¢ BGT LOOP "store answer and
+. ) ~ - . - ; ‘ ] ntesz Ji dQnE :
+This is the entire loop. In its proper form, taking out lines and
+adding semicolons, it looks like this: o :
+LOOP: FMUL | | | |
+ADD XINC,APTR; SETMA; FMUL
+FADD FM,MD :
+ADD XINC,BPTR; SETMA; FADD ‘
+' DPX<MD; DEC N . : _
+: FMUL DPX,MD; ADD XINC,CPTR; SETMA; MI<FA; BGT LOOP
+2.4 WRITING INTROS | .
+Notice, however, that if the program goes .right into this loop,
+after initial overhead such as SUB XINC,APTR \ _
+’ SUB XINC,BPTR :
+o - SUB XINC,CPTR
+it picks up the first element of A and B as it's supposed to,
+but it also stores something into C before it's ready to, and
+decrements the counter too early. It goes through both columns
+~at the same time. What is desired, however, is that computations
+in the second column continue from the first column. The only
+way it can do this is to continue from what the first column did
+in the previous time through the loop. And the first time, there
+‘was no previous time. Hence the need for additional microcode ,
+before getting into the loop. . ,
+Exactly what needs to go before the loop? 1In order for the second
+column of the loop to be doing what it's supposed to when the
+program gets to it, the first column must precede it. .Essentially, c
+one rewrites the first column as an "intro" to the loop. Thus: o
+PROGRAM: - MOV APTR,APTR; SETMA 'get first element
+, . ' "of A
+j - : ' SUB XINC,CPTR . '"to offset ADD in loop
+. . MOV BPTR,BPTR; SETMA ‘'get first element
+' , : DPX<MD _ "store A(1l) in DPX
+: o | - FMUL DPX, MD "do A(1)2
+‘LOOP: - FMUL -
+ADD XINC,APTR; SETMA; FMUL | "get A(m+1l)
+- o ' FADD FM,MD "do A(m)2+B(m) -
+_ ADD XINC,BPTR; SETMA;’ FADD ' "get B(m+1l)
+DPX<MD; DEC N : ' "store A(m+1)
+FMUL DPX,MD; ADD XINC,CPTR; SETMA; MI<FA; BGTzLOOP
+- ‘ "do A(m+1)“, store
+} . _ "C(m), test if done
+DONE: RETURN ’
+To clear up a loose end regarding the structure of memory«limifed
+loops, one might notice that since the branch must be in the last
+cycle, the DEC N instruction must be in the second-to-last cycle.
+DEC is an S-Pad operation and cannot be in the same cycle as another
+S-Pad operation, such as ADD XINC,XPTR. A memory-limited loop has
+SETMA's (requiring S-Pad operations) on every other line. Since the
+DEC N operation will go on an odd-numbered line of the loop, the
+SETMA's must go on even-numbered lines. This is why the first
+thing to do, ADD XINC,APTR; SETMA (see section 2.3), was put on line 2.
+2-5
+2.5 A DOT PRODUCT PROGRAM | |
+It is now possible to write the 4-cycle dot product. Using the :
+technique outlined above, the loop should be constructed as follows:
+L) - - SRR |
++ 12) ADD XINC,APTR; SETMA '"get A .
+: !3) — — . ' ‘
+;4) ADD XINC,BPTR; SETMA ''get B : , '
+,4 -fhen S ‘
+. ' : . . ‘ B .‘i '
+P) ~——— . :iDPX<MD - "store A _ '
+E) ADD XINC,APTR; SETMA | 1‘“? _ _ o
+' N . —1_—-..——_—_—_—_——_
+< E) -—— - IFMUL DPX,MD '"do A-B .
+. B l i ’ N
+F) ADD XINC,BPTR; SETMA « | FMUL '
+P . /o _ - |
+, : £hén ' . '
+. : : BN L »
+‘D --—- 7 TDPX<MD :iFMUL '
+12) ADD XINC,APTR; SETMA | | -—- , | FADD FM,FA "add A-B to sum of
+J s -I ‘ "products
+'3) - _ B ! ;FMUL DPX,MD,iFADD; DEC N' '"decrement counter
+)
+- — __-——-——L—‘-————-—————————-————‘-—————n———-: o T ——— —
+4) ADD XINC,BPTR; SETMA . iFMUL , wBGT LOOP "test if done
+’ . \ } . ’ H N | ) ’ .
+The intro to this 3-column loop will consist of the first column
+alone, then the first and second column together. Other overhead,
+such as initializing FA to O, can be mixed in with the intro.
+To generalize, an N-column loop would require an intro coﬁsisting
+~ of column 1 followed by columns 1 and 2 together, followed by columns
+- 1, 2, and 3 together.... followed by columns 1, 2,..,N-1 together.
+: , : 2-6 '
+$TITLE DOTPROD | | N
+$ENTRY DOTPROD '
+APTR $EQU 0 |
+- BPTR $EQU 1 o o , .
+CPTR $EQU 2 ‘ o
+XINC $EQU 3 : I ‘ _
+N - $EQU 4 o '
+DOTPROD: MOV APTR,APTR; SETMA; FADD ZERO,ZERO "get A(l) and.
+o ‘ . - "initialize FA=0
+- MOV BPTR,BPTR; SETMA; FADD o "get B(1l)
+DPX <MD ' o "store A(1l)
+| ADD XINC,APTR: SETMA - | "get A(2)
+FMUL DPX,MD . | . "do A(L1)*B(1l)
+ADD XINC,BPTR; SETMA; FMUL : "get B(2)
+ LOoP: DPX<MD; FMUL o ' "store A(m+1) |
+o ADD XINC,APTR; SETMA; FADD FM,FA "get A(m+2), add
+' _ "A(m)B(m) to sum
+FMUL DPX,MD; FADD; DEC N "do A(m+1)B(m+1)
+, , _ ' ""decrement counter
+ADD XINC,BPTR; SETMA; FMUL; BGT LOOP "get B(m+2), test if
+: ' : - "done
+- DONE: MOV CPTR,CPTR; SETMA; MI<FA; RETURN . "if so, store answer
+END | o o
+Now each new pair of elementé will.only cost 4 more cycles, because
+every « cycles a new pair are being fetched; every 4 cycles another
+product is added to the sum. The longer overhead is no disadvantage
+as it is only done once, and even if the program was called with N
+containing 1, making the streamlined loop unnecessary, it takes no
+longer than the unstreamlined program.
+Note that there are 2 SETMA's in a row at the beginning and again
+at the end of the program. This will not cause any problems except
+- to make memory spin, which is the memory's way of putting
+"in the NOP's the programmer leaves out. The timing is still the :
+same, and this way there are 2 less locations of Program Source
+~used up.. . ’ : - o |
+It might be mentioned that if one were getting Vectors A and B out
+of Data Pad instead of memory, the dot product could be written
+with a l-cycle loop!  This will be demonstrated later. ' .
+‘ ‘ _ o 7 _ : :
+2.6 NOTATION ‘ : ‘ ;
+A few words about notation are in order. The "---'" used when
+writing loops in column form simply denotes a blank spot,
+indicating a cycle goes by while awaiting the results of a
+
+- memory fetch or while looking for a more propitious spot to use
+the results of the Adder or Multiplier, etc. Normally, something
+else will eventually go on the same line, in a different column:
+Example: This takes vector A, multiplies it by a constant in
+DPX, and stores it in vector B. ‘
+l) —-—-- ©° FMUL DPX,MD :
+2) ADD XINC,APTR; SETMA /1 FMUL
+
+" 3)  e—m _ / ‘ FMUL; DEC N
+4) -—- ' | ADD XINC,BPTR; SETMA; MI<FM; BGT LQOP
+Since the length of the loop was already decided by the number of
+SETMA's, these blank spots cause no harm to the speed. It is '
+the number of cycles in the loop, not the number of columns, which
+determines speed. Extra columns simply mean longer intros, which
+the program only goes through once anyway unless it's part of a
+nested loop. : ,
+In loops with several Adder or Multiplier operations, it often
+happens that one such instruction will be a "pusher' for another
+in another column. - ’ ' ' )
+1) (code) : FMUL DPY,MD (code) . .
+2) " FMUL DPX,DPY FMUL _ "
+3) " FMUL FMUL S
+3) " FMUL ’ L DRY<FM " ‘
+5) " DPX(1)<FM : : " :
+6) " . ) » " : ! , .
+In column 2, lines 2 and 3 are illegal, as those lines already
+contain FMUL's (which will do the pushing for column 2 as well
+as column 1). However it may be advantageous to the
+programmer. to note to himself somehow that FMUL's do belong there,
+in case things in the first column get moved around for some ’
+reason. This is the purpose of such notation as (fmul) or (fadd).
+
+. 2-8
+Thus:
+1) (code) ___ FMUL DPY,MD (code) :
+2) " FMUL DPX,DPY (fmul) "o :
+3) " FMUL ‘ (fmul) o »
+4) " FMUL DPY<FM "
+8) " DPX(1)<FM : " '
+6) -~ v | . . " ; |
+Now, if pieces of the first column were moved down a couple ‘
+of lines for some reason, ' ’
+1) (code) , FMUL DPY,MD (code) DPX(1l)<FM
+2) " (fmul) "
+©3) " . : (fmul) " -
+4) " FMUL DPX,DPY DPY<FM v " :
+5) " FMUL : _ : : M v
+6) . " FMUL o
+the programmef would be reminded to put real FMUL's back on
+those lines. ‘ ‘ :
+When writing loops with a small number of cyéles, these reminders
+can also help one keep track of the columns, as in: :
+= - . ---7 DPY<MD T FMUL FADD FM,FA; DEC N
+ADD XINC,APTR; SETMA [ ---' FMUL DPY,MD. '@ (fmul) | FADD; BGT LOOP
+~ This gets a vector from memory, squares each element and adds the
+squares together (sort of a dot product between vector A and itself).
+The seemingly empty columns, which disappear when the loop is _
+written in proper form (see below), are necessary in order to write
+the intro properly. If one left out the second column, for example,
+his intro would start with:
+‘ MOV APTR,APTR; SETMA '
+' DPY <MD ‘ _
+~ ADD XINC,APTR; SETMA; FMUL DPY,MD .
+Clearly, the first MD will not be the first element fetched. By |
+the time it gets down to FADD FM,FA in the loop, something which
+doesn't belong will be added in. '
+< 2-9
+This is what the intro and loop should look like: :
+| MOV APTR,APTR: SETMA o -
+- FADD ZERO,ZERO : © "initialize FA=0
+ADD XINC,APTR; SETMA; FADD ‘ : g
+' DPY <MD ' A ., :
+' ADD XINC,APTR; SETMA; FMUL DPY,MD ‘ ' _
+DPY<MD; FMUL , .
+ADD XINC,APTR; SETMA; FMUL DPY,MD
+' LOOP: DPY<MD; FMUL; FADD FM,FA; DEC N : '
+ADD XINC,APTR; SETMA; FMUL DPY,MD; FADD; BGT LOOP
+» (answer)<FA> o }
+| : n - 2-10 N
+2.7 DROPPING OQUT ONE EARLY : '
+1) --— ' (code) . (code) ‘
+2) ADD XINC,APTR; SETMA " ' "
+3) (code) oo S : oo
+4) ADD XINC,BPTR; SETMA " " : ‘ v
+5) (code) " " _ '
+6) " _ . ADD XINC,CPTR; SETMA " _
+) oo - ‘ - (code) " DEC N .
+8) " T ' : ADD XINC,DPTR; SETMA;
+v ' ) ' MI<DPX, BGT LOOP
+Here, there are 2 memory reads in the first column, one read in the
+second column, and a store in the last column. When writing the
+intro, the pointers should be taken care of as follows: ,
+MOV APTR,APTR; SETMA ’ ,
+SUB XINC,DPTR; (code) :
+MOV BPTR,BPTR; SETMA -
+- (code) ‘ _ ' - ,
+~ ADD XINC,APTR; SETMA; (code)
+. (code) _' "
+ADD XINC,BPTR; SETMA; "
+(code) " :
+" ; ‘ MOV CPTR,CPTR; SETMA _ ‘ ;
+_ " : (code) , ,
+If the memory reference in the second column of the loop was a .
+store instead of a read, the problem would become more complicated. ’
+By the time the counter went down to zero and the last result was '
+stored at DPTR, an extra C would have been stored, possibly over A
+a valuable piece of data, such as the beginning of vector D. Or .
+~ if instead of ADD XINC,CPTR; SETMA; MI<DPY in the second column, L
+we had TPY<FA (where FA .is cumulative, as in the dot product) and
+later stored DPY into CPTR after getting out of the loop, an extra .
+FA would have been computed and DPY would contain an incorrect. ,
+answer. In this case, it would be wise to drop out of the loop
+one time early. One would put an extra DEC N somewhere in the
+intro, so that the loop would be done N-1 times. Then, after the
+loop, write just the last column (not including DEC and the branch, :
+of course), which is all that remains to be done from the loop
+anyway. - '
+_ 2-11
+Example: This does a dot product of vectors A and B, and also.
+outputs the square of each updated sum into vector D.
+—_—— o - - FMUL DPX,MD f——— ‘
+ADD XINC,APTR; SETMA - (fmul). ' FMUL DPY,DPY
+-—— FMUL © (fmul) : '
+- ADD XINC,BPTR; SETMA FADD FM,FA , FMUL . :
+; DPX<MD ' . -, FADD : ., DEC N
+-— . , . DPY<FA ., ADD XINC,DPTR; SETMA; MI<FM;
+- i - : BGT LOOP -
+When it is going through the loop for the last time and storing
+" the very last thing in D (column 3), it is also simultaneously
+doing extra executions of columns 1 and 2. Normally, that doesn't
+matter, but in this case, something extra is being added to the
+cumulative sum of the dot product (column 2), which was completed
+the previous time through the loop. By dropping out of the loop
+before its last time around, this error is avoided: - '
+MOV APTR,APTR; SETMA _ : _ -
+DEC N : "to cause dropping out early
+MOV BPTR,BPTR; SETMA ‘ ‘
+DPX<MD - . ' v
+: SUB_XINC,DFTR "to nullify the first ADD XINC,DPTR
+o FMUL DPX,MD . '
+ADD XINC,APTR; SETMA; FMUL - :
+' ‘ FMUL . S
+ADD XINC,BPTR; SETMA; FADD FM,FA
+DPX<MD; : FADD : ‘
+‘ ~ DPY<FA .
+LOOP: ' FMUL DPX,MD ' ' .
+ADD XINC,APTR; SETMA . FMUL DPY,DPY : :
+_ FMUL ’
+ADD XINC,BPTR; SETMA; FADD FM,FA; FMUL '
+DPX<MD; FADD; DEC N , -
+, DPY<FA; ADD XINC,DPTR; SETMA; MI<FM;
+' BGT LOOP '
+OUT: S FMUL DPY,DPY -
+' MOV CPTR,CPTR; SETMA; MI<DPY; FMUL
+- : ' ' ' FMUL
+ADD XINC,DPTR; SETMA; MI<FM;
+- RETURN
+Notice that the (fmul) in column 2 became a real FMUL in the intro.
+OUT starts just the last column. The next line stores the
+completed dot product. _ : _
+4 ‘ 2-12 .
+One might wish to come out one early even if one doesn't strictly '
+need to, if the loop is long and there are only a couple of lines
+. in the last column: _ . ‘ .
+1) (code) (code) : - .
+2) " SETMA " , :
+3) " " . . : )
+4) " : " SETMA; MI<DPX : o o
+5) . ) 1R} . .
+1 6) " SETMA ‘
+7) " . .
+8). " SETMA ' : :
+. 9) " o :
+-10) " SETMA ' ,
+11y " DEC N : ' '
+12) " SETMA BGT LOOP ‘
+In this case, coming out of the loop one time early and adding on
+.the last 4 lines afterward would save going .through 8 cycles for
+nothing. : : -
+2.8 INTERACTION BETWEEN COLUMNS _
+In order to fit things into complicated loops without creating
+op-code conflicts, the AP programmer takes advantage of results
+(e.g. MD, FA) which are the same for one or more cycles after it
+is first available. Sometimes he will purposely delay the
+pushing of an answer through a pipeline by leaving out "pushers'.
+But he must be careful of the way the columns interact with each
+other within the loop.
+1) FMUL DPX,DPY . ‘ _
+2) . - FMUL DPY(3),DPX(2)
+- 3) . FMUL ‘ ‘ '
+4) FMUL _ . , ' g
+5) FMUL DPY(1)<FM :
+6) DPX(1)<FM _ . v -
+The FMUL's in column 2 will act as ''pushers'" for the FMUL DPX,DPY
+in column 1, whose answer will come out on line 4 instead of line
+6 as desired and will disappear forever when replaced by a new.
+FM on line 5. Notice the FMUL on line 4 in column 1 acts as a
+pusher for column 2, which was planned for. -
+- 2-13 - |
+. Another example: » ,
+1y (code) T DPX<MD “(code)
+2) ADD XINC,APTR; SETMA . (code) . DPX<FA
+3) (code) ‘ FADD FM,DPX - (code)
+4) " ‘ ‘ (cOde) . ' S
+The DPX df.column 2 line 3 will not be the same as what was stored
+into it in column 2, line 1. It will be FA from column 3, linc 2. ,
+2.9 CHANGING DPA , -
+‘ Becausevone can access things in Data Pad much fasfer than ‘
+things in memory, it makes sense to store things from memory
+into Data Pad if they will be used again. For example, if one
+is going to use an N-element vector for several different
+computations, one could store it in DPX(9), DPX(1l),....,DPX(N-1).
+Because the Data Pad indices can only be accessed from -4 to +3
+with a static DPA, it becomes useful to leave the index alone
+and change DPA., ' ‘ o ,
+Storihg vector A in DPX is basically the repeated operation of
+*DPX<MD; INCDPA. If DPA is initially set to zero, then the first
+element will be stored into DPX(0). INCDPA will increase DPA
+~for the next instruction. .Thus: DPX<MD; INCDPA '"refers to DPX (D)
+- : _ DPX<MD "refers to DPX(1l)
+The ways to set DPA to zero: ‘
+: CLR# (S-Pad name):; SETDPA 'uses up S-Pad field
+: v or
+‘ . DB=ZERO; LDDPA "uses up Adder field
+This loop will read a vector from memory into Data Pad X:
+. | g N o
+—_— v [l - DPX MD; INCDPA; DEC N
+ADD XINC,APTR; SETMA ! -—-—- ' BGT LOOP 7 ' .
+With intro: : B '
+MOV APTR,APTR; SETMA | | |
+- CLR# APTR; SETDPA o
+ADD XINC, APTR; SETMA » _
+- LOOP: DPX<MD; INCDPA; DEC N ’
+ADD XINC,APTR; SETMA; BGT LOOP o o ‘
+2-14 o |
+2.10 NON-MEMORY-LIMITED LOOPS | | |
+
+A non—memory—limited'loop is a loop in which 2 times the number :
+of memory references is less than the number of same-op-code-field
+operations required. For example, if there are 5 Floating Adder .
+operations to be done (FADD, FSUB, FSUBR, etc.) but only
+
+2 memory references (a fetch and a store), the 5 Adder operations
+cannot fit into 4 cycles. : ; - .
+
+Incidentally, "pushers'" don't count in figuring out how.many cycles
+
+are needed. In a S5-cycle loop with 5 different Adder operations, :
+the Adder instructions become each other's pushers.)
+
+Recall that in memory-limited loops, the first instruction in
+- column 1 usually starts on line 2, to avoid S-Pad conflicts on the
+next-to-last line. (See last paragraph of Section 2.4). This is
+
+not necessary in non-memory-limited loops.
+
+The following loop will test whethef-each element of a vector in
+
+DPY is within the range between a maximum limit and minimum
+
+limit. If so, the element is added to a cumulative sum. The maximum
+limit is conveniently located in MD, and the minimum limit in FM,
+
+by the grace of whatever program uses this loop. Neither FM nor ’
+MD change during this loop's execution. . :
+
+- FSUB DPY,MD BTGT BIGGER {Tadd)
+
+FSUB FM,DPY BT'GT SMALL = - *DPX<FA; DEC N 4 _
+(fadd) INCDPA FADD DPY(-1),DPX , BGT LOOP
+
+Note that the BFGT instruction tests FA of the previous cycle.
+
+2.11 A 1-CYCLE LOOP | | | o
+
+For the l-cycle dot product, it is assumed that the vectors are
+already in Data Pad, starting at DPX(0) and DPY(0) (where DPA=0).
+Obviously, vectors longer than 32 elements' cannot be handled this
+
+way (or can only be handled in segments of 32 or less).
+
+This is what the loop really looks like: _
+
+FMUL DPX,DPY; INCDPA [(fmul) ?(fmul) ~FADD FM,FA; DEC Nf-(fadd) BGT LOOP
+The FMUL and FADD instructions become'their own ''pushers'. '
+
+| 2-15 - o | |
+$TITLE DOTPROD : : .
+$ENTRY DOTPROD . v : _
+N BEQU O " "number of elements in each vector
+CPTR $EQU 1 "where to store answer
+DOTPROD: CLR# N; SETDPA "DPA=0 . '
+- FMUL DPX,DPY; "do A(1)*B(1)
+; INCDPA; v © "DPA to 1
+: DEC N : "set drop out early
+FJMUL DPX,DPY; : "do A(2)*B(2)
+- INCDPA "DPA to 2 .
+FMUL DPX,DPY; : "do A(3)*B(3) -
+. INCDPA; ' "DPA to 3
+FADD ZERO,ZERO "init. FA=0
+: FMUL DPX,DPY; _ - ""do A(4)*B(4) o ‘
+INCDPA; _ "DPA to 4.
+FADD FM, ZERO; . "A(1)B(1) in Adder
+DEC N "decrement counter
+LOOP ; FMUL DPX,DPY; "do A(m)*B(m)
+' INCDPA; : "DPA to DPA+1 '
+' FADD FM,FA;. ; "add A(m-3)B(m-3) to sum ‘
+' DEC N;. "decrement counter
+BGT LOOP B "test if done
+OUT: DPX<FA; TADD , "store cumulative FA
+o "'FADD DPX,FA . "add it to . other cumulative FA
+: FADD : ' : - '
+' o MOV CPTR,CPTR; SETMA; MI<FA; '"store answer :
+: ‘ RETURN _
+$END . '
+This particular sort of loop has a problem with the Floating Adder,
+'in that a cumulative FA needs at least 2 cycles to accumulate
+each new addition. Hence, the l-cycle loop is actually operating
+with 2 mutually exclusive cumulative FA's, interwoven with each
+other: : : : '
+, FADD Fi, FA- ‘
+| FADD F,FA ) - s '
+FADD FM, FA\ _
+FADD FM,FA ' : ' ' ' ,
+FADD FM,FA _ '
+At the end of all this, they (the two strings of sums) need to be
+added to each other. (See OUT, the label after LOOD).
+' ’ . , 2-1¢
+This also illustrates the practice of dropping out of the loop
+one time early.  If it didn't drop out early, the last (unneeded)
+FADD FM,FA of the loop would push out one of the 2 cumulative
+FA's. By the next cycle it would be gone forever. By dropping
+out early, DPX<FA can be done before it's too late. '
+This line of reasoning can eventually lead one to the idea that -
+~the last column of the loop (see beginning of Section 2.11) is
+unnecessary, since there is no way for the Addéer result to come
+out in time for the next FADD FM,FA. The FADD FM,FA of each of the
+two strings of cumulative FA's will push out the other string. So
+the loop need only be of the form:
+FMUL DPX,DPY, INCDPA'](fmul) i(fmul) DEC N IFADD FM,FA; BGT LOOP
+This is dne cclumn less than before, which means that there will be
+~one column's worth (in this case, one line) less to put in the
+intro. IT will also not be necessary to come out of the loon one
+time early, as there is no extra FADD IM,FA to push away something
+needed. It is still necessary to add the 2 cumulative FA's
+together at the end. v
+$TITLE DOTPROD o '
+SENTRY DOTPROD v
+N - $EQU 0 ‘ ' .
+CPTR $EQU 1 ‘ _
+DOTPROD: CLR# N; SETDPA - "DPA=0
+FMUL DPX,DPY; ‘ "A(1)*B(1) : ‘
+: ' INCDPA; . " DPA to 1
+. , FADD ZERO, ZERO " initialize cum. FA=0
+‘ FMUL DPX,DPY;. "A(2)*B(2)
+' INCDPA; : " DPA to %
+FADD ZERO,ZERO " initialize other cum. FA=0
+FMUL DPX,DPY; "A(3)*B(3)
+INCDPA; ' " DPA to 3
+DEC N ‘ : : '
+LOOP: FMUL DPX,DPY; "A(m)*B(m) ,
+INCDPA; _ : " -DPA to DPA+1
+DEC N; | o " decrement counter
+FADD FM,FA; : " add A(m-3)B(m-3) to cum. FA
+BGT LOOP " test if done
+OUT: DPX<FA; FADD ' "store first cumulative FA
+"FADD DPX,FA : "add it to other cumulative FA
+FADD _
+MOV CPTR,CPTR; SETMA; MI<FA; ‘'store answer
+RETURN . ' _
+$END - _ ‘
+' S 2-17 '
+_ SECTION 3 . : :
+CAVEAT PROGRAMMER (Let the Programmer Beware)
+3.1 CALLING ANOTHER SUB-ROUTINE :
+
+- The JSR instruction allows one program to utilize another program,
+for example the divide sub-routine (DIV). In order to do this, one
+must declare DIV external ($EXT DIV) so that the assembler and ‘
+linker will know what to do with the otherwise undefined symbol.
+One must also save everything he will need when program execution
+gets back to his main program.  Depending upon what was used in
+
+- the called sub-routine, some things may remain untouched. Commonly
+one should not count on being able to leave things in the Adder or
+Multiplier. Parts of Data Pad may also be changed, or DPA may
+change. S-Pad will probably not remain inviolate. (Remember, it's
+
+: the S-Pad register number, not name, which is important.) These
+things need to be checked before doing a JSR.
+
+3.2 OTHER THINGS TOQ WATCH OUT FOR o |
+The rest of this section consists of various short examples, '
+cautions, and reminders.
+
+DPX<MD; DPY<DPX(1) :
+
+Illegal. Data Bus is assigned twice. (The above is really
+
+DPX<DB; DB=MD; DPY<DB; DB=DPX(1l).) - , '
+
+DPX<MD; DPY<MD is 1legal. (DB=MD;'DPX<DB; DPY<DB) :
+
+DPX<FA; DPY<FM ’ ‘
+
+Legal. FA and FM don't use the Data Bus. .
+
+DPX<FA; DPY<FM; DPX(1)<MD -
+
+Illegal. Data Pad X is being written into twice (different
+indices). Within each cycle, there should be no more than one
+
+0of each of the following: _ ‘
+
+’ write into DPX :
+
+~ write into DPY S
+read from DPX _ ‘
+' read from DPY :
+The exception is when reading out of a Data Pad more than once
+but using the same index: S
+FADD DPX,FA; FMUL DPX,FA,; DPY(1)<DPX is legal.
+FADD DPY,DPY; TFMUL DPY,DPY is legal. - ' _
+: - FADD DPX,FA; FMUL DPX(1),FA is not legal. :
+FADD DPX,DPY; DPY<MD -
+The old value of DPY, before MD replaces it, is used in the sum.
+_ . 3;1 | _ ,
+DB=4; LDSPI XINC; LDDPA; DPX(2)<FM
+Both DPA and the contents of XINC will become 4, but the previous
+DPA is used in referencing DPX(2). ’ ‘ , '
+SUB# XINC,APTR; BGT OUT _ :
+Illegal. The # uses the condition field (branch).
+| | THE $END o
+' | ' 3-2 -
+- AP-120B APAL
+ARRAY PROCESSOR ASSEMBLY LANGUAGE MANUAL
+7275-01 '
+'FPS-7275-01 . - |
+‘C FLoaTine PoinT SysTems., Inc., 1976 '
+ALL RIGHTS R(ESERVED : |
+PRINTED IN THE UNITED STATES OF AMERICA
+REvision 01, FeBruary 26, 1976 |
+TABLE OF CONTENTS
+Section 1 - INTRODUCTION - S 1-1
+Section 2 - BASIC SYNTAX | o 2-1
+2.1 Character Set - . 2-1
+- 2.2 Symbol Names : . 2-1
+2.3 Numeric Constants 2-1
+2.4 Expressions - ‘ 2-2 '
+Section 3 - SOURCE PROGRAM STATEMENTS ' 341
+3.1 Comment Statements S 3-1
+3.2 Instruction Statements ' 3-1
+3.3 Pseudo Operations Statements . 3-3
+3.4 Order of Program Statements ' B 3-5
+: 3.5 A Sample Program - ‘ . 3-6
+' Secfion 4 - OPERATING PROCEDURES 4-1 A
+_ 4.1 Using APAL , : 4-1 o
+4.2 Listing Format _ ' 4-2
+. 4.3 A Sample Assembly listing o 4-4
+Section 5 - ERROR MESSAGES ' '_ 5-1
+Appendix A | A-1 |
+- Appendix B _ ' B-1
+' B.1 S-Pad Op-code Group _ B-2
+B.2 Memory Address Op-code Group B-3 .
+. - B.3 Table Memory Address Op-code Group B-3 '
+B.4 Data Pad Address Op-code Group B-3
+B.5 Branch Op-code Group B-4
+. B.6 Floating Adder Op-code Group B-4 _
+B.7 Floating Point Multiply Op-code Group B-6
+B.8 Data Pad X Op-code Group . _ B-6
+B.9 Data Pad Y Op-code Group : B-7
+B.10 Memory Input Op-code Group ‘ ' B-7 -
+B.11 Data Pad Bus Op-code Group B-8
+B.12 Special Operation Op-code Group . B-8
+- B.13 I/0O Op-code Group 7 B-11
+Appendix C ‘ S : o
+C.1 Table Memory Symbols Cc-1
+_ C.2 Elementary Function Tables G-2
+“Appendix ' D ‘ o | . ' N
+~ D.1 Example Output form APAL ‘ D-1
+: | CAPAL i S |
+' B . SECTION 1 ' ‘
+- INTRODUCTION '
+
+APAL (Array Processor Assembly Language) is a cross- ,
+assembler written in Fortran IV which provides a two-pass
+assembly of symbolic coding for the AP-120B,
+
+- APAL is a conventional assembly language, and as such, ‘
+should pose no difficulties to programmers familiar with
+- using assembly language on other computers.
+v On typical 16-bit mini-computers, APAL requires approxi-
+mately 24K of available memory to operate as supplied. '
+' APAL 1-1 '
+INTENTIONALLY BLANK :
+, CAPAL 1-2
+SECTION 2 ‘ _ '
+BASIC SYNTAX ‘ ' : '
+2.1 CHARACTER SET S | |
+ APAL recognizes the following characters: .
+| ~ Alphabetic A thru Z
+Numeric ' ’ @ thru 9 _ ,
+Special + = % / . § space tab = <«
+| - | ()5 0 " F
+2.2 SYMBOL NAMES o
+Symbol names may be of any length, however only tpe
+first six characters of a name are significant. The first
+character of a name must be an alphabetic character, the
+subsequent characters may be either letters of numbers.
+Examples: LOOP | '
+A6 - B ’ , .
+- STARTHERE _ ‘ ' _ ’
+Symbols are given a value in any of three ways: '
+1. Being defined by a $EQU pseudo-op. .
+2. Being used as a label.
+3. Being declared $EXTernal. _
+3.3 TABLE MEMORY SYMBOLS | - -
+‘A symbol with a value preset to the address of each of
+the constants in Table Memory ROM is predefined in APAL. :
+These symbols all start with a "!" to avoid conflict with
+any user defined symbol. They may be used in expressions
+‘in the same manner as ordinary symbols.
+' | A compléte list of these symbols is in Appendix C.
+For example, to fetch PI from Table Memory, and add it to
+a number in DPX(2) . ;
+ LDTMA; DB=!PI  "fetch PI from TM
+NCP , "Wait (or do something else)
+FADD TM, DPX(2) "Add PI to DPX(2)- :
+o APAL 2-1 | | |
+‘2.4 NUMBERIC CONSTANTS S | '
+: Numbers may be written in four radices: octal, decimal,'
+binary, or ‘hex. In each radix, a number may be either signed
+or unsigned. Unsigned numbers may range from @ to 65535. Signed
+numbers may range from -32768 to +32767. The radix of a number
+is established by a radix identifying character which is written
+immediately after the number. Octal numbers are denoted by a "K"
+immediately following the number. Decimal is denoted by a ".",
+binary by a "B" and Hex by an "X'". The first digit of a hex
+- number must be a numeric character. The default radix, if a
+radix identifier is not used, is octal. _
+- Examples: Octal integers: 177777
+o : ’ -49727K _
+: - =10 ‘ ‘
+v Decimal integers: 32767, . :
+. +10. ;
+" Binary integers: 1010119109B _
+: : -101B
+- Hex integers: @ABCDX '
+: : : 123FX -
+- - pex |
+2.5 EXPRESSIONS _ ,
+Expréssions may be used whenever a numeric value is required.
+Expressions are made up of operands and operators. -
+2.5.1 Operands. Operands may be symbol names, numeric con- '
+stants, or the location counter, denoted by ".",.
+Examples: TBLADR ,
+598X , R ‘
+- 2.5.2 Operétors.- Operators denote operations of addition ("+"),
+subtraction ("-"), multiplication ('"*"), or division (/") upon
+a pair of operands. ' : v ,
+Some sample expressions: |
+TBLADR + 37 B .
+‘ . + 9, ’ » _
+_ . LOOP + 6 * A o : .
+Expressions are evaluated from left to right, modulo 2%°, .
+| | APAL 2-2 |
+, | SECTION 3 | |
+: - SOURCE PROGRAM STATEMENTS
+
+| APAL source statements may be divided intbjihree categories:
+
+‘ 1. Comment statements | ‘
+' ' 2., Instruction statements
+- 3. Pseudo-op statements
+
+_ Comment statements allow program documentation, instruction
+statements contain the actual symbolic machine code, and pseudo-
+op's provide directives to APAL during the assembly process.
+
+. APAL statements have a basically free format: spaces and
+tabs may be used as desired to improve legibility. ‘
+3.1 COMMENT STATEMENTS o | |
+
+" Everything on a line after a quote mark (") is treated as a
+comment by APAL. A line which contains only comments or a line
+that is completely blank is a comment statement, and is ignored
+during the assembly process, Carriage return terminates a comment.
+3.2 INSTRUCTION STATEMENTS o - :
+
+An APAL assembly language instruction statement has the
+general format of: . v
+Label: Op-code fields "Comments
+" The label and comments are optional. The assembler pfocesses the
+op-code fields and generates one 64-bit program word for each
+instruction statement. ,
+3.2.1 Label Field. A label is a user-defined symbol which is
+assigned the value of the current location counter and entered
+- into the user symbol table. A label is a symbolic means of
+refering = to a specific location within a program. If present,
+a label always occurs first in an instruction statement and must
+be terminated by a colon. For example, if the current location
+is 76 the instruction statement:
+LOOP: FADD DPX, DPY . "LOOP HERE | |
+Assigns the value of 76 to the symbol '"LOOP'", -
+| : APAL 3-1 - | |
+3.2.2 Op—cbde field(s). The Op-code field follows the label field
+in an instruction statement and contains one or more AP-120B
+op-code mnemonic., Individual op-codes in an instruction
+are separated from each other by a semicolon ";"., The last
+op-code in an instruction is not terminated by a semicolon. v
+This tells the assembler when it has reached the end of a
+complete AP-120B instruction statement. For example, both of
+the following instruction statements are equivalent:
+LOOP: FADD Dpx; DPY; FMUL TM, MD; BFGT DONE | _
+or : 4 : | : '
+LOOP: FADD DPX, DPY; - IR -
+4 . FMUL TM, MD;
+BFGT DONE _ _
+
+Each is one instruction statement, which assembles into one - '
+64-~bit instruction word. - Thus, one instruction statement may be
+continued over as many lines as desired to achieve a readable
+program document. Instruction statements are terminated by an
+op-code field which is not followed by a semicolon: not by the
+end of a line. v :
+
+Op-codes may be written in any order preferred within any '
+given instruction statement. The assembler will flag with an
+error message any conflicts between op-codes.. :
+
+Some op-codes require operands as arguments. The operand(s)
+are separated from the op-code by a space or tab, and from each o
+other by a comma, Some example op-codes: :
+No operands: HALT; RETURN : : . '
+One operand: FABS MD; BFGT LOOP . .
+Two operands: FADD DPX, DPY; FMUL TM, MD
+
+If an opérand is missing or improper, the assembler will give
+an appropriate error message.
+
+A listing of the various AP-120B op-codes is contained in
+Appendix A. ‘
+3.2.3 Comment Field. The remainder of any line following a quote '
+mark (") is treated as a comment by the assembler and ignored.
+The comment field is terminated by a carriage return. Thus, in the
+previous example, we could write: - - o
+| | APAL 3-2 : |
+LOOP: FADD DPX, DPY; "DO AN ADD '
+‘ FMUL TM, MD; : "AND A MULTIPLY :
+BFGT DONE "AND A BRANCH ‘
+. ‘ . "ALL IN ONE INSTRUCTION
+~As before, an instruction statement is endéd by the absence
+of a semicolon following the last op-code in that instruction.
+3.3 PSEUDO. OPERATIONS STATEMENTS :
+Psuedo-operations are directives to the assembler which
+control certain aspects of the assembly translation proc¢ess.
+Each psuedo-op must appear on a separate line in the source
+text. All psuedo-op names start with.a "3". As with instruction
+statements, psuedo-op statements may be labeled and have comments.
+3.3.1 $EQU. This operator equates a symbol to an expression.
+If user defined symbols are used in the expression they must
+have been previously defined in the program.
+'Examples: A $EQU 321 : - | o
+LOOP SEQU LOC + 3 .
+, HERE $EQU . - 3 : . '
+MASK =~ $EQU 132*3+6 ‘ ‘
+. Alternatively, the characters " = " may be used in place
+Of ”$.EQU”: .
+A =26 '
+' _ X = A*3 , E .
+_ When so used, the '"=" must be both preceeded and followed
+by a least one space or tab‘character._'
+3.3.2° $LOC, $LOC sets the current location counter to the
+value of an expression. If symbols are used in the expression
+they must have been previously defined earlier in the program,
+Examples: $LOC 300 | ' ' ,
+" 8LOC . + 6  "LEAVE NEXT SIX UNUSED
+8$LOC LOOP + 10
+‘Caution:  $LOC should not be set to an absolute address, as in
+the first example, if the assembly output is to be linked re-
+locatably with other programs. ; . _
+3.3.3 $END. $END causes APAL to terminate the assembly.
+o _ APAL 3-3 ”
+3.3.4 3$VAL. This dperator defines ¢ -bits worth of data to fiil _
+one program word., The data is specified as four 16-bit integers,
+which represent the four 16-bit quarters of a program word. The
+four expressions are separated by commas. _
+Examples: $VAL -377, 104763, 10., LOOP + 6
+
+‘ $VAL 0, 0, 2000, 33 o ,
+3.3.5 SFP.. This operator fills the right—most»38-bits.of a . N
+program word with a specified floating-point number. The left- o
+“hand 26-bits of the word are cleared. : . ‘
+Examples: $FP 6.0023E23 _ ‘ :
+' : $FPp 2 _ '
+
+SFP E-17
+
+PI: v $FP 3.141592654 "PI IS HERE ‘
+Note: é floating-point number (say a constant for an algorithm) :
+can be read out of Program Source memory and onto the Data Pad
+Bus using a "RPSF" op-code. As an example, to load the contents
+of location "PI" into Data Pad X: .
+
+RPSF PI; DPX«DB . '"GET PI INTO DPX '
+3.3.6 $TITLE; This pseudo-op names a program. The name need
+not be unique from other symbols in the program. The $TITLE
+pseudo-op must occur first in the program, before any other
+pseudo-ops or instruction statements. ’
+Examples: $TITLE FFT ' o o
+
+$TITLE DIVIDE
+3.3.7 $ENT3Y. .This pseudo-op declares a symbol to be global; i.e. :
+a symbol which is defined in this program and may be referenced by ’
+othgr separatgly assembled programs. The identified symbols must be
+defined in this program either by an "$SEQU" pseudo-op or by being -
+used as a 1gbel. $ENTRY pseudo-ops must occur before any instruction
+statements in the program. _ :
+If the symbgl is to be an entry point for Host Computer Fortran Calls,
+then follqw1ng the symbol name must be ‘the number of S-Pad parameters
+expected in the CALL. This may be a number from 0-1745, and is separated
+from the symbol name by a comma.
+Examples: $ENTRY A ' ‘ ?
+. $ENTRY B, 6 "Expect 6 S-Pad parameters
+$ENTRY C,0 ~ "Expect O S-Pad parameters _
+o -~ APAL 3-4
+3.3.8 $EXT. This péeudo—op declares global symbols which are
+referenced by this program, but are defined by another separately
+assembled program. $EXT pseudo-ops must occur in the program
+- before any instruction statements. Symbol names are separated by
+commas,
+Examples: $EXT FLOAT, SCALE, FFT |
+$EXT DIVIDE ‘
+' 3.4 ORDER OF PROGRAM STATEMENTS v
+' There is definite ordering of statement types with a program.
+The $TITLE Pseudo-op comes first. Nexty if present, any $ENTRY and
+$EXT pseudo-ops. The the program body, i.e. the code, then occurs.
+Finally comes the $END pseudo-op. Statement order:
+' . STITLE pseudo-op |
+' $ENTRY pseudo-op(s)* :
+: SEXT pseudo-op(s)*
+o "code, etc.'¥ _
+$END pseudo—op'
+' '~ *Need not be present. 1
+By | ~ APAL 3-5
+3.5 A SAMPLE PROGRAM :
+. STITLE D3TPR _ -
+_ SENTRY D3TPR. 6 o '
+“WECT@R D@T PRADUCT = N :
+“DIES C(O) = SUM ¢ ACMI) * B(MJ) ) FOR M = 0 T@ N-1
+" - == STATISTICS ---
+- "AUTHBR: A+Ee CHARLESWAIRTH, JULY 7S o :
+"REVISIGN 1.3 FEB 76 CHANGED SENTRY .
+“SIZE: 9« LICATIGNS
+- "SPZED: 2 MEMJRY REFERENCES PER POINT
+"SCRATCH: SP: 0s4.53 DPX: 0 (RELATIVE T3 DPA)
+"S = PAD PARAMETERS: ' '
+_ A SEQU © "BASE ADDRESS 4F A -
+I SEQU 1 “INCREMENT F@R A ‘ ' S
+B $EQU 2 “BASE ADDRESS @F B
+. J SEQU 3 , “INCREMENT F4R B ,
+- C 3EQU 4 = "ADDRESS OF C '
+N SEQU 5 “"VECTJR LENGTH
+DITPR:s M3V AsA; SETMA ~ “FETCH AC0) : .
+M3V B,B; SETMA . "FETCH B(Q) :
+: DPX<MD; “SAVE A(Q)? _
+| INC N . " KEEP C@UNT RIGHT
+. ADD ls,A; SETMA; "FETCH ACl)
+. FADD ZERQ.,ZER# * CLEAR SuM
+LggP:  FMUL DPX.MD; - ~ "D@ A(MI*B(M) _
+: FADD; : " PUSH ADDER ,
+DEC N ' * SEE IF DGNE ‘
+BEQ D@NE; “BRANCH IF D@NE
+: ' FMUL: * PUSH MULTIPLIER '
+. ADD J,Bs SETMA * FETCH B(M+1)
+DPX<MD3 "SAVE A(M*1)
+FMUL . * PUSH MULTIPLIZR
+FADD FM,FA3Z - “"ADD (ACMI*B(M)) T3 SUM
+ADD 1sA; SETMA3 " FETCH A(M+2)
+BR L3aP - " BRANCH BACK
+D3NE:  MI<FA3 M@V C.C; SETMA; "STORE ANSWER IN C(0)
+RETURN ‘ * RETURN \
+- ~ $END . :
+» : : APAL 3-6 '
+‘ | SECTION 4 |
+, " OPERATING PROCEDURES , 3
+4.1 USING APAL | ,
+
+' : APAL assembles a file of source text containing an AP-120B
+program into a relocatable object file. Optionally an assembly
+listing is produced. o
+
+APAL first requests whether another assembly is to be done: ‘
+. DONE? 1=YES, ¢=NO: - |
+' A response of "1" will cause APAL to exit to the system
+monitor. A "@" will signal APAL that another assembly is to
+be done. ' ' -
+APAL then requests the names of the three files to be used
+
+- for source, object, and listing and errors respectively. The
+program requests the name of the source file by outputting to the
+user console: . : .
+
+) SOURCE FILE= , o
+The user responds by entering the desired program file :
+"name. APAL then requests the name of the file to receive the
+relocatable object output by outputting: '
+OBJECT FILE= = ' ' '
+The user responds by entering the desifed object file name.
+APAL then requests the name of the file to receive the assembly (
+listing by outputting: : _
+LISTING AND ERROR FILE= , ' |
+The user replies by entéring the name of the desired listing ;
+file. _ . o ‘
+Finally, APAL outputs: '
+_ LISTING? 1=YES, @=NO: o j
+"~ A response of ”1”:will yield a full'assembly listing, symbol '
+table, and any error messages. A "@" will suppress the assembly V
+and symbol table listings and put out only any error messages
+into the listing file. ‘
+Finally, if a listing was requested, APAL outputs: '
+, LISTING RADIX? I#HEX,'Q=OCTAL:, o «
+A response of "1" will cause the assembly listing to be
+done in Hexadecimal (base 16). A"@'" will make the assembly . :
+listing in Octal (base 8). '
+' In each of the above cases, if the sought after file cannot
+_ be found or is otherwise unavailable, APAL types "??", and waits ’
+I | APAL 4-1 - S
+for another user response.
+
+An example dialogue is given below. The user desires to -
+assemble an AP-120B program in f(ile "FFT.AP" and put the object
+output into file "FFT.RB". The listing will be put out on the
+line printer. Of course, the precise details of how files and
+devices are named will depend on the particular operating system
+being used. The messages printed by the computer are underlined
+for clarity; a "+'" means carriage return: : e ) ‘
+. ‘ - APAL 4-1a ‘ :
+RUN APAL+ B ‘
+. DONE? 1=YES, @=NO: 1+ : '
+: SOURCE FILE = FFT.ADP+
+- OBJECT FILE = FFT.RB+ S _ :
+; - LISTING FILE = LP:+ -
+» LISTING? 1=YES, @=NO: 1+ ;
+LISTING RADIX? 1=HEX, @=0CTAL: 0+
+- DONE? 1=YES, @=NO: 0+ ' v =
+4.2 LISTING FORMAT | : B
+' Upon commencement of the assembly, APAL outputs:
+ APAL o | B |
+, AR # ' ' R '
+- - PASS 1 ,
+N###" is the version number of the assembler being used.
+Any errors detected during pass one are output next. At the ‘
+start of pass two APAL outputs:
+PASS 2 . ' '
+' The assembly listing.follows. The 1isting contains the
+following information for each program statement:
+Columns Contents '
+1-6 The location counter, if relevant. o '
+_ 7-8 Blank ,
+9-14 The assembled data, if relevant. »
+15-16 Blank - :
+- 17-132 The source statement
+For program instructionAstatements the assembled data is
+presented as four numbers, representing bits 0-15, 16-31, 32- :
+47, and 48-63 of each program source word.
+' At the end of pass two, APAL outputs ,
+| kkkk g% ERRORS Rk | o |
+Where "###'" is the number of errors detected. Finally,
+APAL outputs: o o
+SYMBOL - NAME :
+a . APAL 4-2 | | -
+' Followéd by the symbol table: | o '
+Columns Contents \ '
+. 1-6 Symbol Name ' | |
+7-8 _ Blank _ : - : _
+9-14 Symbol value ' '
+15 Blank
+" 16-18 Symbol type:- '
+: Blank - local symbol
+' EXT - external symbol
+: ENT- - entry symbol ‘
+In all of the above occurance where a number (location, data ‘
+value, etc.) is printed on the listing, the radix is either
+octal or hex, as specified by the user during theAinitial
+dialogue. . '
+- APAL 4-3
+(INTENTIONALLY BLANK) | ,
+. APAL 4-3a
+>>R APAL , _
+SQURCE FILE=/CDR 4.3 A SAMPLE ASSEMBLY LISTING
+@BJECT FILE=TEMP | — e
+LISTING AND ERRAR FILE=/TT3 . : o
+LISTING? I=aYES, 0=N@: 1 o '
+LISTING RADIX: !=HEX, 0=@CTAL: 0 . ‘ . :
+ aPalL | . ' | | ~
+va.t , : : '
+PASS 1 T | |
+PASS 2 - |
+o _ ' STITLE DdTPR | :
+o _ SENTRY D3TPR, 6
+: , “VECTGR D@T PRIDUCT .
+“D@ES C(O) = SUM ¢ ACMI) * B(MJ) ) FOR M = 0 TG N-i
+| " , -=- STATISTICS =-=--
+_ : "AUTHZR: A-E. CHARLESWARTH, JULY 75
+"REV1S18N 1.3 FEB 76 CHANGED SENTRY |
+" “SIZE: 9. LOCATIONS S
+: “SPEED: 2 MEMARY REFERENCES PER P@INT
+“SCRATCH: SP: 0,4.5; DPX:s O (RELATIVE T@ DPA)
+' ' "S = PAD PARAMETERS: ' S
+- 000000 A SEQU O “BASE ADDRESS @F A
+000001 1 sEQU 1 »INCREMENT F@R A
+= 000002 B SEQU 2 “BASE ADDRESS &F B
+_ 000003 J SEQU 3 . “INCREMENT F@R B
+000004 ¢ SEQU a “ADDRESS @F C '
+000005 N S$EQU 5 S “YECT2R LENGTH
+000000 040000 D3TPR: M@V A,A; SETMA - “FETCH ACO)
+o 000000 :
+000000 . _
+' . 000060 : _ :
+000001 040210 M@V B,B: SETMA “FETCH B(0)
+000000 , - : :
+000000 .-
+000060 ,
+000002 001124 DPX<MD3 : ' "SAVE A(OQ) '
+E 000000 - ~ INC N ' ' " KEEP COUNT RIGHT
+_ 045004 , : o
+: 000000 : ' |
+000003 020101 ADD 1,A; SETMA; “FETCH A(1)
+' 155000 » FADD ZERG,ZER3 *  CLEAR SuM
+000000 . ' |
+nANNean APAL 4-4 ’
+QUu 04 QQlcecs LIGP: FriuLl Di.. YDE oo xB (M)
+: 100000 . FADD:} : * PUSH ADDER
+000400 : DEC N - * SEE IF DONE
+013400 | ' _
+000005 020310 . BEQ DGNE; ‘ “BRANCH 1F DONE ,
+000623 FMUL3 *  PUSH MULTIPLIER
+000000 _ADD JsB; SETMA * FETCH B(M*1l)
+’ - 010060 - : ,
+000006 000000 DPX<MD: “SAVE A(M+1)
+000000 FMUL , . " PUSH MULTIPLIER f
+o ' 045004 | ' . o
+, 010000 _ o s _
+000007 020101 FADD FM.,FA3 *ADD (AC(M)*B(M)) Td SU
+111115 , ADD 1,A:; SETMA: " FETCH A(M+2)
+: : 000000 BR L@OP 1 *  BRANCH BACK :
+000060 ‘
+000010 040420 D@NE: M1<FA; MOV C,C; SETMA; "“STZRE ANSWER IN C(0)
+- 000340 RETURN ' * RETURN
+000000 ‘ . '
+000160 | B _ .
+| | ~ SEND | | ' | |
+EHRE 0 ERRGRS  #%i* ' ‘
+SYMBOL VALUE o - . :
+A 000000 _ ' :
+1 000001 _ - ‘
+B. 000002
+J 000003 : S ' _ .
+C 000004 . : , - . ’
+N 000005 : _ o :
+DATPR 000000 ENT '
+Laop 000004 , _ .
+DONE 000010 o - ;
+‘ . ' : APAL 4-5
+INTENTIONALLY BLANK o
+APAL  4-6 |
+SECTION 5
+ERROR MESSAGES = ' _ ' .
+APAL error messages are printed in the listing following
+the offending statement. There are five basic error classes,
+which are listed below along with the action taken by the
+assembler: , ,
+v O - Out of range: the offending'numeric value was
+truncated to the proper range. :
+C - Conflicting definitions: the first definition
+was used. '
+"M -~ Missing (or'improper) argﬁment; a value of zero -
+_ was used. _ S -
+B - Bad syntax: the bad op-code field or pseudd—op :
+. was ignored,. ‘
+W - Warning of improper useage. : ’
+| Error diagnostics issued by'APAL consist of two lines.
+‘The first line consists of the error number. The second
+line contains the error class and error message. Following
+are the assembler error messages, along with an explanation
+as to the possible causes and/or cures. _
+’ 1. W 'LINE BUFFER OVERFLOW ‘ ' '
+An instruction statement was too long (600 characters
+maximum) for the listing buffer. . _ _
+2. C MULTIPLY DEFINED SYMBOL |
+A symbol may be defined only once in a program.
+3. C CONFLICTING OP-CODES
+Two op~-codes were used in an instruction statement which
+used the same instruction word bit fields. .
+4, O S-PAD ADDRESS OUT OF RANGE
+' An S-Pad address was outside the legal range of 0-15. -
+5. O BRANCH ADDRESS OUT OF RANGE K
+A branch address was more than 16 locations lower or
+- 15 locations higher than the current location. :
+| B APAL 5-1
+6., C CONFLICTING BRANCH ADDRESSES
+Only one branch address may be used in any given instruc-
+tion statement. _ ’
+7. M MISSING BRANCH ADDRESS - . . B
+No target address was given for a branch op-code. '
+8. - C CONFLICTING DATA PAD INDEXES |
+Only one value may be given to each Data Pad Index
+(XR, XW, YR, YW) per instruction statement.
+9. M BAD OR MISSING EXPRESSION , :
+- The assembler could not process an expression. ‘ .
+10. M WRONG FADD ARGUMENT ‘
+A floating adder op-code had an invalid Al or A2 operand.
+11. M WRONG FMUL AGREEMENT o ‘
+A FMUL op-code had an invalid M1l or M2 operand. ‘ '
+12. M MISSING FADD OR FMUL ARGUMENT
+An operand was missing following a FADD or FMUL op-code.
+13. C VALUE FIELD CONFLICT ‘
+Only one op-code which uses a 16-bit VALUE field operand
+may be used per instruction statement. _
+14. M MISSING DATA PAD INDEX | | -
+A Data Pad Index was missing from an op-code where it
+was needed. _ _
+15. M UNDEFINED OP-CODE : ' -
+An op-code name was not a legal AP-120B instruction.
+16. M $EXT SYMBOL IN EXPRESSION ' ‘
+An external symbol may not be used to form an expression.
+17. M TUNDEFINED USER SYMBOL - .
+A user symbol was referenced which was not defined.
+18, M MISSING ARITHMETIC OPERATOR
+An arithmetic operator (+ - * /) was missing from
+' an expression. _
+19. O INTEGER OVERFLOW
+An integer constant was too large to fit in 16 bits.
+| o  APAL 5-2 . |
+20. B TUNRECOGNIZED STATEMENT _
+A statement line was neither a comment, instruction, -
+or pseudo-op statement. :
+
+21, M IMPROPER $LOC OR $EQU VALUE v
+
+' The value of a $LOC or $EQU pseudo-op was either
+an undefined symbol or an improper expression.
+>22. M $EXT SYMBOL NOT ALLOWED |
+An external symbol may not be used as an argument
+for this op-code. _ :
+
+23, W MISSING $END | |
+_A program must terminate with a 3END pseudo-op.
+
+- 24, O DATA PAD INDEX OUT OI' RANGE ’
+A Data Pad Index must be between -4 and +3 inclusive
+
+25. B MISSING PARENTHESES |
+The right parenthesis following a Data Pad
+Index was missing.
+
+26. M BAD DATA PAD INDEX EXPR | |
+A Data Pad Index expression could not be resolved
+
+.into a numeric value. : _ '
+
+27. B COMMA MISSING
+Only a comma may be used to separate pseudo-op
+arguments. ‘
+
+28, B SYMBOL MISSING IN $EXT PSEUDO-OP .
+
+No symbol names were found as arguments for an ‘
+$EXT pseudo-op. . :
+
+29. B _MISSING SEP AFTER D.D. INDEX |
+An illegal character was found following a Data
+
+: Pad Index.
+
+30. B MULTIPLE PSEUDO-OPS ~
+Only one pseudo-op statement may appear on a line.
+
+*31. M BAD FLOATiNG POINT NUMBER ' ‘
+A floating-point number was unacceptable to the
+
+- assembler, ‘
+
+: APAL 5-3 . '
+32. W ILLEGAL PSEUDO-OP POSITION ' o .
+- - If used, a 3TITLE pseudo-op must appear first in
+a program, followed by any 3$EXT or $ENTRY pseudo-ops.
+33. W S$ENTRY SYMBOIL NOT LOCAL o }
+' An $ENTRY Symbol must not be $EXTernal also.
+34. W UNREFERENCED $EXT SYMBOL . '
+_ A declared external symbol was never used in the program.
+35, W UNDEFINED SENTRY SYMBOL | |
+An $Entry symbol was not defined. : S
+36. C DATA PAD BUS CONFLICT _
+Only one data source may be enabled onto the Data Pad
+Bus per instruction statement. '
+37. M MISSING S-PAD ADDRESS o |
+An S-Pad op-code was missing its S-Pad Register Address.
+- 38. M MISSING PROGRAM SQOURCE ADDRESS - ;
+An op-code requiring a program address, such as a JMP or
+JSR, was missing its address. , ’
+39. XW/YW CONFLICT ‘ . |
+If the value field is used in an instruction, an op-code
+which writes into Data Pad Y (such as DPY(2)<FM)) may be :
+used also only if 1) no write into Data Pad X is done, or
+2) the indexes are the same for the writes into both
+DPX and DPY. Examples: ) '
+Legal: JSR SQQT; "Uses the value field ' |
+DPY(2)<FM "A store into DPY ‘
+: Legal: JSR SQRT; - 'Uses the value field - :
+DPX(2)<FA; "Both Data Pad write indexes
+o - DPY(2)<FM " are the same
+Illegal: JSR SQRT: "Uses the value field. |
+DPX(-1)<FA; '"the two Data DPad write
+, ' DPY(2)<FM "indexes are different :
+B . APAL 5-4 ;
+APPENDIX A
+- SPECIAL CHARACTER USAGE
+Character Function - . _
+' + _ integer addition operator
+- integer subtraction operator ,
+* ' integer multiplication overator
+-/ _ integer division operator .
+. : decimal point, current location '
+$ - first character of pseudo-op names
+‘space symbol terminator
+" tab ‘ symbol terminator
+= $EQU pseudo-op, DB=op-code
+( preceeds a Data Pad index expression
+) terminates a Data Pad index expression
+< _ used in DPX, DPY, and MI op-codes
+; op-code terminator =
+: , operand separator _
+T ' - label terminator v ,
+" : comment start indicator (carriage return terminates)
+# : S-Pad no-load indicator
+& S-Pad bit-reverse indicator
+St first character of predefined symbols
+. APAL A-1 _
+(INTENTIONALLY BLANK) |
+o A-2 |
+' APPENDIX B
+AP-120B SYMBOLIC OP-CODES :
+The various AP-120B op-codes may be divided into 13 groups.
+- One op-code from each group may be used in any given instruc-
+tion statement, unless otherwise stated. - '
+The following two symbbls are used throughout this appendix:
+C <> Indicated optional opefands or mnemonics.
+_ The item enclosed in the brackets(e.g., <#>)
+‘ may or may not be coded, depending upon whether
+- or not the associated option is desired. )
+, Indicates a specific substitution is required.
+- - Substitute the desired address, name, number
+cr mnemonic for the abbreviation underlined.
+The following list of abbreviations are used to facilitate the
+op-code descriptions. They are explained in the section of the
+op-code group where they first occur: )
+: : o Section in :
+Abbreviation Meaning _ which described
+- sh S-Pad Shift : ' B.1
+# " S-Pad ‘no-load : B.1
+Sps S-Pad Source register _ B.1 |
+spd S-Pad Destination register B.1
+& Bit reverse ' ~ B.1 .
+disp Branch displacement : B.5
+al. ~ Floating Adder argument #1 . B.6
+a2 - Floating Adder argument #2 ~ 'B.6
+idx Data Pad index B.6
+ml Floating Mulitplier argument #1 B.7
+' m2 v Floating Multiplier argument #2 B.7
+- dbe Data Pad Bus enable B.8
+adr address or .value : , B.8
+APAL B-1
+B.1 S-PAD OP-CODE GROUP ' _ ,
+Purpose: S—Pad,infeger arithmetic . '
+Double Operand Op-codes Function - , '
+ADD<sh><#> <&>sps, spd ADD sps to spd
+SUB<sh><#> <&>sps,spd , SUBtract 'sps from spd
+MOV<sh><#> <&>sps, spd MOVe sps to spd S
+AND<sh><#> <&>sps,spd . AND sps to spd
+O <sh><#> <&>sps,spd OR sps to spd .
+EQV<sh><#> <&>sgs,sgd EQuiValence sps to spd
+Taz result ‘ - | _ : |
+Single Operand Op—cddes ' Function _ '
+CLR<sh><#> spd Clear spd ;
+INC<sh><#> spd INCrement spd ' Co
+DEC<sh><#> spd ' B DECrement spd ' :
+COM<sh><#> spd COMplement spd .
+The result of the above op-codes is SPFN,(S—Pad Function). ,
+Miscellaneous ~ - Function o
+LDSPNL  spd - ' LoaD Spd from PaNeL bus |
+LDSPE spd - , . LoaD SPd from data pad bus Exponent
+LDSPI'.  spd : , LoaD SPd from data pad bus Integer
+. ' : (low 16-bits) .
+LoaD SPd from data pad bus Table
+: ' look-up bits ' :
+WRTEXP - enable WRiTe of EXPonent only into
+o - DPX, DPY or MI
+WRTHMN : ’ ‘ enable WRiTe of High Malltissa only
+' , ’ inte DPX, DPY or MI - '
+WRTLMN enable WRiTe of Low MaNtissa only into
+: . : - DPX, DPY or MI
+ABBREVIATIONS: B : \ ‘
+Name Meaning ‘ , | o ;
+sh - $-Pad shift: - ‘ D
+‘ : - Choices : Meaning o
+- (omitted) o no shift _
+' L : : shift SPFN left once
+: R shift SPFN right once
+~ RR . " shift SPFN right twice
+# . S-Pad no-load: If present, do not load SPFN into spd
+' (S-Pad destination register). If specified, a branch
+group op-code may not be used in the same instruction
+statement. , _ _ ' _
+sps | S-Pad source register: a name, number or expression
+: specifying a register number between @ and 17g.
+' APAL B-2 | o
+spd S-Pad destination register: a name, numbér, or expression
+
+specifying a register number between O and 17g.
+
+SPFN is loaded into the S-Pad destination register
+
+unless S-Pad no-load (#) is specified. o
+& Bit reverse: if present, bit revarse the contents of
+
+sps before using. The bit reverse is done as specified -
+
+by bits 13-15 of the Internal Ctatus Register. :
+Op-code Examples: MOV 3,6 | o ' |
+
+_ o SUBL 1,15
+: ADDL# &PTR, BASE
+DEC CTR ‘
+CLR 9. v
+, LDSPI 6 '
+B.2 MEMORY ADDRESS OP-CODE GROUP .
+Purpose: to initiate Main Data Memory cycles |
+QE—Codes Function ‘ ' o '
+INCMA INCrement Memory Address
+DECMA "DECrement Memory Addresss ,
+SETMA SET Memory Address from SPFN ' :
+B.3 TABLE MEMORY ADDRESS OP-CODE GROUP :
+Purpose: to initiate Table Memory fetches |
+On-codes Function _ - -
+INCTMA INCrement Table Memory Address
+DECTMA DECrement Table Memory Address 7
+SETTMA SET Table Memory Address from SPFN
+B.4 DATA PAD ADDRESS OP-CODE GROUP | :
+Purpbse: to change the DPA (Data Pad Address) register
+Op-codes  Function « o
+INCDPA INCrement Data Pad Address _ .
+DECDPA - DECrement Data Pad Address
+SETDPA SET Data Pad Address from SPFN '
+‘  APAL B-3
+B.5 BRANCH OP-CODE GROQUP '
+
+Purpose: Conditional branches 
+
+Op-code ~Function : _ _
+
+BR disp ' BRanch unconditionally -
+
+BINTRQ disp Branch on INTerrupt ReQuest flag non-zero
+
+BION disp Branch if I/0 data ready flag Non-zero
+
+BIOZ disp - Branch if I/0 data ready flag Zero '
+
+-BFPE disp Branch on Floating Point Error
+- BFEQ disp Branch on Floating adder EQual to zero
+
+- BFNE disp Branch on Floating adder Not Equal to zero:
+
+BFGE disp - Branch on Floating adder Greater or Equal to =zero
+-BFGT disp Branch on Floating adder Greater than zero
+
+- BEQ disp Branch on s-pad function EQual to zero ~
+BNE disp Branch on s-pad function ot Equal to zero
+
+BGE - disp Branch on s-pad function Greater or Equal tn zero
+BGT - disp ' Branch on s-pad function Greater than zero
+
+RETURN | RETURN from subroutine ' |
+ABBREVIATION: | |
+
+disp - Branch diSplacement: the branch target address, an
+
+address between 16 locations behind and 15 locations
+_ ahead of the current location.
+Examples: BR LOOP- : g ) ' .
+BGT .+3 A ‘ :
+'~ BFNE A-4
+
+B.6 FLOATING ADDER OP-CODE GROUP | |
+
+Purpose: Floating-point adds R .
+
+Double Operand - _
+
+‘Op-codes _ Function : ,
+
+FADD <al,a2s» Floating ADD (al+a2) |
+
+FSUB al,a2 Floating SUBtract (al-a2) .
+FSUBR al,a2 Floating SUBtract Reverse (a2-al)
+
+FAND al,a2 Floating AND (al and aZ2) o
+
+FOR al,a2 Floating OR (al or a2) .
+FEQV al,a2 Floating EQuiValence (al eqv a2) : ‘ )
+Single Operand - ‘ | .
+
+Op-codes _ ~ Function
+'FIX a2 , FIX a2 to an ihtegef ' '
+FIXT a2 FIX a2 to an integer, (Truncated) :
+FSCALE a2 \ - " Floating SCALE of a2
+
+FSCLT a2 ' Floating SCALE of.a2, (Truancated)
+
+FSMzC az ‘ Format conversion, Signed ’lagnitude to 2's complement
+F2C3M as -, Format conversion, 2's complement to signed masznitude
+.FABS = a2 - Floating ABSolute value
+
+T APAL B-4 |
+ADDER OPERANDS: _ , o
+al  Floating adder argument #1: ' . i -
+| Choices : Meaning . '
+NC _ S No Change (use previous al)
+FM - Floating Multiplier output
+DPX<(idx)> ” Data Pad X
+: DPY<(idx)> Data Pad Y ‘ o 1
+T™ Table Memory data ,
+o ZERO floating-point ZERO ‘ : ;
+a2 Floating adder argument #2: -
+Choices _ Meaning »
+: NC No Change (use previous a2)
+FA ‘ - Floating Adder output :
+DPX<{idx)> Data Pad X ' ;
+DPY<(idx)> . Data Pad Y
+™ Table Memory data
+. . ZERO floating ZERO
+_ MDPX< (idx)> use Mantissa from Data Pad X, and
+- exponent from SPFN .
+- EDPX (idx)  +  use Exponent Data Pad X, and mantissa
+‘ . : from SPFN ' : :
+ADBREVIATION : | - |
+idx Data Pad index: A name, expression, or number which :
+lies in a range of -4 to +3. : . : ,
+- Op-code examples: FADD TM, MD ' o ' :
+’ FSUB DPX(3), DPY(-4) , : _
+_ o FEQV DPX, DPY(C) _ '
+: FAND ZERO, MDPX(2)
+K FSUBR NC,FA ‘ :
+' ' FADD . ' _
+Note: Up,fo four unique Data Pad indices may be specified in one ‘
+instruction statement. In particular,; only one indexing each may
+be used for reading from Data Pad X and Y, regardless of how
+many op-codes use the data read from Data Pad. : ‘
+| | |  APAL B-5 |
+B.7 TLOATING POINT MULTIPLY OP-CODE GROUP | |
+Purpose: Floating Point multiplies . _ ,
+Op-code . ~ Function -
+FMUL ml,m2 ~ Floating MULtiply ml times m2 '
+MULTIPLIER OPERANDS: ' o - _ ‘
+ml ‘Multiplier—operand #1 ' A '
+Choices Meaning ' ‘ -
+' FM Floating Multiplier output
+DPX< {idx)> Data Pad X _ :
+. DPY< (idx)> Data Pad Y :
+: ™ Table Memory :
+m2 Multiplier-operand #2 : ‘
+Choices ' Meaning | _ : ' |
+FA : Floating -Adder output
+DPX (idx) Data Pad X ‘
+DPY (idx) . Data Pad Y .
+- MD ' o Memory Data ' _
+Examples: FMUL T™M, MD ,
+. FMUL DPX (AR), DPY (BI) .
+‘ FMUL SR ,
+B.8 DATA PAD X OP-CODE GROUP |
+Pﬁrpose: Storing into Data Pad X - : |
+Op-code - Function | | .
+DPX<(idx)>'<FA ' _ Store Floating Adder output into Data Pad X
+DPX<(idx)> <FM Store Floating Multiplier output into Data Pad X
+DPX<(idx)> <DB Store Data Pad Bus into Data Pad X
+DPX<(idx)> <dbe Store dbe into Data Pad X :
+ABBREVIATIONS: | - |
+dbe Data: Pad Bus enable: has the same effect as an explicit
+Data Pad Bus op-code. (see B.11l)
+- Choices = - Meaning R |
+' ZERO - Floating zero .
+adr o adr _ ’ '
+' DPX% (idx} » Data Pad X o
+DP¥% (idx) > ‘Data Pad Y o , :
+MD  Memory Data
+- SPFN' S-Pad Function
+, - T™ Table Memory data :
+| | APAL B-6 -
+Note: only one choice of Data Pad Bus enable may be made per ,
+instruction statement. - o o : :
+~adr An address or numeric value. Any 16-bit integer‘ -
+expression is legal. A Floating Multiplier, Memory
+o - Input, Memory Address, Table Memory Address, or Data
+' ' Pad Address op-code may not be used in an-instruction '
+statement where an '"adr" is used. ,
+Examples: DPX(3)<FM | | | g -
+| DPX(-2)<SPFN | | | . ‘
+o DDPXe MD | | | ‘
+) - DPX(1)<DPY (-2)
+o - . .DPX(-2)< =123 , ' ‘ _
+.~ B.2 DATA PAD Y OP-CODE GROUP | IR |
+- Purpose: Storing into Data Pad Y o
+Cp-Code ~ Function | ]
+DPY (idx),.FA  Store Floating Adder output into Data Pad Y
+DPY <«(idx) ><FM Store Floating Multiplier output into Data Pad Y :
+DPY <(idx) ><DB Store Data Pad Bus into Data Pad VY.
+DPY <(idx ) ><dbe Store dbe into Data Pad Y ,
+Examples: DPY(-2)<FA | | ' |
+- DPY< MD _ . '
+' DPY(2) <TM v . .
+DPY(1) <39. ’ : ’ .
+B.10 MEMORY INPUT OP-CODE GROUP B
+Purpose: Writing into Main Data Memory | '
+Op-codes Function : '
+| MI<FA _ Move Floating Adder output to the Memory Input reg. :
+MI <FM ‘ Move Floating Multiplier output to the Mem. Input reg.
+MI<DB ' Move Data Pad Bus to the Memory Input Register
+MI .dbe Move dbe to the Memory. Input Register
+' Note: to effect a memory write, an op-code from the memory address
+group, or.an "LDMA" op-code must also be included in the instruction
+statement to supply the memory address.
+| Examples: MI<FA; INCMA '
+_ MI<DPX(3); DECMA o _
+. MI<MD; SETMA; ADD 3,6
+- APAL B-7 ; .
+B.11 DATA PAD BUS OP-CODE GROUP - _ ‘
+Purpose: to explicitly enable data onto the Data Pad Bus. L
+Op-codes Function N : . |
+DB=ZERO | ‘enable ZERO onto the Data Pad Bus
+DB=adr - enable adr onto the Data Pad Bus _
+DB=DPX<(idx)> -  enable Data Pad X onto the Data pad Bus
+DB=DPY<«(idx)> enable Data Pad Y onto the Data Pad Bus
+DB=MD enable Memory Data onto the Data Pad Bus
+DB=SPFN . enable S-Pad Function onto the Data Pad Bus
+DB=TM enable Table Memory data onto the Data Pad Bus
+Noteﬁ as mentioned earlier, only one data source may be enabled
+onto the Data Pad bus per instruction statement. ' o
+Examples: DB = 37 - A : L
+- DB = DPX(-2) ' , '
+DB.= MD o
+_ DB = SPFN ' _
+B.12 SPECIAL OPERATION OP-CODE GROUP , _ ;
+the: if an op-code from this group is chosen, an S-Pad Group
+S —— op-code may not be used in the same instruction statement.
+B.12.1 SPECIAL TESTS - | .
+Purpose: additional conditional branches '
+- Op-codes o Function : o |
+BFLT disp Branch on Floating adder Less Than zero ‘ .
+BLT disp Branch on s-pad function Less Than zero » .
+BNC disp - Branch on Non-zero Carry bit ‘
+BZC disp : Branch on Zero Carry bit .
+BDBN disp . Branch if Data pad Bus Negative :
+BDBZ disp ‘Branch if Data pad Bus Zero v
+BIFN disp Branch if Inverse FFT flag Non zero
+BIFZ disp Branch if Inverse FFT flag Zero : '
+BFLQ disp - Branch if FLag P is 1 ‘ ‘
+BFL1 disp _ Branch if FLag 1 is 1 _
+BFL2 disp Branch if FlLag 2 is 1 : »
+BFL3 disp Branch if FLag 3 is 1 ‘ _
+.Note: if onme of these tests is used along with a test from the Branch
+: Group, the conditions are "or'd." 1In this case, only one of the
+branch op-codes need have the target address as an operand.
+Examples: BNC ODD | o |
+BFEQ LOOP; BFLT LOOP "LESS THAN OR EQUAL TO
+B.12.2 SETPSA | | | | |
+Purpose: jumps and subroutine jumps '
+Op-codes Function |
+JMP<A>  adr JuMP to location adr |
+
+JMPT JuMP to location whose address is in TMA
+
+JMPP v JuMP to location whose address is on the Panel bus
+JSR<A > adr - JumP to SubRoutine at location adr :
+JSRT - JumP to SubRoutine at address in Tma
+
+JSRP . JumP to SubRoutine at address on Panel bus
+
+‘Examples: JMP LOOP + 3 ’
+
+JSR FFT '
+JMPA 300 o : '
+
+B.12.3 SETEXIT | o |
+Purpose: ‘tb alter a subroutine return : ' '
+Op-codes Function ' ' -
+
+SETEX <A> adr = SET subroutine EXit to adr ‘
+
+SETEXT - SET subroutine EXit to contents of Tma
+
+SETEXP . SET subroutine EXit to contents of Panel bus
+Example: SETEX BAD ' ' ‘ ,
+
+B.12.4 P.S. ' - : _ :
+Purpose: read/write of.Program Source Memory '
+Op-codes | ~  Function - |
+-RPSL A> adr ReadVProgram Source Left half of location adr ’
+RPSF 4> adr Read Program Source Floating-point number Zfrom B
+
+: location adr ‘
+RPSLT Read Program Source Left half at address in Tma
+RPSFT Read Program Source Floating point number at
+: , address in Tma ' ' .
+RPSLP _ Read Prog. Source Left half at address on Panel bus
+RPSFP ' Read Prog. Source Floating-point number at address
+: on Panel bus _ ‘
+
+Note: these op-codes read onto the Data Pad Bus
+
+Op-coaes Function ' '
+
+LPSL<A> adr  Load Program Source Left half of location adr
+LPSR<A> adr. . Load Program Source Right half of location adr
+
+LPSLT : ' Load Program Source Left half pointed at by Tma ,
+LPSRT , Load Program Source Right half pointed at by Tma
+LPSLP " Load Prog. Src Left half pointed at by Panel bus
+LPSRP ‘Load Prog. Src Right half pointed at by Panel bus
+Note: these op-codes load from the Data Pad Bus |
+Example: RPSF PI ' - o
+
+APAL B-9 o
+B.12.5 PS ODD AND EVEN
+Purpose: reading the host panel switches into Program Source '
+o memory; writing Program Source to the panel lites.
+
+Op-codes Function o ' | '
+
+RDPSZ<A > adr Read Program Source quarter @ from location‘adf
+
+RPS1<A > - adr Read Program Source quarter 1 from location adr
+
+RPS2<A > adr ‘Read Program Source quarter 2 from location adr
+
+RPS3<A > adr Read Program Source quarter 3 from location adr
+
+RPS@T Read Program Source quarter @ from address in Tma
+
+RPS1T Read Program Source quarter 1 from address in Tma
+
+RPS2T - - Read Program Source quarter 2 from address in Tma '
+
+RPS3T Read Program Source quarter 3 from address in Tma
+
+WPSg<A > adr Write Program Source quarter @ into location adr
+
+WPS1<A> adr Write Program Source quarter 1 into location adr
+
+WPS2<A > adr  Write Program Source quarter 2 into location adr
+
+WPS3<A > adr  Write Program Source quarter 3 into location adr
+
+WPSQT ‘ Write Program Source quarter @ into address in Tma
+
+WPS1T Write Program Source quarter 1 into address in Tma
+
+WPS2T : Write Program Source quarter 2 into address in Tma
+
+WPS3T Write Program Source quarter 3 into address in Tma
+
+B.12.6 HOSTPANEL o |
+
+2urpose:’ ' Reading the host panel switches; writing to the host panel :
+' lites ' ‘ - : ) )
+
+- Op-code Function | N |
+
+PNLLIT PaNeL bus to LITes
+
+DRELIT Data pad Bus Exponent tp.LITes
+
+DBHLIT Data pad Bus High mantissa to LITes v
+
+- DBLLIT Data pad Bus Low mantissa to LITes
+
+SWDB. ' SWitches to Data pad Bus
+
+SVDBE ' SWitches to Data pad Bus Exponent )
+
+SWDBH - SWitches to Data pad Bus High mantissa
+
+SWDBL : SWitches to Data pad Bus Low mantissa
+
+B.12.7 Miscellaneous : .
+
+SPMDA" SPih until a Main Data memory cycle Available
+
+APAL B-10 " |
+B.13 I/0 OP-CODE GROUP , . _ '
+
+Note: if an op—codé is used from this.group; a Flpating Adder
+——— op-code may not be used in the same instruction statement.
+B.13.1 Load Reg, Read Reg ' v
+'Purpoée: reading/writing of various internal registers
+Op-codes Funétion _ _
+
+LDSPD LoaD S-Pad Destination address register
+
+LDMA LoaD ‘Memory Address register _ ,
+
+- LDTMA LoaD Table Memory Address register
+
+LDDPA - LoaD Data Pad Address register .
+
+LDSP LoaD S-Pad register poianted at by spd
+
+LDAPS LoaD AP Status register \ _
+LDDA _ LoaD i/o Device Address .
+
+Note: the above op-codes load from the Data Pad Bus ’
+Op-codes .- Function . - :
+
+RPSA o ~Read Program Source Address |
+RSPD Read S-Pad Destination register
+
+RMA- , .Read Memory Address register
+
+RTMA . Read Table Memory Address register
+
+RCPA Read Data Pad Address register
+
+RSPFN Read S-Pad FunctiolN
+
+RAPS ‘Read AP Status : ' ’ '
+
+RDA Read i/o Device Address »
+
+Note: the above read onto the Panel bus
+
+. APAL .B-11 | | |
+'B.13.2 INOUT o - | | |
+Purpose: Program contrdl/input output of data
+~ Op-codes Function ‘ | '
+- OUT OUTput data o | :
+SPNOUT SPiN until device ready, then OUTput data
+OUTDA ' OUTput data, then set DA to spfn ‘
+SPOTDA : SPin until device ready, then OuTput data, then
+- set DA to spin ' ‘ 4
+Note: the above write to the 1/0 device specified by the Device Address
+: Register (DA) whatever data is enabled onto the Data Pad Bus.
+Op-codes - Function ‘ -
+N o INput data - |
+SPININ SPIN until device ready, then INput data
+INDA INput data, then set DA to spfn ‘ ‘
+SPINDA SPin until device ready, then INput data, then
+' " set DA to spfn S ’ :
+Note: the above enable data onto the Input Bus from the I/O device
+- specified by the Device Address Register (DA). To be used the
+data must be enabled onto the Data Pad Bus, and from there to a
+‘ register or memory. An example: »
+IN; DPX(2)<INBS "READ I/O DATA IWTO DPX
+B.13.3 SENSE | - - j
+Purpose: Sensing an I/O'deVice'condition
+Op-codes © Function ' - _ '
+SNSA o SeNSevcondition A ,
+SPINA SPIN on condition A _
+SNSADA SeNSe condition A, then set DA to spfn
+SPNADA SPIN on condition A, then set DA to spfn
+SNSB SeNSe condition B
+SPINB . SPIN on condition B .
+SNSEDA _ SeNSe condition B, then set DA to spfn.
+~ SPNBDA : SPIN on condition B, then set DA to spfn
+APAL B-12 ' -
+B.13.4 FLAG I |
+Purpose: set/reset of program flags - '
+Op-codes _ ‘Function ' ' '
+SFLp - Set Flag @ ' -
+SFL1 . Set Flag 1 : '
+SFL2 _ . Set Flag 2 _
+- SFL3 Set Flag 3 ‘ , S
+CFLQ Clear Flag @ v
+CFL1 Clear Flag 1 o '
+CFL2 . Clear Flag 2 o . :
+CrL3 . ' Clear Flag 3 _ ‘
+B.13.5 CONTROL _ : . ' o
+Purpose: miscellaneous control functions 4
+Op-code A Functions _ '
+HALT ' HALT processor :
+IORST I/0 ReSeT :
+INTEN ‘ ~ INTerrupt ENable .
+INTA ' INTerrupt Acknowledge
+REFR memory REFResh synch 4
+WRTEX - enable WRiTe of Exponent only into DPX, DPY or MI
+WRTMN , enable WRiTe of MaNtissa only into DPX, DPY or MI
+SPMDAV - _ SPin until a Main Data memory cycle AVailable
+APAL B-13
+| | INTENTIONALLY BLANK |
+. APAL B-14
+APPENDIX C ' _
+TABLE MEMJRY SYMBGLS: _
+1. TABLE MEMORY CONSTANTS: ‘ _
+: CONSTANT VALUE 1IN TABLE MEM@RY
+SYMBGL REPRESENTED TABLE MEM@RY ADDRESS (@GTAL)
+ 1ZER® ZERJ Ce0 _ 4371
+"1ONE BNE 1.0 : 4001
+1 TVG . V3 240 4002
+ITHREE THREE , 3%0 . 4441
+IFBUR FOUR ~ 430 ) 4442 ’ ’
+{FIVE _ FIVE 540 4443
+11X SIX 60 - K444
+{ SEVEN SEVEN , 740 . 4445
+1EIGHT EIGHT 8+0 . K446
+ININE ' NINE 940 ' 4447
+I TEN - TEN ‘ 10%0 . 4450
+ISIXTN SIXTEEN _ 1640 4451 :
+IHALF ' HALF 0+5 aa217 :
+{ THIRD '~ @NE THIRD 0.333333333 4430 :
+IFBRTH @NE FOURTH 0425 4431
+I{FIFTH @NE FIFTH - Qe2 4432
+1SIXTH BNE SIXTH 0+166666667 4433
+1SUNTH BNE SEVENTH 0-142857143 4434
+VEGHTH @NE EIGHTH o<12s . 4435
+ININTH gNE NINETH O«iiitttttl a4a3é6
+ITENTH ONE TENTH 01 - 4437
+ISXNTH : @NE SIXTEENTH 040625 4440
+1SQRT2 SQRT(2) 17414213562 4203
+1SQRT3 SQRT(3) .~ 1+732050808 4422 '
+1 SQRT5 SQRT(5) 24236067917 4423
+1sQT10 SQRT(10) 3.162277660 2424
+115QT2 1.0/SQART(2) 0+707106781 4206 :
+11s5aT3 1+0/SQRT(ID 0+577350269 - aas2 ‘
+11sQTs 1<0/SQRT(S) 0+447213596 4453
+11sQ1o 1+50/SQRTC10) 0+316227766 a4s54
+1CBT2 CBRT(2) 1+256921050 4417 .
+1C8T3 , CBRT(3) 12442249570 4420
+1QDRT2 (2.0)%x1/4 17189207115 4421
+" IL3G2E L3G2¢(E> ~ 1442695041 4317
+1L3G2 L3G10¢2) 04301029996 a4l
+1LAGE . LBGI0OCE) 0+434294482 4337
+ILN2 LNC2) : 0693147181 4336
+1LN3 : © LNC3) 15098612289 4407
+ILN1O LNC10) 2+302585093 4410
+1E _ B . 2.718281828 4403
+1 INVE 1.0/E 0+367879%44l A404
+1ESQ E%*x2 7+389056096 4405 -
+{PI Pl © 34141592654 4402
+I TVOP! 2*P1 , _ 6+283185308 4415 -
+1INVPI 1.0/P1 . 0+318309886 44512 :
+1p12 . Pl/s2 1570796327 4312
+1P1a ‘ P1/4 ' 0+785398164 4373
+1P1180 P1/180 _ 0+017453293 4413
+1PIsQ _ Plxx2 : 948695604404 as51a :
+1SQATPI SQRTC(P1) 15772453851 a4l16
+1LNPI LNCPDD 1144729886 4306
+| GAMMA GAMMA 0577215663 4425 :
+1PHI PHI 15618033989 2426 APAL C-1
+2. ELEMENTARY FUNCTIAN TABLES: |
+» ELEMENTARY TARLE MEMBRY |
+SYMBOL FUNCTION ADDRESS (BCTAL)
+1DIV  DIVIDE 4000
+1SQRT ' SQUARE ROGT a202
+1SNCS  SIN/CBS 4306 |
+1L36G L3 GARITHM 4333
+1 EXP EXP@NENTIAL 2317
+IATAN .~ ARC TANGENT a3es
+‘3. SIZE OF INSTALLED FFT COSINE TABLE
+SYMBGL . SIZE (TYPICAL)
+IFFTSZ. 2048 |
+
+: : APAL (-2
+EXAMPLE OUTPUT '
+| from - o
+: APAL o |
+D-1 .
+APAL
+V2.l
+PASS 1 .
+PASS 2 A : : ,
+STITLE SINCAS '
+SENTRY SIN
+: SENTRY C3S : : . _
+“SINE, COSINE FUNCTIZN
+- === ABSTRACT ==-- :
+“COMPUTES THE FUNCTIGN SINCX) QR C@5¢(X)» WHERE X IS IN
+‘ " DPXX(DPA) . '
+v .
+" . === STATISTICS =-- ,
+“LANGUAGE: AP-120B ASSEMBLER
+‘ . "EQUIPMENT: - AP-120B - ‘
+“STIRAGE: PS - 31 LACATIBNS
+_ " - MD - N@T AFFECTED _ ,
+. : " . TM - 9 , : ‘
+" DPX = 2 _ . ,
+' o , ' DPY - 2
+: " 4 SP = N@T USED
+“SPEED: SIN = 442 US+ AVERAGE (4+00 = 4.83)
+. o C8S = 4<75 US< AVERAGE (433 = S5.17)°
+“AUTHOR: A+Es. CHARLESVZRTH - o
+: : “DATE: N3Ve 1975 ,
+. -~ “REVISIGN: 2.2° FEB 76 CHANGED SENTRY
+. " b
+' " === USEAGE ===
+'"SAMPLE CALL:t JSR SIN» JSR CO@S ’ :
+» “ARGUEMENT: X IS IN DPX(DPA) :
+"ANSWER ¢ - SINC(X) OR C@S(X) 1S LEFT IN DPX(DPA)
+“SCRATCH: DPX(0<=2), DPY(0=-3)
+. (1] . .
+- : " - «== ERRIR CONDITIZNS === '
+: ‘ "NONE ' o :
+: ' v ‘ wwe ALGARITHM ==-
+: *le IF CBS(X) IS DESIRED., C@S(X) = SIN(X+P1/2)
+' -2 X IS MULTIPLIED BY 2/P1, AND SPLIT INTZ (I + F
+: w o . WHERE 1 1S AN INTEGER AND F A P3SITIVE
+- o : BETWEEN 0 AND 99999999990+
+‘ s 1F 1 IS dDDs F<m (1.0 = F)
+-1 " SINCF) = A + BF*%3 ¥ CF*%5 + DF*%7 + EF*x9
+: w oo -7 THE POLYNAMIAL IS FROM _
+i HART & GCHANEY #3341 (PRECISIBN 8.27=5x%
+‘ ” ‘ _ RANGE 0 T8 Pl/2 "
+, "S5, IF 1/2 1S 8DD, SINCF) IS NEGATED :
+o .
+' “NOTE: THE P@LYNGMIAL 1S FACTIRED AS: :
+" CAF + F#*3(B + CF*%2)) + F*%7(D + EF*=2)
+n’ ) ) . : .
+B “THE TABLE IN TABLE MEMBRY 1S AS FOLLOWVS:
+~ “SINTBL310+63661 97724 2/P1
+. " . 0¢7968% 67894 6 E -1 G~
+’ . 04999999925 ‘ FRACTION MASK ¢1000,37
+e 170 dDD BIT MASK
+' " 0+15707 96318 44 E 1 A (PI/2)
+, _ b ’ 0+15148 5129 E=-3 : E
+: " -+<64596 37105 99 B
+v ~v46737 6661 E=2 D . A
+, :: 20 , APAL D-9 N;xr 30D BIT MASK
+“TABL:Z LACATIIN M3
+004306 SINTBL SEQU !SNCS
+"DATA PAD X: -
+000000 X SEQU 0 | | ”
+000001 - TEMPX SEQU 1 A : . .
+| "DATA PAD Y: - ,
+000000 ¢ SEQU 0 : |
+000000 - AF SEQU O | | A - |
+000001 F SEQU 1 o '
+-~ ooo0001 F2 SEQU 1 |
+| 000001 F3 SEQU 1 | .
+_ ' "COME HERE FOR COSINE(X)eeesececsssaces o
+000000 000003 CBS: LDTMAS DB=SINTBL¥4 =~ " "“FETCH 'P1/2 (A) _
+103000 | | '
+‘ 002000 |
+004312 N |
+000001 000003 | DB=SINTBL; LDTMA = “FETCH 2/PI
+| 103000 | | | | o
+| 002000 -
+004306 . o | |
+000002 000001 FADD TMsDPX(X) "D@ X*2/P1
+‘ 142000 | o - ‘
+000400 , y | ' |
+: 000000 | | |
+000003 000001 FADD; INCTMA "FETGH C i
+100000 | o . | .
+000000 | 4
+~ oo0000% o
+000004 000000  FMUL TM,FA; | | "D@ X*2/P1
+000124 INCTMA; “ FETCH FRACTIAN MASK
+| 000000 . BR C3MMON % G@ DJ SINCX+P1/2)
+. 016001 ) | | | . |
+“COME HERE FOR SINE(XDesssecsssvesecnce |
+000005 000003 SIN:  LDTMA; DB=SINTBL =~ """ “FETCH 2/P1 |
+103000 ' S |
+002000 - | g
+004306 , o | |
+000006 000000 INCTMA . “FETCH C |
+o 000000 | -
+| 000000 - ‘
+- 000001 - | | .
+000007 000000 FMUL TM.DPX(X)J »D@ X¥2/P1
+000000 | INCTMA » FETCH FRACTION MASK
+000400 | S
+016401
+000010 000000 COMMBN: FMULS INCTMAj | "FETCH @DD BIT MASK
+000000 . DPY(C)<TH “ SAVE C
+017000 : o . |
+110001 , APAL D-3. o
+000C1l  0Q0GULD FMULS Di . SMPX)<TM; “SAVE FRACTId4. 1ASK
+000000 - INCTMA *. FETCH A
+047005 ‘ . : -
+010001 S . -
+, "@H, THE GLORIES OF A FLOATING PZINT ANDees
+g " WE CAN GET THE FRACTIGBNAL PART @F A NUMBER.,
+: ‘ o @R - :
+_ v WE CAN TEST Td SEE IF THE INTEGER PART @F -
+’ " A NUMBER IS @8DDes. ‘
+000012 000002 FAND FM,DPX(TEMPRY; “YGET F = FRAC(2X/PI)
+- 112000 DPX(TEMPX)<TM * SAVE @DD BIT MASK (
+- 047505 - ' | g :
+- 000000 - .
+000013 000002 = = FAND FM,DPX(TEMPX); "SEE IF I IS @DD
+, 112000 DPX(X)<FM , . * SAVE 2X/Pl
+- 140504 _ ) i
+: 000000 - ' ‘
+: , "HERE WE PLUNGE AHEAD AND START THE P@LYN@MIAL. .
+_ . H3PING THAT WE AREN'T IN THE .
+_ " - SECOND @R FOURTH QUADRENTS
+000014 000001 8DD: FMUL DPY(C),FAJ “DJ C*F
+021000 DPY(F)<FA3 " SAVE F :
+, 020540 FSUB DPX(TEMPX)>sFA - ™ D@ 1«0-F
+- 134000 : o -
+000015 000001 FMUL DPYC(F),DPY(F); D@ F*x*2
+155000 FADD ZER®G.,ZERG " PUSH 1-F QUT
+, 000050 . . '
+‘ 015000 . . :
+“IF 1 1S @DD, THE FAND WILL PRODUCE 1.0 AS A RESULT,
+. WHICH WE NOW TEST FOReee -
+o - "THIS IS NGT AN INFINITE L@@P " :
+' IF 1 IS 9DD» AND WE COME THIS WAY AGAIN,
+| : - " THE SECZND TIME WE WILL BE TESTING THE RESULT
+_ ‘ " 8F ADDING 0.0 + 0.0, WHICH WILL _
+"o ALVAYS BE ZERG ,
+000016 000000 - FMUL TM,DPY(F)3 "D A*F
+' 000456 BFNE 6DD = “ BRANCH BACK IF I IS
+000050 ' _ - -
+017000 : : _
+“NOW WE ARE INTZ THE PELYNGMIAL FOR GOBDescsccccee
+- 000017 000000 FMUL FM, DPY(F) "D CF * F =7
+: 000000 o _ :
+, 000050 -
+-~ 0ltooo : , , A
+000020 000000 FMUL FM,DPY(F); D@ F**3
+, 000000 : DPY(F2)<FM3 = * SAVE F#%2
+030050 INCTMA _ " FETCH E
+- 131001 ' - ,
+000021 000000 © FMUL DPYCF2),DPY(F2);  “DJ F=**4
+~ 000000 DPY(AF)<FM; " SAVE AF
+030050 ) INCTMA ™ FETCH B
+115001 , APAL D-4 " -
+000022 000000 FMUL TM.DF7(F2); "Dd E % F#x2
+000000  DPX(TEMPX)<FM} “  SAVE CF2
+140055 INGTMA » FETCH D
+| 017001 R - o
+000023 000001 . FADD TM,DPX(TEMPX)$  "D@ B+CF2
+| 142000 FMUL3 ' S
+, 030500 DPY(F3)<FM “ SAVE F¥x3 |
+130000 o o _ | | |
+000024 000001 " FMUL FM,DPY(F3)3 %D Fx7
+| 100000 | 'DPX(TEMPX)<TM3 ®  SAVE D
+047055 ~ FaDD : -
+011000 - s |
+000025 000001  FMUL DPY(F3),FA3 "D@ F#%x3 % (B+CF2)
+g 112000 FADD FM,DPXC(TEMPX>: ™ DJ D + EF2 ' |
+000550 | INCTMA “ FETCH NEXT @DD BIT
+" 014001 | |
+000026 000001 ' FMUL; FADD “yAIT
+100000 ) - -
+1000000 _ |
+010000 I . | |
+' "HERE WE SEE IF MOD(I/2,2) IS 1 OR Osecescoes |
+000027 000002 FMUL FMJFA5 = . "™D@ F¥#7 ¥ (D+EF2)
+142000 FAND TM,DPXCX) ~ » SEE IF 1/2 IS @DD
+| 000400 | | | - |
+010000 . |
+000030 000001 FADD FM,DPYCAF)} FMUL  "D@ AF + (BF3+CFS)
+| 113000 o - ' '
+000040 | |
+| 010000 | ‘ |
+000031 000001 FMUL; FADD : “YALT |
+100000 | -
+000000 - '
+: 010000 . |
+000032 000001  FADD FM,FA; . “D@ (AF+BF3+CF5)+(DFT+
+111463 BFNE NEG » SEE IF WE NEED T3 N
+| 000000 1 ' |
+| 000000 S , |
+000033 000001 DBNE: FADD "YAIT
+| 100000 '
+000000 S .
+- oo00000 | | ;
+000034 000000  DPX(X)><FA; RETURN "STPRE ANSWER AND RETU
+000340 ' ) . o _ '
+100004 -
+000000 |
+B "CZME HERE IF WE NEED T8 NEGATE THE ANSWERoese.
+000035 000001 NEG: FADD , . omwAIT 0 T
+- 100000 :
+. 000000 |
+S goonae APAL D-5 |
+0000636 000001 _ FSUB ZERL ,FA3 0«0 = ANSVER
+051115 BR D@NE v " 'G@ FINISH
+. - 000000 '
+o 000000 . ' ' '
+: 3END , -
+*k%%x 0 ERRORS B4 K K ' o
+SYMB@AL VALUE _ ' '
+SINTBL 004306 _
+b 000000 ‘
+TEMPX 000001 _ L : , _ 4
+c 000000 : ' .
+AF ' 000000 : ' S
+F 000001, v
+F2 000001l : :
+F3 000001 :
+. C@s 000000 ENT .
+SIN 000005 ENT
+COMMIN 000010 . "
+DD - 000014 ' .
+DANE 000033 ) ' ' ’
+NEG 000035
+- ‘ APAL D-6 :
+(INTENTIONALLY BLANK) | "
+APAL D-7 | o |
+| AP-120B APLINK
+ARRAY PROCESSOR LINKING LOADER MANUAL
+
+| - | : 7276-02 - | : |
+FPs-7276-01 | .
+C FLoaTinG PcINT SvysTeEMs, Inc. 1976 S
+ALL RIGHTS RESERVED |
+PRINTED IN THE UNITED STATES OF AMERICA |
+Revision 02, MarcH 30, 1976 o | | |
+| | TABLE OF CONTENTS | . -
+- Section 1 - INTRODUCTION ' _ . : 1-1 -
+
+‘ 1.1 Introduction : 1-1 v
+‘Section 2 - (PRESENTLY OMITTED) - . ' '
+Section 3 - OPERATING PROCEDURE | 341
+
+3.1 Load, "L'" : 3-2
+3.2 Symbols, "S" - 3-2 .
+3.3 Undefined, "U" : ‘ 3-3
+: 3.4 'Next Base, "B" ' 3-3 '
+3.5 Reset, "R" : ' 3-4
+3.6 Force, "F'" 3-4
+3.7 Memory, "M" . 3-4
+S 3.8 End, "E" S 3-4
+3.9 End with Assembly Code, "A" : 3-5
+: 3.10 Set Number Radix, "N" : 3-5
+3.11 Exit, "X" , N . _ ' 3-5 | .
+3.12 An Example Loading Session ' 3-6 )
+Section 4 - ERROR MESSAGES . - 4-1
+Appendix A - : . - A-1
+Appendiva ' : B-1
+APLINK i '
+SECTION L ' _
+INTRODUCT ION - » :
+
+1.1 INTRODUCTION - | o
+
+APLINK links separate object modules produced by APAL
+together into a single load module for execution by the AP-120B
+hardware or the simulator, . o ' '
+
+The user can separately code and assemble a main line
+program and the associated subroutines, and later link them
+together for execution. APLINK serves this purpose be per-
+forming the following tasks: -
+
+. 1. Relocating each object modﬁle'and assigning absolute
+- addresses, C _ :
+
+'2. Linking the modules together by correllating global
+entry symbols defined in one module with external symbols
+referenced in another module. o '
+
+3. Selectively 1oadihg modules from program library, ,
+: 4. Optionally producing a load map showing the layout
+of the load module. =~ '
+APLINK is written in Fortran IV and requires roughly
+10K of available memory in which to operate.
+| ' .~ APLINK 1-1 |
+" INTENTIONALLY BLANK _ _
+APLINK 1-2 »
+SECTION 3 ' '
+OPERATING PROCEDURE , :
+
+Program modules are linked interactively via a dialogue
+between the user and APLINK. The user enters a series of com- ‘
+mands which direct the linking process.
+
+: : When execution begins, APLINK outputs: - . , ' -
+APLINK . : '
+. BE# _ .
+, * ' : , .
+
+The "###'" is the version number of APLINK. The asterisk
+("*") indicates that the program is ready to accept commands.
+After each user command, an "*" is typed when that command '
+has been completed, and APAL is ready for a new command. An
+illegal command will cause a "?" to be output.
+
+' To load his relocatable programs and prepare them for
+execution, the user would normally follow the procedure out-
+lined below: . . -
+
+.. 1. Using the "L" (load) command, load the file or files
+containing the desired main program, required subroutines, and
+library subprograms, if any. If a fatal error occurs during
+this step, the user must reinitialize using the "R" command,
+and repeat this step. ‘ » '
+
+2. Using the "U" (undefined) command, check to see if
+
+- any global symbols are still undefined. If nothing is out-
+put from this command, continue to step 3. If any symbols
+are output, it usually means that there was an error in one or
+more of the programs loaded, or that the loading sequence was
+wrong. In these cases, the user should correct the error and
+restart the loading operation from step 1. '
+
+3. Obtain the memory limits of the loaded program and/or
+a loader map, by using the "M" (memory) or "S" (symbols) com-
+mand. _ :
+
+. 4. Complete and output the load module by using the "E"
+(end) or "A" command. Note the values of HIGH and START as
+well as the possible presence of any remaining undefined sym-
+bols. L .
+
+5. Return to the operating system with an "X" (exit)
+command. ' ‘
+
+' : The individual APLINK commands are described in the fol-
+lowing sub-sections,; and a complete example loading session
+is given in section 3.12. : ' A
+
+The three following abbreviations are used in the fol-
+
+lowing sub-sections: ' ‘ : :
+: ' ~ APLINK 3-1 o :
+Abbreviations ' Meaning ' o _
+filename - A user specified input or out-
+' ‘ put file. The "Filename" fol-
+' lows whatever naming conventions
+, . exist for the particular host
+‘ computer operating systems.
+o ' Carriage Return -
+‘ - APLINK 3-1la '
+' o ' Indicates characters output'by ’
+_ ' the program. . :
+. . The examples given are illustrative only, as file and
+I/0 device names will 'vary from system to system, : :
+3.1 LOAD,"L" - - |
+To load a program module,. or a program library enter:
+L+ . _ |
+- filename + ' . ' ' ‘
+where "filename'" is the name of the file containing the
+desired program or library. Example:
+| * L+ S S |
+FFT. RB + : o
+Loads a program from file T o :
+FFT. RB. . '
+3.2 SYMBOLS, "S" | o
+- To output the global (external_and entry) symbols enter: .
+S ¢
+filename + '
+where "filename'" is the name of the file (or I/O device) to
+receive the symbol listing. The output of the loader map is
+as follows: ' . ' ' :
+C HIGH = aaaaaa : ,
+| SYMBOL TABLE | |
+o SYMBOL ' VALUE -
+SSSSss nnnnnn U
+where: : o - o
+aaaaaa - ‘ Highest program address so far loaded.
+Normally, the next-program will be loaded
+_ ’ - starting at location HIGH+1. o
+ssssss . ~ symbol name B -
+C | APLINK 3-2
+nnnnnn - symbol value; if undefined; the last
+' location loaded which referenced this
+_ : . symbol,. '
+U . - If present indicates the symbol is as yet
+' . undefined., ‘
+An example command: ’ _ e
+XSy S | |
+LP:v _ : ’ -
+Dumps the loader symbol table onto the line printer.
+3.3 UNDEFINED, "U" | -
+: To output tb.the‘cohsole any presently undefined global
+symbols enter: ' _ _ ,
+filename+ ' , J ,
+where "filename' is the file to receive the list of un-
+defined symbols. The list format is: v :
+: SSSSSS nnnnnn .
+where 'ssssss' is the symbol name and '"nnnnnn" is the
+location of the last program instruction which referenced
+the symbol. An example command: _ ‘ A
+*U v - L |
+TP+ .
+Prints the names of any undefined symbols on the teletype;
+3.4 NEXT BASE, "B" | ,
+To specify a base address at which to load the next program,
+enter: }
+"B |
+~loc ¢ . -
+where "loc'" is the location specified. An example: :
+*B ¥ ’ | _
+200 + | :
+Sets the next location loaded to location 200,
+_ - . APLINK 3-3
+3.5 RESET, "R" | | | |
+To reset“APLINK, enter: ‘ - _
+' This reinitialiies the program to its initial state.
+- The symbol table is cleared, any previously loaded programs
+are disregarded, and the next location is set to zero. This
+command must be given following a fatal error. , ,
+3.6 FORCE, "F" | | -
+To force loading of a program module from a library,
+enter: - ‘ _
+F+ - |
+namev ' ' ‘
+where ''name" is the name of the symbol to be forced. This
+command enters ''name" into the symbol table as an external
+symbol. * This will cause the loading of a library program
+which has ''name' as an entry symbol. An example: _
+*F¥ - : _
+DOTPRDY B '
+Forces the loading of any prdgram defining symbol "DOTPRD"
+from any subsequently loaded library file.
+3.7 MEMORY, "M" . ’
+To get the address of the highest program source memory )
+location so far loaded, enter: ‘ : v »
+- The information is printed as followsf | ’
+HIGH = aaaaaa _ ' :
+where ''aaaaaa' is the highest address so far loaded, and '
+"bbbbbb'" if present, is the load module starting address.
+3.8 END, "E" - | . | '
+To end a load module and output the completed load
+module for use with APDEBUG, enter:
+filename+
+where "filename" is the name of the file to receive the
+loader output. The output is a ''core image' which can be
+loaded by APDEBUG and executed by either the simulator APSIM,
+~or the hardware. :
+| APLINK 3-4 | |
+‘ - APLINK outputs the following information td the user
+console: : : ' o
+HIGH = aaaaaa . | '
+where '"aaaaaa'" is the highest program address loaded. If
+any symbols were still undefined, APLINK outputs:
+
+| | ### ~ UNDEFINED SYMBOLS o |
+
+where "###" is the number still undefined. A value of @
+"was used in linking these undefined symbols. , '
+*xE 4 ‘ : _
+: SAVE : ‘
+: Stores the completed load module into file "SAVE".
+The "E" (or "A") command causes links between global
+- symbols in the completed load module to be frozen. The load
+module can be output again (with another "E'" or "A") but no
+further links can be added (with an "L'").
+" To work on another load mode, a reset ('"R'") command must
+be given to clear the linker. ,
+3.9 END with ASSEMBLY CODE, "A" |
+To end a load module and output the completed load module
+as host computer assembly code (for use with APEX), enter:
+o Av ’ - "
+filename+ o ' _
+
+' where "filename'" is the name of the file to receive the loader
+output. This output is a short host assembly language sub-
+routine, which is the linkage between host computer Fortran ‘
+"CALL's'" and the AP-120B executive. The AP-120B code from the
+load module follows the host subroutine as assembly language ‘
+data statements. ' - . :
+
+Information concerning the highest address loaded into, and
+any undefined symbols, are output to. the user console as des-
+cribed above for the "E'" command. )
+3.10 NUMBER RADIX, "N" |
+
+To set the radix for numeric input/outputito and from the
+user console, enter: -
+
+- N¢ ' ' :
+‘ radix+ . _
+where the radix is either 8'(for octal), 10 (for decimal), or
+16 (for hexadecimal).  The default radix for user I/O0 is set
+to either of these choices at installation. ‘
+_ : APLINK 3-5 -
+- 3.11 EXIT, "X" | : ' SR |
+vTo exit to the operating systém, enter:
+3 Note: X does not cause any oufbut. An ”Eﬁ or "A" must
+be used to output a load module. ‘ , ' }
+S APLINK 3-5a , -
+3.12 AN EXAMPLE LOADING SESSION '
+>>RUN APLINK l
+
+APLINK : o
+REV 1 : :
+XL o '
+BENCH: RB _ '
+APLIB , o
+xS
+
+/TT@ | ’ '
+HIGH=000116 ) .
+SYMBOL TABLE'
+
+SYMBOL VALUE
+
+BENCH 000000 ' '
+
+DIV 000063 ' '
+
+*E
+
+TEMP _ :
+HIGH=000116 o '
+*X
+
+STOP '
+
+>> ) ’ . .
+
+- The user runs APLINK. He then loads his program, in file
+BENCH:RB. Since Bench uses the scalar divide subroutine, he
+links in the library of AP-120B subroutines, APLIB. APLINK
+extracts from the library any subroutines needed by BENCH, in
+this case DIV. The user prints out the loader map, and then
+ends with an "End" command, putting the linked-up code into
+
+. file TEMP. 4 '
+To debug the program, the user would run APSIM, where he
+could execute the code put into TEMP.
+’ APLINK 3-6
+| Another example loading'session. ‘ | .
+- RUN APLINK o : ' ~
+APLINK B L -
+. REV 1 v ' ‘
+XF ,
+- POLAR | ' : | »
+XL | | | | |
+APLIB ' -
+*S ‘ : ‘ : ‘ _
+/TTP _ -
+HIGH=000166 o . : '
+- SYMBOL TABLE' y _ _
+SYMBOL VALUE - | . |
+POLAR 000000 -
+SQRT 000133 - _ o
+ATN2 000023 _
+ATAN 000035 : ' ‘ o
+DIV 000077 R : _ '
+- TEMP ' o : ’
+HIGH=0001l66 _— '
+*X _ _ , , l
+STOP ' ‘ o
+)> . - L. . . N : ‘
+The user runs‘APLINK. He wants to install subroutine
+POLAR into his computer operating system, so that he can
+CALL POLAR from Fortran. The "F'" (force) command sets up
+APLINK so that it will load in POLAR from the library APLIB.
+The loader map shows that POLAR used subroutines SQRT (square
+root), ATN2 and ATAN (arc-tangent), and DIV (divide). The
+"A'" command stores the linked-up code as host assembly language
+- in file TEMP. ’
+- The host assembly code in TEMP is assembled by the host
+computer assembler and the resulting relocatable binary saved
+where it can be linked with Fortran programs.
+I - - APLINK 3-7 | |
+INTENTIONALLY BLANK - o |
+- APLINK 3-8 .
+SECTION 4
+ERROR MESSAGES :
+: Any deviation from the prescribed command syntax will
+cause ~APLINK to output a "?'" to the user console. The ,
+illegal command is ignored, and APLINK outputs a '"*" to indi-
+cate its readiness to accept a new command.
+: If a specified "FILENAME" cannot be found, or is other-
+wise unavailable for use the message: : ) -
+| FILE NOT FOUND!!! -~ =~ |
+. 1is outputted and the command is ignored.
+A The specific error messages outputted by APLINK are the result
+» of loading errors detected during execution of an "L" (load)
+command. There are two classes of loading errors: ‘
+_ F - Fatal. Reinitialization of the loader (the "R"
+j - command) is required before loading can continue.
+W - Warning. An advisory message indicating a non-
+7 error. ' ‘
+Any fatél‘error detected dufing loading will cause immediate
+“termination of the "L" (lcad) command following the error message.
+If the user attempts to execute' another "L" command, the program
+will output the message: ‘ -
+, RESET!!! -
+and ignore the command. After the user reinitializes the loader '
+("R" command) he must reload any programs loaded up to that point.
+Following are the error messages, along with notes of |
+explanation for each: C : )
+F SYMBOL TABLE OVERFLOW | | : |
+The loader symbol table is full. The only recourse is to
+' recompile APLINK with a longer symbol table size. ,
+F PROGRAM MEMORY OVERFLOW nnnnnn ' | ' '
+~An attempt was made to load past the upper limit of Program
+Source Memory. The load module is too large to fit in pro-
+: _gram memory. 'nnnnnn" is the memory location involved. :
+F OVERWRITE nnnnnn ‘ | '
+An attempt was made to overwrite a previously loaded
+program memory Jlocation. The loader does not permit any
+. given program memory location to be loaded more than once.
+"nnnnnn" is the program memory location involved. 7
+"~ F ILLEGAL BLOCK TYPE nnnnnn - - |
+_ An illegal relocatable object code block type was encountered.
+_ The File specified does not contain legal object code. 'nnnnnn'" .
+: ~ is the illegal block type, as read from the block header in
+, question. : ’ - ' R
+' | | o APLINK 4-1 -
+W  MULTIPLE ENTRY o ) o
+| An $ENTRY symbol having the same name as one already ‘ .
+defined was encountered during a load. The name and value
+- of the offending symbol is output to the console: ,
+' ssssss . nnnnonn . -
+' : where'”ssssss” is the symbol name and "nnnnnn'" the symbol
+value. The loader proceeds by ignoring the latest definition. ,
+W 'MISSING OR IMPROPER ENTRY o o
+" The user attempted to put out host assembly code (an "A" command)
+from a load module which either 1) did not have any entry points
+(defined entry global symbols), or 2) the first entry point loaded
+did not have an S-Pad parameter count.
+' APLINK 4-2 |
+. APPENDIX ‘A ,
+~ : : SUMMARY OF APLINK COMMANDS : i
+These abbreviations are used: : o - _ v
+Symbol . Meaning '
+¥ - Carriage Return
+filename _ Name of a file, as appropriate for the
+' N host operating system being used.
+loc B A location, in octal or hex as appropriate
+name - A symbol name, 6 characters or less.
+Command - Effect » ' ,
+"Ly . ‘ Load thé program in file FILENAME, link
+filename+ with previously loaded programs.
+- S¥ . ' Output the loader symbol table to file v
+“filenamev : FILENAME. :
+U+ : Output any undefined symbols to file
+filename+ FILENAME.
+B+ o Set APLINK to load the next program at
+loc+. _ location LOC. - : ~
+R¢ Reset the loader. -
+Fv Force the loading of a program defining symbol.
+name ¢ v Name from any subsequent program libraries
+_ . loaded. o R ’ '
+M¢- - Qutput the highest program memory location
+, - used. _ : :
+E+ S : End the loading session. Store the resulting
+filename+ o load module into file FILENAME. o
+Av. B End the loading seésion. Output host computer
+filenamet assembly code for use with APEX into file
+. - FILENAME.
+Ny ' - " Set the Radix for numeric user console I/0O
+number ¥ ’ to either 8, 1§, or 16.
+Xy v - Exit to the operating system. l
+. | APLINK A-1 | N .
+INTENT IONALLY BLANK . ' |
+- APLINK A-2 |
+~ APPENDIX B . A . ' o
+RELOCATABLE OBJECT CODE BLOCK TYPES ‘
+. Unlike most relocatable binary, the relocatable object ﬁ
+code produced by APAL consists of numbers written as decimal
+integer characters. Those were output (and readable) by For-
+tran formatted I/0 statements,
+: An advantage is that relocatable library files may be
+edited with an ordinary text editor. This makes -unneccessary
+the need for a special-purpose Librarian or Library File
+Editor. _ o '
+The relocatable object code is divided into a series of
+- blocks. The order in which blocks appear, if each type is
+present, is as follows: (the block type number is in paren- :
+thesis). ' o o _ _
+1. Title Blocks (3) | | | |
+2., Entry Blocks (4) _
+3. Code Blocks (@) . , '
+4, External Blocks (5) : : '
+5. End Block (1) - , o
+' An object module contains at least a Title Block and a
+Start/End Block. The presence of one or more of the other block
+types will depend upon the particular program. '
+| The first line of each block is a blodk-header, which ,
+contains four seven-digit numbers: .
+1. Block type numbers . 7
+2. Number of items in the block o '
+3. Initial address, if relevant , '
+4. Unused . . o _ ' ‘
+In addition, the block header is flagged with 'skEx" to
+aid in identification of blocks. I ' :
+Each block type is wuescribed below, in numeric order ‘
+by block type numbers »
+B.1 CODE BLOCK (@) | | |
+LINE CONTENTS ;| | :
+9 : 9 count - address ’ EEES :
+1 ' Bits 0-15 Bits 16-31  Bits 32-47 . Bits 48-63
+2 ) . 1" 1 " R A .
+: , X X e :
+CUunt 1 ’ e . " . . 1"
+: Each code line contains a 64-bit piogram source word. | ' ‘
+- | / ~ APLINK B-1 .
+B.2 END BLOCK (1) - . o
+LINE CONTENTS - | |
+0 1 0 0 Okkx
+B.3 TITLE BLOCK (3) | _ o
+LINE "~ CONTENTS | | | - - o
+0 | 1 0 0%**T ITLE
+1 o . | : : 0 : ‘
+B.4 ENTRY SYMBOL BLOCK (4) | |
+LINE CONTENTS | | | / |
+o a4 - count 0 Q% *
+1 ' name _ value ’ # S-Pad parameters
+5 o _ " | " .
+count - " - ﬁ | " _
+B.5 EXTERNAL SYMBOL BLOCK (5) .
+LINE CONTENTS |
+0 5 count 0 O* %%
+1 name ' link :
+2 rn . 1" . .
+3 . = 1" 1" )
+count | " LN |
+B.6 LIBRARY START BLOCK (8) | .
+. LINE CONTENTS | |
+0 | 6 0 0 Ok
+'B.7 LIBRARY END BLOCK (7) | |
+LINE  CONTENTS | *
+0 7 | 0 o %%
+' APLINK B-2 | |
+An example relocatable object module, from the Dot Product program,
+- 3¢ 1., 0 o.***rerg} oy
+DATPR 0. _ ‘ Title block |
+4. 1. 0 0w }‘ E block "
+D3TPR 0. Ge o ntry bloe ,
+. Q. - Qe O«  QeXkk% T
+16384, Q. O 48, : :
+16520. O« 0.  48. ' .
+596. Ce. 189438. Co _
+8257« S5808. Qe 48« bl k :
+661+ 32768, 256. 5888 Code bloc
+8392 403 0+ 4l443. v v '
+(e O 18948« 4096« '
+8257« 37453, 0.  48. _
+16656 224. I I 112 .
+l. 0 0. Qowxx ]L End block .
+The Title block contains the title of the program, DOTPR |
+The Entry block has the name of the entry point, DOTPR; its
+relative address, @; and the number of expected S-Pad parameters, 6.
+The Code block contains the 9 AP-120B program words in DOTPR, each
+as four 16-bit quarters of a 64-bit program word. ‘ I
+The End block tells APLINK that it has reached the end 6f,the
+program.
+APLINK B-3
+Example output from APLINK produced by an "E" (End) command from
+the Dot Product program. APDBUG would load this output into either
+the simulated AP-120B (APSIM), or the actual hardware, for debugging.
+9'g~— number of AP-120B program words
+16384 . o .
+‘ 0 , o -
+- 0 word #1 .
+48 _ ' '
+16520 , ’ : :
+0 . _ : :
+0. word #2 v '
+48 ‘ _
+S96 .
+0 ' : word #3 ‘ o
+18948 _ '
+0 . '
+8257 .
+-9728 , ,
+_ o word #4
+48
+661 :
+-32768 ’
+256 word #5 v
+5888 ’
+g3%2 A ' :
+403 »
+0 ? - word #6 ‘
+4144 :
+Oi : _ ’
+0 v
+18948 . word #7 . :
+409§,} -
+8257 ) | ‘ : o
+-28083 ’
+. 8 0 % word #8 '
+- a8/ ' :
+16656 ’ ,
+. 224 ‘ _ _
+0 word #9 \
+112 | |
+~ - APLINK B-4
+Example host assembly code produced by APLINK from the Dot
+Product program. : : :
+1 : fTITL D3TPR ‘This is the appropriate host computer
+- <ENT D@TPR assembly code for use with Data ;
+:EXTD fAPEX General Corporation Fortran IV
+DITPR 'Jéai +APEX on Nova or Eclipse computers. |
+‘ g: _ A CALL DOTPR in Fortran ends up
+. . at location "DOTPR" in the Nova, :
+: 16382: which does a subroutine jump to
+- o APEX, the AP-120B executive.
+| | 42: If this is the first CALL of DOTPR,
+‘ 16520« v ~ then APEX will load the AP-120B
+: _ 0« program words for DOTPR from Nova
+, : 0« -memory into AP-120B Program Memory.
+| 5;‘2‘_ | The "6" following the JSR@ .APEX
+0: : is the number of arguements expected
+18948+ in the Fortran CALL. "9" is the. .
+0o number of AP-120B program words in
+. 8257« _ DOTPR. "0Q'" is the rej;ative starting -
+-9728¢ . address of DOTPR. o »
+o 0. Following these three parameters :
+: ‘ 62?: is the nine AP-120B program words
+-32768. in DOTPR,‘16 bits at a time. ,
+. 256 : ‘ .
+o 5888;" .
+8392,
+403 _ : 4 :
+Qe , :
+41441 For each particular host computer,
+0. e the exact form of the host computer
+N 0. assembly language is different, but
+18948, : the content is the same.
+; 4096 . .
+: 8257.
+=28083» .
+B De
+. 48.
+_ 16656+
+» 224. ' :
+Qe ’ ‘ _
+. 112« ' : .
+«END ' ,
+‘ _ _ - . APLINK B-5
+| INTENTIONALLY BLANK
+~ APLINK B-5
+- AP¥lZOB APDEBUG
+- DEBUGGER MANUAL
+
+| - 7277- 02 | |
+FPS-7277-01 - | | | -
+C Froating PoInT SysTems, Inc, 1976 |
+ALL RIGHTS RESERVED
+PRINTED IN THE UNITED STATES OF AMERICA _
+Revision 02, MarcH 31, 1976 | .
+~ TABLE OF CONTENTS o . |
+Appendix A ‘
+A.1 Program Execution Commands A-1
+A.2 Register Examination/Modification A-2
+' Commands ' } -
+C A.3 Memory Load/Dump Commands A-3
+. A.4° Accessable Functional Units A-3 ,
+A.5 Program Word Fields A-4
+| APDEBUG i '
+_ _ © APPENDIX A | 4 ' , '
+: AP-120B SUMMARY OF DEBUG COMMANDS -
+Abbreviations used below: : v | |
+Symbol Meaning , |
+' b R Carriage Return L ' ,
+_ loc o An integer location number '
+count ' An integer count :
+- val ' An integer value .
+fpn A floating-point number in form accept-
+o . able to FORTRAN '
+B mem The name of an AP-120B internal memory
+- reg. : The name of an AP-120B internal register
+Debug'types a "*" when ready for further action.
+A "?" is typed wheh a command is not understood. :
+A.1 Program Execution Commands o ' '
+B+ B Breakpoint. Delete the last breakpoint
+. mem+ , and set a new breakpoint at location LOC :
+locy . of memory MEM. MEM must be PS, MD, or TM.
+: D+ ‘Delete. . Delete the current breakpoint
+‘ L+ | - List. List the current breakpoint o
+Q+ Set the continue counter to (COUNT). )
+count - , o ‘
+Sy | Step. If (VAL) is not zero place the |
+- val+ - AP-120B in step mode. : . )
+I Initialize. If VAL is not‘zero,>reset the
+_ val+ - "AP-120B before program execution is »
+, resumed next
+R+ _ . Run. Begin program execution at Program
+B loc+ ' Source location LOC :
+Py ' Proceed. Begin instruction execution at
+. . the Program Source location pointed to by
+o o the AP-120B (PSA) (Program Source Address)
+. Register. : :
+Xy R Exit to the operating system I
+- | APDEBUG A-1 | |
+A.2 Register Examinatioﬁ{Modification Commands - . :
+Ev . Examine register. Print out the contents of
+- regt AP-120B register REG , o ‘
+EY Examine memory. Pring out the contents of - ,
+mem ¥ AP-120B memory MEM, location LOC ‘ :
+loc + : _ : .
+¢ ¥ Re-examine the currently open register or
+, , . memory location (the last location examined)
++ ¥ Examine the next higher sequestial memory location
+of the memory that is currently open
+- + Examine the next lower sequential memory location
+' of the memory that is currently open ‘
+. F ¢ - Floating Point Flag, affects the input/output of
+' val + 38-bit wide registers and memory locations. : N
+-~ VAL=0O: 3 integers (Exponent, High Mantissa, Low Mantissa)
+o - VAL#0O: floating-point
+Vv | Program Source field value flag, affects input/output
+val ¢ of program source memory location. :
+: VAL=0: 4 integers (the four 16-bit quarters
+' of PS) v
+- ' , VAL#0: Decode into the 24 instruction word field
+: ' values.
+. Cc v Change. Change the-contents of the currently open
+val ¢ register or memory location to VAL. The format
+: : of VAL depends on the width of the current open
+locations as follows:
+o ' ~ 1l6-bit wide registers: an integer of the current radix.
+’ 38-bit wide registers: |
+' . F=0; Val¥ three integers in the current radix
+: : VALY thich represent the exponent, high
+‘ N VALY mantissa, and low mantissa
+‘ . F#Q: FPN+ a floating point number legal to Fortran
+64-bit wide registers: ' -
+' V=0 VAL¥ four integers in the current radix
+' ~ VALY which are the four quarters of an AP-120B
+: VALY program word : _ ‘
+o VALY '
+V#£0: TFIELDY FIELD is the name of the instruction
+, VAL + field to be changes, VAL is the new
+, : ‘ integer value. '
+‘ APDEBUG A-2 : ‘
+N+ Number radix. Set the radix for integer user |
+VAL 4 I/0 to VAL, which must be 8 (for octal), 10 (for
+decimal), or 16 (for hexadecimal). : .
+0+ Offset. .Sets the base address to which Program
+VAL + Source Memory addresses are relative_(for user I/0).
+.z  Zero. Zero out all AP-120B memories and registérs.
+A.3 Memory Load/Dump Commands. '
+Y+ ‘ Yank. Load memory MEM starting at location
+- MEMY LOC from an external data FILENAME. = '
+LOC+Y MEM can be PS, MD, OR TM. : .
+filename¥ _ ) o : :
+W ’ Write. Dump memory MEM starting at location '
+- MEM¢ T : s :
+START+ (START) and ending at location (STOP) to
+STOP Y external data FILENAME. _ :
+. file name+ MEM can be PS, MD, or TM.
+~© APDEBUG A-3 |
+A.4. Accessable Functional Units - ‘
+AP-120B Functional Units that may be examined or changed
+using DEBUG: : :
+Memories: - : ‘ o Contents: -
+PS Program Source Memory 64-bit instruction word
+MD Main Data Memory : 38-bit floating-point
+™ Table Memory ' o " : '
+DPX Data Pad X " "
+DPY Data Pad Y " "
+IODEV I/0 Devices . ' " "
+
+- SP _ S-Pad Registers ' 16-bit integer :
+SRS Subroutine Return Stack* Lo "
+Registers o _ ' Contents
+MA Memory Address ' 16-bit integer
+
+“TMA Table Memory Address : "
+DPA Data Pad Address. ' " '
+PSA- Program Source Address _ "
+SPD S-Pad Destination Address "
+STAT. AP-120B Internal Status Register = "
+DA I/0 Divice Address S
+SWCH Panel Switch Register ' "
+LGTS Panel Lights Registerr "o
+MDR - . Memory Read Data Buffer* 38-bit floating point
+TMR Table Memory Data Buffer* ' "
+MI Memory Input Register* _ "
+
+DPBS .= Data Pad Bus* : : "
+INBS Input Bus* " '
+PNBS Panel Bus* : _ _ 16-bit integer
+SPFN =~ S-Pad Function » - " '
+FLAG Program flags* , "
+
+SRA - Subroutine Return Stack Address* "
+
+Al Floating Adder Input Reg. #1%* 38-bit floating point
+A2 Floating Adder Input Reg. #2% : "
+FA Floating Adder Output* ' "o _
+M1 ‘Floating Multiplier Input Reg. #1% " -
+M2 Floating Multiplier Input Reg. #2%* " :
+FM - Floating Multiplier Output* " ,
+*Accesable only when using the AP-120B Simulator
+
+_ APDEBUG A-4 . '
+A.5 Program Word Fields :
+Fields within an instruction word that may be examined or
+. changed by name: : :
+- Name e Program Word Bits
+D - o .
+SOP 1-3 _ .
+SH : 4-3 :
+- SPS - 6-9
+SPD _ 10-13 ’ _ § '
+FADD ) 14-16 _ ,
+Al L , 17-19 . | '
+A2 : 20-22 _ o : :
+' COND 23-26 :
+DISP . - 27-31 : :
+' DPX 32-33 o '
+, - DPY 34-35 :
+DPBS 36-38
+: XR 39-41. C
+YR : : 42-44 - g
+Xw 45-47 _ :
+Yw - _ 48-50
+M 51 _ -
+: M1 _ 52-53 _ E
+‘M2 o 54-55 : ‘
+MI ‘ . 56-57
+MA ' : 58-59 : _
+DPA 60-61 ' :
+- TMA 62-63 '
+SOP1 6--9 : '
+SPEC " 6-9 ' : _
+STST ‘ 10-13 '
+- HPNL . 10-13 , E
+: SPSA _ 10-13 ‘ ‘ ‘
+PSEV - 10-13 - ‘ '
+-~ PSOD ' 10-13 :
+PS o 10-13 : - :
+' - SEXT 10-13 ' ‘
+. FAD1 17-19 ‘ o C
+10 17-19 : -
+LREG : 20-22 ' :
+- RREG 20-22 _
+IouT ‘ ; 20-22
+SNSE ' 20-22 ,
+FLAG 20-22
+CONT o 20-22 : : :
+, - APDEBUG A-5 :
+"~ FLOATING POINT SYSTEMS, INC. o
+PO.BOX 23489 PORTLAND, OR97223 11000 SW T1TH STREET, BEAVERTON, OR 97005 (503) 6413151  TLX: 360470 FLOATPOINT PTL

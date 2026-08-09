@@ -1,0 +1,4968 @@
+; F E AP Math
+— | Library
+FLOATING POINT ~ _Manual,
+
+SYSTEMS, INC. | Voiume "1
+I _ . 8s0-7288-004
+by FPS Technical Publications Staff
+| AP Math |
+| Library
+Manual,
+Voiume 1
+860-7288~-004
+| publication No. FPS 860-7288-004
+February, 1979
+MOTICE
+The material in this manual is for
+information purposes only and 1s
+subject to change without notice.
+Floating Point Systems, InC. Assumes
+no responsibility for any errors
+which may appear in this publication.
+Copyright © 1979 by Floating Point Systems, Inc.
+Beaverton, Oregon 97005
+A1l rights reserved. No part of this publication
+may be reproduced in any form or by any means
+without permission in writing from the publisher.
+Printed in USA
+CONTENTS
+VOLUME 1
+Page
+
+CHAPTER 1 INTRODUCTION
+1.1 PURPOSE 1-1
+1.2 SCOPE 1-1
+1.3 AP HARDWARE i-2
+1.3.1 Basic Architecture 1-2
+1.3.2 System Overview 1-3
+1.3.3 Example of AP Operation 1-6
+1.3.4 Further Hardware Considerations 1-7
+1.4 AP SOFTWARE 1-7
+label The Executive 1-7
+1.4.2 The AP Math Library 1-8
+1.4.3 Program Development Package 1-9
+l.4.4 Diagnostic Package 1-10
+CHAPTER 2 GENERAL OPERATION
+2.1 INTRODUCTION 2-1
+2.2 ARRAYS, VECTORS AND SCALARS 2-1
+2.3 PROGRAM FLOW 2-2
+2.3.1 Dimension Data in Host Memory 2-3
+2.3.2 Storing the Array in the Host Memory 2-3
+2.3.3 Initializing the AP 2=7
+2.3.4 Allocating the AP Main Data Memory 2-8
+2.3.5 Transferring Data from the Host
+
+to the AP 2-9
+2.3.6 Synchronization . 2=12
+2.3.7 Processing Data 2-13
+2.3.8 Transferring Data back to the Host 2-14
+2.4 VECTOR ORGANIZATION 2-15
+2.441 Real Vectors 2-15
+2e442 Complex Vectors 2=-17
+2.4.3 RFFT Complex ¥orm 2-19
+2.44.4 Matrices 2-21
+2.445 Double-Precision Elements 2-23
+2.5 PROGRAM RUN-TIME ENVIRONMENT 2-24
+2.6 UNDERSTANDING HOST OVERHEAD 2-25
+2.6.1 The Load Module 2-25
+2.6.2 Running the FORTRAN Program 2-27
+2.6.3 Run Time at the APEX Level 2-28
+FPS 860-7288-004 iii
+2.7 OPTIMIZING PROGRAM RUN TIME 2-30
+2.7.1 Factors Affecting AP Execution Time 2-30
+2.7.2 Specifying Vector Locations in
+
+Main Data Memory 2-31
+2.7.3 Minimizing the Effect of Host Overhead 2-33
+2:7+4 Overlapping Data Transfer and
+
+Processing 2-35
+2.7.5 Writing AP Assembly Language
+
+Programs 2=35
+CHAPTER 3 DESCRIPTION OF AP MATH LIBRARY ROUTINES
+3.1 INTRODUCTION 3-1
+3.2 GENERAL INFORMATION ABOUT ROUTINES 3-1
+3.2.1 Data Transfer and Contrcl Operations 3-1
+3.2.2 Basic Vector Arithmetic 3-2
+3.2.3 Vector-to-Scalar Operations 3=2
+3.2.4 Vector Comparison Operations 3=2
+3.2.5 Complex Vector Arithmetic 3-2 ,
+3.2.6 Data Formatting Operations 3-3
+3.2.7 Matrix Operations 3-4
+3.2.8 FFT Operations 3-4
+3.2.9 Auxiliary Operations 3-6
+3.2.10 Signal Processing Operations (optional) 3-6
+3.2.11 Table Memory Operations (optional) 3-7
+3.2.12 APAL-callable Utility Operatioms 3~7
+CHAPTER 4 PROGRAMMING EXAMPLES
+4.1 INTRODUCTION 4=1
+4e1.1 Example l: A Benchmark Program,
+
+Including AP Memory Map 4=2
+4.1.2 Example 2: A Geopotential C(alculation
+
+Program 4=5
+4.1.3 Example 3: A Time-Domain Convolution
+
+Program 4=7
+I A Example 4: A Frequency-Domain
+
+Convolution Program 4=9
+
+FPS 860-7288 iv .
+CHAPTER 5 FORTRAN MATH LIBRARY SIMULATER (MATHSIM)
+5.1 INTRODUCTION 5-1
+5.1.1 Math Library Routines 5-1
+5.1.2 DMA 5-1
+5.1.3 Host /AP Synchronization 5-2
+5.1.4 Timing Estimates 5-2
+5.2 DETAILED DESCRIPTION 5-2
+5.2.1 MATHSIM Routines 5-2
+5.2.2 DMA 5-11
+5.2.3 Synchronization 5-12
+5244 Timing Estimates 5-13
+5.3 SYSTEM DEPENDENCY 5-15
+5.4 EXAMPLES 5-17
+5.4.1 Example l: Sample Routine 5-17
+5.4.2 Example 2: Program for Vector
+
+Addition 5-18
+5¢443 Example 3: Program for Vector Addition
+
+with Timing Estimates 5-19
+APPENDIX A ALPHABETICAL INDEX OF AP MATH LIBRARY ROUTINES
+APPENDIX B INDEX OF ROUTINES IN PAGE ORDER
+APPENDIX C ABBREVIATED DESCRIPTIONS OF ROUTINES
+APPENDIX D AP-FORTRAN ROUTINES
+VOLUME 2
+APPENDIX E DETAILED DESCRIPTION OF ROUTINES
+APPENDIX F ALPHABETICAL INDEX OF AP MATH LIBRARY ROUTINES
+APPENDIX G INDEX OF ROUTINES BY TYPE AND IN PAGE ORDER
+APPENDIX H AP-FORTRAN ROUTINES
+FPS 860-7288-004 v
+ILLUSTRATIONS
+Figure No. Title Page
+1-1 AP Block Diagram 1-4
+2-1 FORTRAN Callinrg Program Flowchart 2=4
+2-2 AP Floating-point Format 2-11
+2-3 Double-Precision Element 2-23
+2-4 AP /Host FORTRAN Software Connection 2-26
+2=-5 Transferring AP Instructions from Host Memory
+
+to AP Program Source Memory 2-29
+
+2-6 Procedure for Creating User-Written FORTRAN
+
+Callable AP Assembly Language
+
+Routines 2-37
+3-1 AP Floating~Point Format 3-3
+
+FPS 860-7288-004 vi
+TABLES
+
+Table No. Title Page
+1-1 Related Manuals 1-2
+2-1 CALL VMUL(100,1,200,2,300,-1,5) Memory
+
+Allocations 2-16
+2-2 CALL CVMUL (100,2,200,3,300,2,4,1) Memory
+
+Allocations 2-18
+2-~3 Memory Allocations before and after
+
+CALL RFFT (100,8,1) 2-20
+24 CALL MTRANS(100,1,200,2,2,3) Memory
+
+Allocations 2-22
+2=5 VADD Execution Times 2-32
+2-6 Parameter Transfer 2-36
+3-1 Real=to-Complex FFT Vector Format 3=5
+3=2 Multiplying Factors for Scaling FFT Results 3-6
+5=1 MATHSIM APEX Routines : 5-3
+5=2 MATHSIM Math Library Routines 5=4
+FPS 860-7288-004 vii .
+CHAPTER 1
+
+INTRODUCTION
+1.1 PURPOSE
+The purpose of this manual is to provide the information necessary to
+understand and use the Array Processor (AP) Math Library. The Math
+Library contains a versatile set of FORTRAN callable routines for use
+in high-speed array processing. Once these routines are installed in
+the host system, they can be called by standard FORTRAN programs.
+1.2 SCOPE
+This manual is a user document designed to describe the Math Library
+routines and acquaint the user with the unique features of the AP. The
+manual is divided into two parts.
+Part One consists of five chapters and four appendices. The five
+chapters provide general information about the AP and the use of the
+Math Library. Chapter 1 presents introductory material, including
+basic concepts about AP processing and Math Library use. Chapter 2
+provides general operating information necessary for the most efficient
+use of the Math Library routines. It includes information about memory
+organization, format conversion and speed considerations. It also
+defines a general procedure for program development. Chapter 3 defines
+the categories into which the Math Library routines are organized.
+Chapter 4 presents a number of detaliled examples of array processing
+programs written with routines from the Math Library. Chapter 5
+describes the FORTRAN Math Library Simulator (MATHSIM) and its use.
+The four appendices are designed to provide quick and easy access to
+more detailed information about any one of the more than 150 Math
+Library routines. This information includes what each routine does,
+how to use it, and how fast it runs. Appendix A lists the Math Library
+routines alphabetically. Appendix B lists the routines by type and
+page order. Appendix C gives an abbreviated summary of each routine
+and defines its purpose and its calling parameters. Appendix D lists
+the routines available for use in AP-FORTRAN program units and their
+AP-FORTRAN calling names. '
+Part Two consists of four appendices. Appendix E provides complete
+reference material about each routine. Appendices F, G, and H are
+actually identical to Appendices A, B, and D, respectively; they are
+repeated in Part Two for easy reference.
+FPS 860~-7288-004 1 - 1
+If more information is desired on the AP, the reader should refer to
+the manuals listed in Table 1-1.
+Table 1-1 Related Manuals
+MANUAL PUBLICATION NO. . _
+
+Processor ‘Handbook FPS 860-7259-003
+
+Programmer's Reference Manual Parts One and Two FPS 860-7319-000
+
+FORTRAN Reference Manual FPS 860-7408-000
+
+APAL Reference Manual FPS 86Q-7412-000
+
+APLOAD Reference Manual FPS 860-7410-000
+
+‘ APDBUG/APSIM Reference Manual FPS 860-7364-002
+APEX Manual FPS 860-7371-001
+AP Diagnostic Software Manual I FPS 860-7284-002
+0849
+‘ 1.3 AP HARDWARE
+
+This section is included to give the user a general overall picture of
+the structure of the AP and some insights into why it can process
+arrays at such high speeds. It is not, however, necessary to know this
+information in order to write programs with the Math Library.
+1.3.1 BASIC ARCHITECTURE
+The AP uses a general-purpose, multi-bus oriented architecture. The
+floating adder and floating multiplier are each comnected directly to
+each of the memory elements and registers in the AP through separate
+parallel 38-bit data paths. This parallel structure allows the
+overhead of array indexing, loop counting, and data fetching from
+memory to be performed simultaneously with the arithmetic operations on
+the data. Much faster program execution is possible as opposed to
+using a typical general-purpose computer where each of the above
+operations must occur sequentially.
+FPS 860-7288-004 1 - 2
+Specifically:
+® Programs, constants and data each reside in separate,
+independent memories to eliminate memory accessing
+conflictse.
+e Independent floating-point multiplier and adder
+units allow both arithmetic operations to be
+initiated every l67ns.
+e Two large blocks (32 locations each) of floating-
+point accumulators are available for temporary
+storage of intermediate results from the multiplier,
+adder or memory.
+® Address indexing and counting functions are performed
+by an independent integer arithmetic unit that includes
+16 integer accumulators.
+In a typical application, such as a Fast Fourier Transform (FFT), the
+above features allow nearly the entire computation to be overlapped
+with data memory access time.
+Effective processing precision is enhanced by 38 bits of internal data
+width, an internal floating-point format with optimum numerical
+properties, and a convergent rounding algorithm.
+1.3.2 SYSTEM OVERVIEW
+The AP is connected to the host in a manner that permits data transfers
+to occur under control of either the host computer or the AP (refer to
+Figure 1-1). For most host computers, this means that the AP is
+interfaced to both the programmed I/0 and DMA channels.
+FPS 860-7288-004 _ 1 - 3 '
+38-B1T BUS STRUCTURES ARITHMETIC
+(S2BLT BUS STRUCTURES,  _ARLTHMETIC
+PROGRAM MEMORY
+MEMORY [ (to 4K x 64 bits)
+$-PAD
+(16 x 16 bits)
+CONTROL -
+FLOATING-POINT
+MEMORY ADDRESS
+REGISTERS ADDER
+(MA, TMA, DPA) 3
+x 16 bits) l'
+-
+TABLE MEMORY
+RAM OR ROM
+(to 64K x 38 bits) [
+H;"
+o DATA PAD X I
+] (32 x 38 bits) | )
+| |
+MEMORY INEN
+L 1 1]
+I- DATA PAD Y I
+* (32 x 38 bits) ™
+|
+I e
+I e
+- MAIN DATA MEMORY
+.-' (to 1 Meg x 38 bits) ) '
+||
+FLOATING-POINT
+I MULTIPLIER
+S I«
+" :
+o 5 e Ji
+.I SWITCH REG I.
+' FUNCTION REG
+LIGHTS REG
+1/0 _
+| 10P 16732 "
+03850
+Figure 1-1 AP Block Diagram
+FPS 860-7288-004 1 - 4
+The system elements are interconnected with multiple parallel paths so
+that transfers can occur in parallel. All internal floating-point data
+paths are 38 bits in width (10-bit biased binary exponent and 28-bit
+2’s complement mantissa). The main data memory (MD) is organized in 8K
+and 32K-word modules of 38-bit words each, expandable up to 512K words
+in the main chassis. Effective memory cycle times (interleaved) of
+either 167ns or 333ns are available.
+The table memory (TM) is used for storage of constants and is tied to a
+separate data path so as not to interfere with data memory. It is
+bipolar, 167ns read-only memory, and is organized in 512-word, 38-bit
+increments. An optional random access memory (TMRAM) is also
+available.
+
+The program source memory (PS) can hold from 512 to 4096 64-bit
+instruction words.
+
+Data pad X (DPX) and data pad Y (DPY) are two blocks of 32 floating
+accumulators each. FEach is a two-port register block wherein ome
+register may be read, and another written from each block in one
+instruction cycle.
+
+The floating adder (FA) consists of two input registers, Al and A2, and
+a two-stage pipeline which performs the operations and convergently
+rounds the normalized result.
+
+The floating multiplier (FM) consists of two input registers, Ml and
+M2, and a three-stage pipeline which performs the multiply operation.
+Products are normalized and convergently rounded 38-bit numbers.
+
+The s-pad consists of sixteen 16-bit integer ragisters and an integer
+arithmetic unit which is used to form operand addresses and to perform
+integer arithmetic.
+
+FPS 860-7288-004 1 - 5
+1.3.3 EXAMPLE OF AP OPERATION
+
+The following example shows the sequence the AP goes through to add two
+vectors.
+
+The initial conditions for this sequence are that the program to add
+two vectors resides in the AP program source memory and the two vectors
+to be added reside in the host memory.
+
+1. The host calls the AP executive program (APEX) to request
+host DMA cycles to transfer the two vectors from the host
+memory to the AP main data memory. The two vectors are
+converted from host floating-point format to the AP
+
+: floating-point format on the fly as they pass through the
+formatting hardware of the interface.
+
+2. The host calls APEX to start the AP vector add routine.
+The routine is performed with the resultant vector
+remaining in the AP format. This format yields the
+benefit of 38-bit precision and convergent rounding during
+the critical phases of processing.
+
+3. The host calls APEX to request host DMA cycles to tranmsfer
+the resultant vector back to the host memory. The vector
+is converted from AP format to host floating-point format,
+again on the fly.
+
+4. The AP proceeds to another process or stops executing,
+depending on previously established conditioms. An
+interrupt to the host can be issued.
+
+A detailed discussion of this example is given in sectiom 2.3. It is
+given from a programming viewpoint and includes a commented FORTRAN
+program.
+
+FPS 860-7288-004 1 - 6
+1.3.4 FURTHER HARDWARE CONSIDERATIONS
+
+The AP is most efficient when a sequence of operations can be performed
+on one Oor more vectors, or on a whole array which resides in the main
+data memory. This approach reduces data-transfer overhead and retains
+maximum numerical precision. A reasonable sequence, for example, would
+be to transfer a trace and a filter, FFT both, array multiply, inverse
+FFT, and transfer the result back to the host memory.
+
+' The AP main data memory has DMA capability. This means that the
+interface can steal main data memory cycles from the AP microprocessor.
+This capability allows the host computer DMA~to-AP DMA data transfers
+to occur, thereby minimizing both host and AP overhead.
+
+The AP has been designed with enough built-in flexibility to allow its
+power to be harnessed in a variety of ways. Refer to the AP Processor
+Handbook (FPS 860-7259-003) for detailed descriptions of the elements
+of the AP presented in this discussion.
+
+1.4 AP SOFTWARE
+
+Four software packages are supplied with the AP to assist the user in
+running programs, writing programs, and diagnosing hardware faults.
+l.4.1 THE EXECUTIVE
+
+The AP executive (APEX) allows the user to communicate with the AP via
+FORTRAN or host assembly language calls. It is a subroutine linked
+into FORTRAN programs which use the array processor. The APEX driver
+subroutine interprets the particular user call and directs the AP to
+perform the specified acticn. Both the AP Math Library routines and
+user—-developed AP programs may be called from the host computer using
+APEX.
+
+FPS 860-7288-004 1 - 7
+l.4.2 THE AP MATH LIBRARY
+The AP Math Library (APMATH) includes over 235 floating-point routines
+which cover a wide range of array processing needs. These routines,
+written in AP assembly language, can be called by programs written
+either in host FORTRAN, host assembly language, or in AP assembly
+language. The purpose of this manual is to describe these routines as
+follows:
+
+N data transfer and control operations
+
+* basic vector arithmetic
+
+° vector-to-scalar operations
+
+e vector comparison operations
+
+° complex vector arithmetic _
+
+° data formatting operations
+
+] matrix operations
+
+] FFT operations
+
+] auxiliary operations
+
+. APAL callable utility operations
+
+] gignal processing operations
+
+. table memory operations
+
+‘ FPS 860-7288-004 1- 8
+1.4.3 PROGRAM DEVELOPMENT PACKAGE
+
+This package provides four FORTRAN IV programs which are compiled omn
+the host computer during installation, and are for use in writing array
+processing programs and subroutines in the AP assembly language. The
+programs are as follows:
+
+APAL AP assembler is a cross-assembler that provides
+a two-pass assembly of AP symbolic assembly
+language coding into an object module. APAL
+generates detailed error diagnostics.
+
+APLOAD APLOAD links and relocates séparate APAL and
+AP-FORTRAN object modules together into a
+
+‘ a single load module.
+
+APSIM AP simulator (APSIM) provides a programmed
+gsimulation of the various hardware elements of
+the AP. All timing characteristics of the AP
+are emulated, and the floating-point arithmetic
+is simulated (including rounding) to the least
+significant bit. APSIM is a convenient tool
+in bringing up new AP programs off-line without ]
+interfacing with production runs.
+
+APDBUG APDBUG is an interactive debugging program
+with commands similar to APSIM. The user may
+selectively set breakpoints, examine and
+change memory and register contents, and run
+program segments.
+
+The AP Programmer’s Reference Manual (FPS 860-7319-000) is a
+comprehensive instruction manual which describes developing programs
+using the AP Program Development Package.
+
+FPS 860-7288-004 1 - 9
+l.4.4 DIAGNOSTIC PACKAGE
+
+The AP test programs are a collection of interactive diagnostic test
+and verify programs that aid in isolation of hardware faults. They
+include:
+
+APTEST AP test exercises the panel, DMA interface,
+and various internal registers and memories.
+It tests main data memory with simple patterns
+and then with random numbers. Board level
+diagostic indicators are provided.
+
+APPATH AP path test tests the various internal
+data paths and gives board-level diagnostics.
+
+APARTH AP arithmetic test tests the floating=-point
+adder, multiplier, and s-pad arithmetic unit
+
+; with pseudo-random number and operation
+: sequences.
+
+FIFFT Forward/Inverse FFT test verifies the correct
+operation of the AP as a complete unit by doing
+forward/inverse FFT transforms on both spikes
+and random number sequences.
+
+FPS 860-7288-004 1 - 10
+CHAPTER 2
+GENERAL OPERATION '
+
+2.1 INTRODUCTION _
+This section gives the basic information required to use the AP Math
+Library routines with host FORTRAN programs in order to process data
+with the AP. Miscellaneous information about the structure and
+operation of the AP is also included to help the user get the most
+efficient use of the AP.
+
+2.2 ARRAYS, VECTORS AND SCALARS _
+
+The terms array and vector are used somewhat interchangeably when
+discussing array processing. There is, however, a difference between
+an array and a vector.
+
+An arréy is a group of numbers that are related to each other in some
+way. An array of numbers often has a multi-dimensional aspect to it.
+A matrix, for example, is an array. Another kind of an array is a
+table of numbers, such as a table of several parameters -- all related
+to one system or measurement.
+
+A vector in array processing terminology refers to a one-dimensional
+sequence (string) of numbers. The columns of a matrix or table are
+vectors. In this sense, a vector is essentially a subset of an array,
+i.e., a string of numbers that are all values for the same parameter.
+When organizing an array for processing, the user usually divides the
+array into vectors and establishes one vector for each column of data.
+Array processing often involves performing a relatively simple
+operation or algorithm repetitively on long sequences of data
+(vectors). The strength of the AP is that it is designed to perform
+such operations at much faster speeds than is possible with a general
+purpose processor.
+
+FPS 860-7288-004 2 - 1
+The individual numbers in an array or vector are called elements. A
+vector of only one element is a scalar. Thus, a scalar refers to a
+single number. A vector operation may also involve a scalar (e.g., the
+dot product of two vectors, or the product of each element of a vector
+by a constant).
+To summarize then:
+® An array is a group of numbers.
+e A vector is a sequence of numbers.
+@ A scalar is a single number.
+' 2.3 PROGRAY FLOW
+: Writing a FORTRAN program that calls on the AP to process data is
+basically the same as writing a FORTRAN program that runs exclusively
+‘ on the host processor. Exceptions to this are as follows:
+e The AP and APEX must be initialized before any other
+calls are made to the AP.
+o Data must be transferred from the host memory to the
+AP main data memory before the AP can operate on it.
+® In order to synchronize the operation of the AP with
+the host, wait calls must be inserted in the program
+whenever the host and the AP interact.
+e At the end of program execution, data must be transferred
+from the AP main data memory back to the host memnory.
+FPS 860-7288-004 . 2 - 2 '
+Figure 2-1 illustrates the necessary steps to follow when writing a
+FORTRAN program to run on the AP. The following discussion addresses
+each of these blocks separately. Figure 2-2 illustrates a FORTRAN
+program that directs the AP to add two vectors together. The sequence
+of hardware operations for this procedure is given in section 1.3.3.
+The program in Figure 2-2 is referred to throughout the following
+sections.
+2.3.1 DIMENSION DATA IN HOST MEMORY
+Before an array can be transferred to the AP, it must be dimensioned
+and stored in the host memory. This is the first step in the example
+in Figure 2-2:
+
+DIMENSION A(1000), B(1000), C(1000)
+At this point, the user can create vectors to be processed by the AP.
+The DIMENSION command tells the host how many memory words to allocate
+for each vector, and gives each vector a name. The user can then use
+these names to call the data for transfer to the AP. Note that a
+vector C is also created in this example to provide a location in the
+host memory where the sum of the addition of the two vectors A and B
+can be stored. If it’'is not necessary to preserve a copy of A or B in
+the host, then the result can be stored back into A or B, thereby
+avoiding the additional host memory requirement.
+An alternate method of dimensioning the arrays is to combine both the A
+and the B vector into one 2000-word vector: DIMENSION A(2000),
+C(1000). This eliminates one of the data transfer calls required to
+transfer the two vectors to the AP, and reduces the program run time.
+However, it is a little more complicated for the user to keep track of
+the various vectors in the array. Dimensioning of data is described
+further in the following sections.
+2.3.2 STORING THE ARRAY IN THE HOST MEMORY
+With the array location established in the host memory, the user must
+fill the memory locations with actual data. This means reading in the
+data from a tape drive, an analog-to-digital converter, a disk drive,
+etcetera. Figure 2-1 illustrates a general flowchart for writing a
+FORTRAN calling program to perform an operation with the AP.
+FPS 860~7288-004 2 - 3
+‘
+IN HOST MEMORY |
+‘
+0851
+Figure 2-1 FORTRAN Calling Program Flowchart
+FPS 860-7288-004 2 - 4
+In the following example, the vectors are created with an arithmetic
+exprassion in a DO loop: .
+C--——=--FORTRAN program to add 2 vectors in AP120B and return result to
+C host
+C
+C-=———=Dimension vectors in host
+C
+DIMENSION A(1000),B(1000),C(1000)
+c
+C-—-—~-Select size of vectors to be added
+c
+N=1000
+C
+C---—---Somehow create vectors A and B in host
+c
+bo 10 I=1,N ,
+A(I)=.....I..
+10 B(I)=oooonoo.
+C ;
+C-——-—--Initialize AP120B (must be done before any other
+C calls to AP120B)
+c
+CALL APCLR
+C-~====Indicate we’re transferring host floating-point numbers
+IFMT=2
+C
+C----=--Allocate AP120B main data memory
+c
+IA=0
+IB=N
+IC=N+N
+FPS 860-7288-004 2 - 5
+C
+. C====—-Transfer A and B from host to AP120B main data memory
+C======A is transferred to locations 0 - 999, B to
+c locations 1000 - 1999
+CALL APPUT (A,IA,N,IFMT)
+CALL APPUT(B,IB,N,IFMT)
+Ce====-Wait until transfer is complete before doing computations
+C on data
+CALL APWD
+c
+C-=—---Perform vector addition in AP120B, storing results
+c 2000 - 2999 ,
+c
+CALL VADD(IA,l1,IB,1,IC,1,N)
+C
+C——----Wait until calculation is finished before getting results
+CALL APWR
+C-—=——-~Now transfer result from locations 2000 - 2999 to host buffer C
+CALL APGET(C,IC,N,IFMT)
+‘ C-—-——-Wait until transfer is complete before printing results, etc
+C in host
+CALL APWD
+c .
+C======Print results, etc. in host
+C
+|
+|
+I
+END
+FPS 860-7288-004 2 - 6
+The routines in the AP Math Library operate on four different types of
+. Vectors or arrays: real vectors, complex vectors, complex FFT vectors
+
+and matrix arrays. In each of these cases, the routines assume that
+
+the vector or array is organized in a particular sequence. For
+
+example, each element of a complex vector requires two memory words:
+
+one word for the real part of the element and one for the imaginary
+
+part. The routines for operating on complex vectors assume that the
+
+parts of each complex element are stored in two consecutive addresses
+
+in the AP main data memory.
+
+The initial organization of arrays and vectors should be done when
+
+dimensioning the host memory and storing data in the host. Refer to
+
+the discussion of vector organization (section 2.4) for more details on
+
+the vector formats and variation allowed when organizing vectors for
+
+processing with the AP Math Library routines.
+
+2.3.3 INITIALIZING THE AP
+
+Initially, the AP internal status register and DMA control register
+
+must be cleared, and the AP executive (APEX) must be initialized. This
+
+is done with:
+
+CALL APCLR
+APCLR must be called before any other calls are made to the AP.
+FPS 860-7288-004 2 - 7
+2.3.4 ALLOCATING THE AP MAIN DATA MEMORY
+The main data memory in the AP is organized into 38-bit floating-point
+words. The words are consecutively numbered from 0 to N-1, where N is
+the maximum size of the memory: 8192, 16384, etcetera.
+In complex programs where a number of transfers of data between the AP
+and the host are required, and where the arrays being operated on are
+large or numerous, it is recommended that the user take some care in
+allocating the AP memory before proceeding with the program.
+Dimensioning the AP is very simple. The user must establish where each
+vector is to reside in memory and establish an integer constant,
+variable name, or expression that specifies the base address (first
+word) of each vector location.
+
+FPS 860-7288-004 2 - 8
+For the example in Figure 2-2, memory allocation is done with the
+following FORTRAN statements: .
+
+IA =0
+
+IB = N
+
+IC =N+ N
+Vector A is defined as starting at word O and going to word 999
+(N=1000); vector B goes from 1000 to 1999; and the result, vector C,
+is stored from 2000 to 2999. The I that precedes each variable
+indicates that the addresses specified are integer values (standard
+FORTRAN convention).
+Section 2.3.1 suggests arranging the array in the host memory into one
+long vector as a means of reducing program run time. The dimensioning
+of the array into vectors can then be done in the AP with the type of
+memory allocation statements shown previously.
+There is one other consideration in allocating space in the AP main
+data memory. Many of the AP Math Library routines run at different
+speeds depending on the location of the vectors to be operated on in
+the AP main data memory. 'Program run time can occasionally be reduced
+by specifying that certain vectors start on either even or odd memory
+addresses. (Refer to section 2.7.2 for further information on memory
+allocation.)
+2.3.5 TRANSFERRING DATA FROM THE HOST TO THE AP
+With these preliminary steps completed, the user can transfer the array
+to be processed from the host memory to the AP main data memory with an
+APPUT command. APPUT has four parameters:
+
+CALL APPUT (HOST, AP, N, TYPE)
+FPS 860-7288-004 2 - 9
+HOST specifies the initial element of the data in the host that is to
+be moved to the AP. BOST can be a constant, a variable, an array name
+or an array element. Typically, the HOST parameter consists of the
+name of the first array element to be transferred; for example: A,
+SIGA(50), MATB (101). 1Illustrated in Figure 2-2, the HOST parameters
+in the two APPUT calls are A and B:
+
+CALL APPUT (A, _, _, _)
+
+CALL APPUT (B, _, _, _)
+The parameter AP specifies the base address in the AP main data memory
+where the data from the host memory is to be stored. AP can be an
+integer, constant, variable, or an expression that specifies an integer
+number; for example: 101, IA, TA + 3*N. 1In the previous step, the AP
+parameters are generally specified when allocating the AP memory. As
+
+- illustrated in the two APPUT commands in Figure 2-2, the variables IA
+
+and IB are used for the AP parameters.
+
+CALL APPUT (A, IA, _, _)
+
+CALL APPUT (B, IB, _, _)
+It is possible to omit the AP memory dimensioning step and merely use
+integer constants for AP. For example:
+
+CALL APPUT (A, O, _, _) :
+
+CALL APPUT (B, 1000, _, _)
+But specifically allocating the AP main data memory at the beginning of
+a FORTRAN program is good programming practice, especially when the
+program has many vector operations.
+N specifies the number of host data elements to be moved from the host
+to the AP. Note that a data element may consist of more than one host
+word. For example, a host floating-point number usually requires two
+host words, but occupies one word in the AP main data memory. Like the
+AP parameter, N can be an integer constant, variable, or an expression
+that specifies an integer number. Earlier in the example program, N
+was specified as being 1000. So, in this example, the variable N is
+used for the N parameter.
+
+CALL APPUT (A, IA, N, )
+FPS 860-7288-004 2 - 10
+The number 1000 could also have been used for N.
+CALL APPUT (A, IA, 1000, _)
+
+TYPE specifies the host data format and the type of conversion to be
+done between the host and AP during transfer. Format conversion of
+floating-point numbers is done automatically, on the fly, as part of
+the data transfer procedure. No conversion call is required for host
+floating-point numbers other than to specify the format with the TYPE
+parameter (2 or 3).
+The AP performs arithmetic using a 38-bit floating-point format
+(illustrated in Figure 2-3): one exponent sign bit, nine exponent
+bits, one mantissa sign bit, and 27 mantissa bits. The binary point is
+always located between the mantissa sign bit and the most significant
+bit of the mantissa. (Bits 0, 1 and 40 are parity bits.)
+
+2 3 11 12 13 39
+
+o [ ew
+
+0852
+Figure 2-2 AP Floating-point Format
+
+TYPE can specify four different kinds of formats and format
+conversions, depending on whether TYPE =0, 1, 2 or 3.
+When TYPE is 0, 32-bit integers are transferred ffom the host to the AP
+and stored without format conversion into the low 32 bits of the AP
+memory words (8 through 39). Refer to Chapter 3, Data Formatting
+Commands, for information on using the TYPE O and 1 formats.
+When TYPE is 1, 16-bit integers are converted into unnormalized AP
+floating-point numbers. These numbers must be normalized (floated)
+before they can be processed using an AP Math Library routine. VFLT is
+the normalizing command.
+Normalization of a floating-point number means the number is adjusted
+so that the most significant bit of the mantissa is located in bit 13
+of the 38-bit word. There is a corresponding adjustment of the
+exponent. )
+FPS 860-7288-004 2 - 11
+' Typically, when TYPE is 2, host single-precision floating-point numbers
+are transferred to the AP and converted into normalized AP
+floating-point numbers. When the AP is installed in a system, it is
+set to convert the type of floating-point format used by the specific
+host.
+
+Typically, when TYPE is 3, IBM 360 32-bit floating-point format numbers
+are converted to normalized AP floating-point numbers.
+
+» Iilustrated in Figure 2-2, a variable is assigned immediately following
+
+_ CALL APCIR to define the floating-point format being used: IFMT = 2.
+This variable is then used for the TYPE parameter in the following
+statement of the program: ’
+
+CALL APPUT (A, IA, N, IFMT)
+The number 2 could also have been used for TYPE:
+CALL APPUT (A, IA, N, 2)
+
+: 2.3.6 SYNCHRONIZATION
+
+; Two wait commands, APWR and APWD, are available to ensure that the AP
+and the host are synchronized in their operation when required.
+
+: APWD (wait on data) causes the host program to wait until a data
+transfer between the host and the AP (the result of a CALL APPUT or
+CALL APGET) has been completed before the host resumes execution of the
+program.
+
+. APWR (wait on running) causes the host to wait until the AP has
+
+' finished running before it resumes execution of the program. 1In
+general, whenever a data transfer command is called following the
+execution of a routine by the AP, an APWR should precede the data
+transfer command.
+
+The two data transfer routines (APPUT and APGET) both wait (in effect
+CALL APWD) for any previous data transfer to be completed before
+starting a new data transfer. Two APPUT calls can thus be made in
+succession without calling a wait in between. Also, the arithmetic
+operations in the AP Math Library all wait (in effect CALL APWR) for
+any previous arithmetic operation to be completed before starting a new
+operation.
+
+FPS 860-7288-004 2 - 12
+APWAIT is a third command that combines the operations of APWD and
+APWR. It causes the host to wait until any data transfer and any
+routine execution are both completed'before it continues to execute the
+program. v
+
+The AP host interface is capable of transferring data to and from the
+host while it is processing data. This might be done as a method of
+reducing program run time. The wait commands can be omitted in cases
+where it is certain that the data being transferred and the data being
+processed are not the same. This programming technique should be used
+with caution because it can cause errors in computations. It is good
+programming practice to include the wait calls. Refer to section 2.7.4
+for more information on programming data transfers while the AP is .
+processing.
+
+2.3.7 PROCESSING DATA
+
+Once the array to be processed is stored in the AP main data memory,
+the user can operate on it with the AP Math Library routines. In this
+example, the corresponding consecutive elements of the two 1000-element
+vectors beginning at addresses IA (=0) and IB (=1000) are added
+together, and the 1000 sums are stored in the AP main data memory
+starting at base address IC (=2000):
+
+CALL VADD (IA, 1, IB, 1, IC, 1, N)
+FPS 860-7288-004 2 - 13 '
+2.3.8 TRANSFERRING DATA BACK TO THE HOST
+When array processing has been completed, the user can transfer the
+resultant array back to the host with an APGET command. The user
+should remember to call the APWR command to be sure the AP is done
+processing before transferring data. APGET uses the same four
+parameters as APPUT. The APGET call is written as follows:
+
+CALL APGET (C, IC, N, IFMT)
+The resultant 1000-word vector is thus moved from AP main data memory
+locations 2000 to 2999 to the the host memory array C, set up with the
+original DIMENSION command. IFMT is again 2, which means that each
+element of the vector is converted from AP floating-point format to
+host single-precision format.
+When TYPE is 0 in an APGET command, the low 32 bits of the AP memory
+words are transferred without format conversion to the host memory.
+When TYPE is 1, the low 16 bits of the AP memory words are transferred
+to the host memory. VFIX (refer to Data Formatting Commands in Chapter
+3) can be called prior to this command to convert 38-bit floating-point
+numbers to l6-bit integers. When TYPE is 3, the AP floating-point
+numbers are converted into IBM 360 single-precision floating-point
+numbers and transferred to the host memory.
+If overflow or underflow is detected on conversion from AP format when
+TYPE 2 or 3 format is selected, a signed maximum-quantity is forced omn
+overflow and zero on underflow. This occurs because the dynamic range
+of the AP (10%*-153 to 10**153) is greater than most host computers.
+FPS 860-7288-004 2 - 14
+2.4 VECTOR ORGANIZATION
+This section discusses vector organizatiom.
+2.4.1 REAL VECTORS
+Three parameters are required to define a real vector: a starting (or
+base) address, an address increment, and an element count. The base
+vector address is the AP main data address of the first vector element :
+to be operated on. The address increment specifies the interval
+(difference in addresses) between one element of the vector and the
+next. The element count specifies the number of elements of the vector
+to be operated on (e.g., the number of multiplications to be
+performed). For example:
+
+CALL VMUL(A,I,B,J,C,K,N)
+Here A, B and C are base addresses for the three vectors involved in a
+vector multiply operation. I, J and K are the address increments
+associated with vectors A, B and C, respectively. N is the element
+count for each of the vectors. A typical call is:
+
+CALL VMUL(100,1,200,2,300,-1,5)
+
+FPS 860-7288-004 : 2 - 15
+For real vectors where elements are stored in consecutive locatiomns,
+the address increment is l. Most Math Library functions, however,
+allow the additional flexibility of specifying arbitrary increments.
+Table 2-1 shows the memory allocations made in the preceding example.
+Table 2-1 CALL VMUL(100,1,200,2,300,-1,5) Memory Allocations
+ADDRESS ELEMENT
+199 a(l)
+1 a(2)
+1p2 a(3)
+v 193 a(4)
+1 1p4 a(s)
+' 195 -
+209 b(1)
+291 --
+2p2 b(2)
+2@3 --
+204 b(3}
+295 --
+206 5(4)
+2087 -
+208 b(s)
+296 c(5) = a(5) * b(5)
+2a7 c(4) = a(4) * b(4)
+298 c(3) = a{3) * b(3)
+299 c(2) = a(2) * b(2)
+3p9 c(l) = a(1) * b1} '
+391 -=
+0854
+FPS 860-7288-004 2 - 16
+2.4.2 COMPLEX VECTORS
+For operations involving complex vectors, each complex element occupies :
+two consecutive addresses in main data memory. If the complex vector :
+is in rectangular form, then the imaginary component immediately
+follows the real. In polar form, the phase (in radians) immediately :
+follows the magnitude.
+The base address of a complex vector specifies the address of the first :
+real part of the first element. The address increment specifies the :
+address interval (difference in address) between one real part and the
+next real part. For complex vectors, this interval must be at least 2. :
+The element count refers to the number of complex elements (i.e., reals
+or imaginaries) to be operated on. For example:
+CALL CVMUL(A,I1,B,J,C,K,N,F)
+Here A, B and C are complex vectors with address increments of I, J and
+K, respectively. N is the number of complex elements to be operated on
+for each vector. F is a flag that is set to l for a normal complex
+multiply, and to -1 if the multiply is to use the complex conjugate of
+vector A. The following call is an example of a normal complex
+multiply involving four complex elements:
+CALL CVMUL(100,2,200,3,300,2,4,1)
+The memory allocations for this example are shown in Table 2-2.
+FPS 860-7288-004 -2 - 17
+Table 2-2 CALL CVMUL(100,2,200,3,300,2,4,1) Memory Allocations
+ADDRESS ELEMENT
+109 ar(1)
+10 ai(1)
+192 ar(2)
+193 ai(2)
+104 ‘ ar(3)
+195 ai(3)
+196 ar(4)
+1p7 ai(8)
+188 --
+200 br(1)
+291 pi(1) '
+: 292 --
+' 283 br(2)
+2pa bi(2)
+205 -
+206 br(3)
+207 bi(3)
+208 --
+209 br(4)
+21 . bi(4)
+399 er(l)
+3p1 ci(1)
+3p2 er(2)
+383 ci(2)
+34 er(3)
+g5 ci(3)
+306 cr(4)
+3p7 ci(4) .
+398 -
+0855
+FPS 860-7288-004 2 - 18
+2.4.3 RFFT COMPLEX FORM
+A special complex vector form exists for the result of a forward
+real-to-complex FFT using routines RFFT or RFFTB. For example:
+
+CALL RFFT(C,N,F)
+Here, if F=1 a forward Fast Fourier Transform of a real vector of
+length N is taken. The result is a complex vector with N/2 + 1 complex
+elements; but since two of those complex elements (the first and last)
+have zero imaginary parts, the result can be packed into N locations.
+The following call is an example of an in-place 8-point forward
+real-to-complex Fast Fourier Transform. ‘
+
+CALL RFFT(100,8,1)
+The memory allocations before and after the transformation are shown in
+Table 2-3. Note that FFT input data must be in consecutive locations.
+
+FPS 860-7288-004 2 - 19
+Table 2-3 Memory Allocations before and after CALL RFFT (100,8,1)
+ADDRESS l ELEMENT
+_———
+BEFORE
+109 ) -
+m t(1)
+192 t(2)
+103 t(3)
+1p4 t(4)
+185 t(5)
+106 t(6)
+197 t(7)
+108 -
+_—
+AFTER
+190 fr(9)
+‘ 12 fr(4)
+192 . fr(1)
+183 £1(1)
+194 fr(2)
+195 fi(2)
+196 fr(3})
+197 fi(3) v
+N -
+0856
+Before additional complex operations are performed on the FFT result,
+the complex vector should be unpacked into proper form by moving the
+element fr(4) to location 108 and zeroing locations 101 and 109.
+The inverse complex—to-real FFT operation (RFFT or RFFTB with F=-1)
+expects the complex vector to be in the packed form illustrated in
+Table 2-3.
+FPS 860-7288-004 2 - 20
+2.4.4 MATRICES
+Matrices are stored in column order in main data memory. A matrix is :
+defined by a base address, an address increment, a row count, and a
+column count. The base address represents the element in the first row '
+and column to be operated on. The address increment specifies the
+interval (difference in addresses) between one element of the matrix
+and the next. The row count specifies the number of elements to be :
+operated on per column (i.e., the number of rows), while the column
+count specifies the number of columns in the matrix. For example:
+CALL MTRANS(A,I,C,K,M,N)
+Here, M columns and N rows of the matrix with base address A are
+transposed to a matrix whose M rows and N columns are stored starting
+at address C. T and K are the address increments for A and C,
+respectively. The following call transposes a 3-row by 2-column
+" matrix. ’
+CALL MTRANS(100,1,200,2,2,3)
+The memory allocation for the matrices are shown in Table 2-4.
+FPS 860-7288-004 2 - 21
+Table 2-4 CALL MTRANS(100,1,200,2,2,3) Memory Allocatioms
+ADDRESS ELEMENT .
+
+108 a(1,1)
+
+191 7 . a(2,1)
+1,z ' ’ a1
+- m B a,2) '
+T a(2,2)
+
+105 ’ 23.2)
+
+196 4 - T
+
+299 c(1,1) = a(1,1)
+
+291 -
+
+202 c{2,1) = a(1,2)
+
+293 - "
+
+204 c(1,2) = a(2,1)
+
+205 -- ]
+
+206 c{2,2) = a(2,2)
+
+207 --
+
+2p8 ¢(1,3) = a(3,1)
+
+289 --
+
+21p c(2,3) = a(3,2)
+
+0857
+FPS 860-7288-004 2 - 22
+2.4.5 DOUBLE-PRECISION ELEMENTS
+Like complex elements, each double-precision element occupies two
+consecutive addresses in main data memory. The most significant part
+of the element comes first and the least significant part second. Both
+words are stored in normal 38-bit floating-point format with the
+exponent of the second word being 27 less than the exponent of the most
+significant word.
+0853
+
+Figure 2-3 Double-Precision Element ]
+
+FPS 860-7288-004 2 - 23
+2.5 PROGRAM RUN-TIME ENVIRONMENT
+Two factors affect the total time it takes to execute an AP Math
+Library routine called from a FORTRAN program: the AP execution time
+of the individual routine, and the host system overhead. The AP has a
+167ns cycle time during which several operations (add, multiply, fetch,
+move, branch, etc.) can be performed. All of the AP Math Library
+routines have been written to make the most efficient use of this
+parallel structure of the AP and its 167ns basic machine cycle time.
+Prior to the execution of a routine by the AP, the host system must
+load the routine into the AP program source memory (if it has not been
+previously loaded), and must load the parameters into the s-pad
+registers. This time interval -- called the host overhead -~ adds to
+the total program run time. Host overhead varies from system to system
+depending on the complexity of the host operating system and the number
+of other operations the host is expected to control along with the AP.
+Host overhead is typically 100 to 1000 microseconds.
+Some knowledge of the host/AP run time environment helps the user
+understand the effect the host overhead has on total program run time.
+This knowledge is also helpful in section 2.7 where techniques are
+
+} given which may permit some reduction of both the AP execution time and
+host overhead. :
+FPS 860-7288-004 2 -~ 24
+2.6 UNDERSTANDING HOST OVERHEAD
+This section presents information about host overhead.
+2.6.1 THE LOAD MODULE '
+Figure 2-5 shows the standard procedure for writing a FORTRAN program,
+compiling it, and linking it with the AP Math Library and user-written
+FORTRAN callable routines. The final load module (refer to Figure 2-6)
+includes:
+e the compiled user-written FORTRAN code
+e the various array processor routines called in the
+program and their AP 64-bit instruction words
+' e the AP executive subroutine (APEX), including a table
+' which APEX uses to keep track of the contents of the AP
+program source memory
+FPS 860-7288-004 2 = 25
+‘ WRITE FORTRAW PROSRAM WHICH
+THCLUDES CALLS TO AP (APCLR,
+APPUT, APGET, YMUL, RFFT, etc.)
+, : COMPILE IT WITH HOST
+AP MATH LIBRARY USER-WRITTEN
+PROVIDED AT FORTRAN COMPILER FORTRAN-CALLABLE
+INSTALLATION AP ROUTINES
+BY FPS IN ~ ASSEMBLED INTO
+HOST RELOCATABLE HOST RELOCATABLE HOST RELOCATABLE
+OBJECT LIBRARY OBJECT CODE OBJECT CODE
+; LINK PROGRAM IN NORMAL
+, FASHION USING HOST LINKER
+LOAD MODULE,
+READY FOR
+EXECUTION
+EXECUTE THE PROGRAM
+0858
+Figure 2-4 AP/Host FORTRAN Software Connection
+FPS 860-7288-004 2 - 26
+2.6.2 RUNNING THE FORTRAN PROGRAM
+At run time, the load module which contains the FORTRAN calling
+program, AP Math Library routines, and APEX, is read into the host
+memory, and the host begins executing the FORTRAN program. When a
+
+. routine is called, the host jumps to the routine and executes it. If
+the routine is an AP Math Library routine, a jump to APEX is made.
+APEX is a subroutine that controls the interaction of the host with the
+AP. It handles the loading of the appropriate AP 64-bit instruction
+words into the AP program source memory, the allocation of the program
+source memory locations, the loading of the parameters for the
+routines, and initiates the execution of the instructions by the AP.
+The AP program source memory has a minimum size of 512 words. It can
+be enlarged in 256 word increments to a maximum of 4096 words. Each
+word in the program source memory is 64 bits long and contains the
+instruction to be executed during ome 167ns clock cycle. Once the
+instructions for a routine have been read into the program source
+memory, APEX notes the name of the routine and its location in the
+program source memory and calculates the remaining space available in
+the program source memory. This information is stored in a table in
+the host memory. If a routine is called a second time, APEX does not
+reload the instructions, but merely loads the new parameters and
+initiates execution. If a FORTRAN program uses more AP routines than
+there is space for in the program source memory, APEX overwrites new
+instructions in the program source memory on a last-in, first-out
+basis.
+Once the execution of the routine begins, APEX returns control to the
+user-written FORTRAN calling program. This procedure is repeated each
+time an AP Math Library routine is called. If a routine is called
+before the AP has finished running a previously-called routine, APEX
+waits until the AP has completed the routine before it loads the new
+instructions and/or parameters, and then starts execution of the new
+routine. When data transfers are called for, APEX tells the host when
+to begin according to the wait commands -- APWD, APWR and APWAIT — in :
+the FORTRAN program.
+FPS 860-7288-004 2 - 27
+2.6.3 RUN TIME AT THE APEX LEVEL
+
+Figure 2-6 illustrates the sequence of events which occur when a
+FORTRAN program calls an AP routine which has not yet been loaded
+(e.g., VADD). When the execution of the FORTRAN program gets to CALL
+VADD, the program jumps to the VADD routine. VADD does nothing more
+than call APEX. APEX identifies the calling routine by its return
+address. This address is then entered in the table in the host memory,
+and is used to determine whether or not the instructions for the
+current call are already resident in the AP program source memory. If
+the routine for the current call is not already resident in the AP,
+APEX cbtains the instructions from the calling routine and transfers
+them to the AP making an appropriate entry in a table. This table
+entry records the starting location in program source memory where the
+instructions have been loaded. APEX also computes the amount of the
+program source memory space that still remains unused and enters this
+number in the table. It uses this number in future calls to determine
+if newly-called instructions must be overlaid in the program source
+MEemory.
+
+APEX always tries to load the new instructions in a location that does
+not destroy previously-loaded instructions. If this is not possible,
+previous entries in the table are progressively deleted until there is
+room for the current instructions. The new instructions are then
+overlaid in the newly-allocated location in the program source memory.
+The actual loading of the AP instructions is accomplished via an 1/0
+operation initiated by APEX, but is actually executed in a device
+handler.
+
+Once the instructions have been loaded in the AP program source memory,
+APEX obtains the subroutine parameters, transfers them to the AP s-pad
+registers, and triggers execution of the instructions. APEX then
+returns control to the routine which called it; that routine
+immediately returns control to the FORTRAN calling program.
+
+The time used between the call in the FORTRAN program and the beginning
+of execution of instructions in the AP constitutes the host overhead
+for that call. This host overhead (typically 100 to 1000 microseconds)
+is incurred each time an AP Math Library routine is called.
+
+FPS 860-7288-004 2 - 28
+HOST MEMORY ‘
+' FORTRAN CALLING PROGRAM
+ROUTINE 1 (e.g. VMUL)
+; AP INSTRUCTIONS
+ROUTINE 2 (e.g. VMOV) AP PROGRAM SOURCE MEMORY
+R SN CMED SRS SEND oD I SN SEES D
+AP INSTRUCTIONS ROUTINE 1 INSTRUCTIONS
+5p
+ROUTINE 3 (e.g. VADD) ROUTINE 2 INSTRUCTIONS
+AP INSTRUCTIONS Ly 75
+(2)
+(6) »
+(3) POINTER TABLE
+ROUTINE 1 p :
+ROUTINE 2 ‘ 59 SEQUENCE OF EVENTS:
+(5 AVAILABLE I3 (1) FORTRAN PROGRAM CALLS
+AP-USING ROUTINE 3 (VADD)
+(2) ROUTINE 3 CALLS APEX
+(3) TABLE SEARCHED FOR ROUTINE 3
+(4) APEX LOADS ROUTINE 3
+(5) TABLE IS UPDATED
+(6) APEX TRIGGERS EXECUTION OF
+ROUTINE 3 INSTRUCTIONS
+0859
+Figure 2-5 Transferring AP Instructions from Host Memory
+to AP Program Source Memory
+FPS 860-7288-004 2 - 29 '
+2.7 OPTIMIZING PROGRAM RUN TIME
+
+A number of items affect the rate at which a FORTRAN program runs on
+the AP. Significant factors are the cycle rate of the main data memory
+and the placement of vectors in the main data memory. Host overhead
+and the timing of data transfer between the host and the AP also have
+an effect on program run time.
+
+2.7.1 FACTORS AFFECTING AP EXECUTION TIME
+
+Floating Point Systems, Inc., offers main data memory for the AP with a
+choice of two different cycle rates: 167ns or 333ns. This cycle rate
+is the minimum time it takes to access a word of memory following a
+previous access. This minimum time is achieved when consecutive memory
+accesses alternate between even and odd addresses, or between 8K or 32K
+memory banks (depending on the chip type). If consecutive accesses
+specify only even (or only odd) addresses, then the access takes 167ns
+longer for either memory. The machine cycle rate of the AP is 167ns,
+so the choice of memory can have an effect on how fast the program
+TUns.
+
+If a routine requires the memory to be accessed each machine cycle, the
+routine runs twice as fast with the 167ns memory as it would with the
+333ns memory providing the even-odd address interleaving is maintained.
+If the routine calls for a memory access only every third or every
+fourth machine cycle, the routine rums at the same rate with either
+memory.
+
+In actual operation, routines in the AP Math Library run anywhere from
+the same rate to twice as fast on the 167ns memory depending on the
+routine. The AP Math Library routines are written differently for the
+two types of memory when necessary to obtain the optimum speed. The
+calling sequence and numerical results are identical in each case.
+
+FPS 860-7288-004 2 - 30
+2.7.2 SPECIFYING VECTOR LOCATIONS IN MAIN DATA MEMORY
+Because of the even-odd interleave of main data memory, subroutines run .
+at different rates depending on where the vectors are located (i.e.,
+base address), and also on the address increments associated with each
+vector.
+Three execution times (BEST, TYPICAL, and WORST) are given for each
+memory type in each description of a Math Library routine in Appendix
+E. When operating on real vectors, the TYPICAL time reflects the
+typical situation where all vectors are compactly stored (the address
+increments I, J and K equal 1 or any odd number: -1, 3, 5, etc.), and
+the base addresses are either all even or all odd.
+
+Sometimes it is possible to achieve faster execution by varying the
+base addresses of vectors between even and odd locations. The
+vector(s) whose base address(es) should be odd when the others are even
+(or even when the others are odd) are indicated in parentheses next to
+the BEST execution time. If no vectors are indicated, the best and
+typical execution times are the same.
+
+The worst case times involve other even-odd addressing and increment
+combinations.
+
+Table 2-3 shows the timing for the VADD routine.
+
+FPS 860-7288-004 2 - 31
+Table 2-5 VADD Execution Times
+EXECUTION MEMORY TIME/LOOP (us) '
+MEMORY
+“““
+0860
+Note that the execution time is specified on a per-loop basis. Thus,
+if VADD is called to add two 1000-element vectors, the typical
+execution time with a 167ns memory is 1000 x 0.8 (really 0.833us) =
+833us, plus an additional 2.7us of SETUP time needed to initially fill
+the AP pipeline. Thus, the total execution time using 167ns memory is
+836us when all base addresses are even (or all odd).
+Three base address parameters are specified for VADD -- one each for
+. the two vectors to be added together, A and B, and one -- C --~ for the
+location where the result is to be stored. With the 167ns memory, the
+best run time is obtained when B is an odd address and A and C are even
+(or vice versa -- B is even and A and C are odd). For the example in
+the preceding paragraph, an execution time of 1000x0.5+2.7=502. 7us is
+obtained. 1If, for example, A is 0, address B is 1001, and C is 2002.
+With the 333ns memory, address A must be odd (even) when B and C are
+even (odd) to obtain the fastest execution (e.g., A=0, B=1001, C=2001).
+With complex vector operations, the typical time reflects the most
+likely situation where the increment is even (for compactly stored
+complex vectors the increment is two), and all base addresses are
+either all even or all odd. (An increment of one with a complex vector
+operation produces unpredictable results since each complex element
+requires two#main data memory words.) When faster execution 1is
+possible with even complex vector increments by adjusting the base
+addresses between even and odd locations, the vector(s) whose base
+address (es) should be odd when the others are even (or even when the
+others are odd) are indicated next to the BEST execution time.
+The times given for matrix operations are for cases where the matrices
+are stored compactly (i.e., the memory increments are one so that the
+matrix elements are stored in consecutive addresses). In some cases,
+the run times are data-dependent, and in other cases they are dependent
+on the sizes of the matrices being operated on.
+FPS 860-7288-004 2 - 32
+2.7.3 MINIMIZING THE EFFECT OF HOST OVERHEAD
+There may be certain situations, especially when the host is operating
+in a multi-user, multi-task environment where the host overhead time
+represents a substantial fraction of the total run time involved in
+processing with the AP. The purpose of this section is to suggest some
+techniques for reducing the effect of this overhead if the application
+is time critical.
+e Combine FORTRAN calls to the AP. The most effective
+method of minimizing the effects of host overhead is to
+reduce the number of calls to the AP from the host.
+Often this can be done by careful layout of the
+programe.
+Some suggestions: '
+Concentrate several vectors in consecutive addresses
+so that several vectors can be transferred with a
+single APPUT call.
+Use AP Math Library routines which replace multiple '
+library calls. For example, VMMA performs the same
+operations as two VMUL calls, and a VADD with a
+savings not only of two host calls, but 40 percent
+in AP execution time.
+Overlap the operations of the host and the AP whenever
+possible.
+Since all the AP Math Library routines can be called
+as routines from other AP assembly language programs,
+it is possible to write special FORTRAN callable array
+processing routines which combine a series of calls
+to the AP Math Library. One FORTRAN call to the
+special routine then replaces the separate calls in
+the host program. Take care that the special purpose
+routine (including all the AP Math Library routines)
+is small enough to fit in the available program
+Source memory Space.
+FPS 860~7288-004 2 - 33
+e Load the most used routines first. If the program
+requires more space in the program source memory than
+there is available, the user can minimize some of the
+effects of host overhead by calling the most often used
+routines in the program first. As was stated in the
+discussion of the run-time environment, APEX uses the
+last-in, first-out technique to allocate space for
+routines in the program source memory. If there is no
+room in the program source memory for a new routine, the '
+last program words read into the memory are over-written
+for a new routine; the last program words read into the
+memory are over-written until there is enough space for
+the new routine. Since it requires less host
+overhead to load the parameters of a routine that
+already exists in program source memory than to load
+both the routines and the parameters, it is advantageous
+to call the most often used routines early in the program
+to make sure they are located well down in the program
+source memory. It may even be useful to call a routine
+before it is needed and give it only a dummy operation
+
+' to do. '
+e Other suggestions:
+In single-task host operating systems, APEX
+generally talks directly to the AP; in multi-task
+systems, APEX usually must ask the host system
+for permission to talk to the AP. This may take
+as long as 1 ms. In such a situation, consider
+the possibility of switching to a simpler host
+operating system. )
+Operating on large arrays is more efficient than
+operating on small arrays.
+Consider overlapping data transfer and processing.
+FPS 860-7288-004 2 - 34 '
+2.7.4 OVERLAPPING DATA TRANSFER AND PROCESSING ‘
+The AP’s highly parallel operation allows the user to write programs
+that process and transfer data gimultaneously. This type of
+programming involves leaving out some of the program synchronization
+commands -- APWR, APWD and APWAIT. Leaving out wait commands, however,
+presents the potential problem of asynchronous operation between the AP
+and the host. Thus, there is a chance that results are processed
+before they are actually present in thelr assigned location in main
+data memory. The wait commands are provided to avoid such problems.
+Programming involving simultaneous processing and data transfers is
+available at the FORTRAN level as well as the AP machine language
+level. The advantage is that it can speed up program run time when
+used without loss of synchronization.
+The success of this type of programming depends on host overhead, or in
+other words, how dedicated the host is to servicing the needs of the
+AP.
+
+2.7.5 WRITING AP ASSEMBLY LANGUAGE PROGRAMS
+
+An AP assembly language routine can be made FORTRAN callable by
+including the following pseudo-operation in the routine:
+
+$ENTRY name,p
+
+where "name" is the FORTRAN name for the routine, and "p" indicates the
+number (maximum of 16) of parameters in the FORTRAN call. At run time,
+APEX transfers these parameters to s-pad registers 0 through p-1.
+
+FPS 860-7288-004 2 - 35
+Thus, the pseudo-operation for the AP using FORTRAN command CALL
+VUSER(A,I,B,J,C,K,N) is SENTRY VUSER,7. At run time, APEX transfers
+the seven parameters as shown in Table 2-6.
+Table 2-6 Parameter Transfer
+S-PAD REGISTER CONTENTS
+? A
+1 t ‘
+2 B
+3 J
+4 C
+5 K
+6 N
+‘ 0861
+Figure 2-7 illustrates the procedure for creating a FORTRAN callable AP
+assembly language routine.
+All the AP Math Library routines have been written in AP assembly
+language. The user can learn more about this language through the
+manuals avaialble from Floating Point Systems, Inc.
+FPS 860-~7288-004 2 - 36
+WRITE AP LANGUAGE SOURCE
+CODE FOR ROUTINE
+ASSEMBLE IT USING APAL
+AP RELUCATABLE '
+0BJECT CODE
+USE APLINK TO LINK OBJECT CODE WITH OBJECT CODE FOR
+ANY AP SUBROUTINES NEEDED BY USER ROUTINE. IF ROUTINE
+TO BE USED WITH AP SIMULATOR (APSIM) CONCLUDE APLINK
+WITH /E COMMAND; IF TO BE USED ON AP CONCLUDE WITH
+/A COMMAND.
+AP LOAD MODULE
+(FORTRAN CODE)
+SIMULATOR AP
+COMPILE LOAD MOOULE
+RUN LOAD MODULE
+WITH HOST FORTRAN
+ON SIMULATOR APSIM COMPILER
+HOST RELOCATABLE
+0BJECT CODE
+0BJECT CODE AVAILABLE
+FOR USE BY HOST ‘LINKER
+(SEE FIGURE 2-3)
+0862
+Figure 2-6 Procedure for Creating User-Written FORTRAN Callable
+AP Assembly Language Routines
+FPS 860-7288-004 2 - 37
+CHAPTER 3
+DESCRIPTION OF AP MATH LIBRARY ROUTINES
+
+3.1 INTRODUCTION
+This chapter describes the categories of routines that are contained in
+the AP Math Library.
+3.2 GENERAL INFORMATION ABOUT ROUTINES
+The AP Math Library is divided into 12 categories:
+
+. data transfer and control operations
+
+) basic vector arithmetic )
+
+e vector-to-scalar operations
+
+] vector comparison operations
+
+° complex vector arithmetic
+
+. data formatting operations
+
+] matrix operations
+
+) FFT operatiomns
+
+] auxiliary operations
+
+) signal processing operations (optional)
+
+» . table memory operations (optional)
+
+e APAlL-callable utility operations
+3.2.1 DATA TRANSFER AND CONTROL OPERATIONS
+These commands control the data transfer and program synchronization
+between the AP and the host. They are actually part of APEX, the AP
+executive, and thus require no space in the AP program source memory.
+The execution time for these routines depends on the speed of the host
+system. Refer to sections 2.3.5 through 2.3.8 for more information
+about these calls.
+FPS 860-7288-004 3 - 1 '
+3.2.2 BASIC VECTOR ARITHMETIC
+This group includes routines to perform basic real vector arithmetic
+operations such as vector add (VADD), subtract (VSUB), multiply (VMUL),
+and divide (VDIV). Also included are trigonometric functions,
+logarithms, simple logical operations, and vector generation (e.g.,
+constants, ramps, random numbers). The vectors operated on must
+conform to the real vector format shown in section 2.4.1.
+3.2.3 VECTOR-TO-SCALAR OPERATIONS
+These real vector operations determine global characteristics of a
+vector. They determine a single value that characterizes one facet of
+the vector: sum of all the elements (SVE) or value of the largest
+element (MAXV), etc.
+
+' 3.2.4 VECTOR COMPARISON OPERATIONS
+These real vector operations perform compare and replace operations.
+They create a third vector based on the comparison of two vectors. ,
+VMAX, for example, sets the elements of a third vector equal to the
+larger of each pair of corresponding elements in two vectors.
+3.2.5 COMPLEX VECTOR ARITHMETIC
+All the commands in this group operate on complex vectors or
+combinations of real and complex vectors. The complex vectors must
+conform to the complex vector format described in section 2.4.2. 1In
+general, the increment parameter used in a complex vector operation
+must always be two or greater when specifying a complex vector. A
+complex element is made up of two parts —-- a real part and an imaginary
+part stored in consecutive words in the AP main data memory. The
+parameter N in a complex vector routine always refers to the number of
+complex elements (pairs).
+When the operation involves both real and complex vectors, the TYPICAL
+execution times are obtained when the increments of the real vectors
+are odd and the increments of the complex vectors are even, and the
+base addresses of all the vectors are either all even or all odd.
+Note that some complex vector operations can be done with real vector
+routines. CALL VCLR (0, 1, 1000), for example, clears a complex vector
+of 500 complex elements that begins at location 0.
+FPS 860-7288-004 3 - 2
+3.2.6 DATA FORMATTING OPERATIONS
+The 38-bit AP floating-point format is illustrated in Figure 3-1. Bits
+0, 1, and 40 are memory parity bits.
+2 3 11 12 13 _ 39
+1865
+Figure 3-1 AP Floating-Point Format
+The data formatting operations provide a number of normalizing and
+integer~to-floating-point conversion routines to operate on data stored
+in the AP main data memory.
+VFLT normalizes a vector that has been transferred to the AP with an
+APPUT command, using TYPE 1 format-conversion (16-bit integer converted
+to unnormalized 38-bit floating-point format). Refer to the discussion
+of APPUT beginning with section 2.3.5. Normalization means shifting
+the most significant bit of the mantissa to bit 13 of the 38-bit word
+with appropriate changes in the exponent.
+VFIX converts a normalized 38-bit floating-point word into a 1l6-bit,
+2’s complement integer residing in the lower 16 bits (bits 24 to 39) of
+the 38-bit word. This operation is used prior to transferring data
+with the APGET command when using TYPE 1 format conversion (see the
+discussion of APGET beginning with section 2.3.8). VSCALE, VSCSCL and
+VSHFX are variations of VFIX. :
+For convenience, there are also a number of integer unpacking and
+conversion operations for use with the TYPE 0 format-conversion in
+APPUT and APGET. For example, VUP16 converts two 16-bit integers
+packed in the lower 32 bits of a 38-bit word into two 38-bit,
+normalized floating-point words. VUP8 converts four 8-bit integers
+stored in the lower 32 bits of a 38-bit word into four 38-bit
+normalized floating-point words. VPK16 and VPK8 perform the reverse
+operation: two 38-bit floating-point words are converted into two
+16-bit integers; four floating-point words are converted into four
+8-bit integers in a single 38-bit word.
+FPS 860-7288-004 3 - 3
+3.2.7 MATRIX OPERATIONS
+
+The matrix routines perform typical matrix operations such as
+multiplication (MMUL), transposition (MTRANS), and inversion (MATINV).
+A matrix is always stored in the AP main data memory as a sequence of
+columns (see section 2.4.4 for a discussion of the AP matrix format).
+The M and N notation used in the matrix operation parameters refers to
+the number of rows (M) and the number of columns (N) in a matrix. For
+example, an operation on a matrix starting at address C involves MC
+rows and NC columns.
+
+Timing information is given with each matrix routine for representative
+matrix sizes. An address increment of one (i.e., a compactly stored
+matrix) is assumed for all the times given.
+
+3.2.8 FFT OPERATIONS
+
+The FFT commands perform Fast Fourier Transforms on both real and
+complex vectors. Each FFT routine performs both the forward transform
+(time-to-frequency) and the inverse transform (frequency-to-time),
+depending on the parameter F (+1 for forward, -1 for inverse). There
+are two categories of FFT routines: in-place and not-in-place. The
+in-place routines (RFFT and CFFT) transform the time elements from N
+locations in main data memory and store the resultant complex frequency -
+elements in the same locations in the main data memory. If the main
+data memory is 8192 words, the user can perform an FFT on N = 8192 real
+points, or N = 4096 complex points. The not-in-place FFT routines
+(RFFTB and CFFTB) run somewhat faster than the in-place routines, but
+require separate locations in main data memory for the time points and
+the resultant frequency points. :
+
+When transforming real time elements into complex frequency elements, a
+special method of packing the complex frequency elements is used. A
+FFT of N real time points actually produces N/2 + 1 complex frequency
+elements. Since a complex element consists of a real and an imaginary
+part, N + 2 words are thus required to store N/2 + 1 complex elements.
+It is known, however, that the I(0) and the I(N/2) frequency points are
+always 0. Therefore, when performing a real-to-complex FFT with the
+RFFT or RFFTB commands, the R(N/2) frequency point is stored in the
+I(0) memory location, and the I(N/2) frequency point (always 0) is
+dropped. The results of a N-point real FFT can thus be stored in N
+words. An 8-point real-to-complex FFT, for example, is packed as shown .
+in Table 3-1.
+
+FPS 860-7288-004 3 - 4
+The RFFTSC routine is provided to allow unpacking of the complex RFFT ;
+vector and scaling of the data. Two types of unpacking are provided.
+In Type I (refer to Table 3-1), the I(0) location in memory (which now
+holds the R(N/2) data point) is cleared to zero and the R(N/2) value is :
+discarded. The value of R(N/2) is often considered unimportant since
+A it represents the frequency component at the Nyquist frequency. Type 1 .
+unpacking would be used when performing in-place transforms where all
+the available main data locations are being used. In Type I1I
+unpacking, the R(N/2) value is moved from the I(0) location to its
+proper R(N/2) location, and the I(0) and I(N/2) memory locations are
+cleared to zero. Thus, in Type II unpacking, all the complex data
+points are retained. The complex RFFT format is used for both the
+in-place and not-in-place real-to-complex transforms. For
+complex-to-real inverse FFTs, the complex elements must be repacked .
+into the complex RFFT format. RFFTSC also handles the repacking
+procedure.
+Table 3-1 Real-to-Complex FFT Vector Format
+ADDRESS ~ TIME POINTS TYPE I UNPACKING
+| e [
+s o @
+195 ) 1)
+TR 1
+0863
+FPS 860-7288-004 3 - 5
+The complex—-to-complex FFT routines, CFFT and CFFTB, require no such
+packing or unpacking since all operations are performed on properly
+formatted complex vectors. A FFT of N complex time elements produces N
+complex frequency elements.
+The data obtained either from a forward RFFT or a forward CFFT requires
+rescaling. Table 3-2 shows the multiplying factors for each transform
+to get back to the original scale. The RFFTSC and CFFTSC routines,
+respectively, provide parameters for scaling the results. Note that no
+scaling is required for the inverse transforms.
+Table 3-2 Multiplying Factors for Scaling FFT Results
+ROUTINES IveRse
+’ 0864
+
+3.2.9 AUXILTIARY OPERATIONS
+
+‘ The commands in the auxiliary operations group perform miscellaneous
+operations such as numerical integration, evaluation of polynomials,
+and convolutions.
+3.2.10 SIGNAL PROCESSING OPERATIONS (OPTIONAL)
+The signal processing operations consist of a collection of real and
+complex routines which are often used in conjunction with the FFT
+routines. They perform many widely used time series analysis
+calculations such as auto-spectrum (ASPEC), cross-spectrum (CSPEC),
+coherence function (COHER) and histogram (HIST).
+FPS 860-7288-004 3 - 6
+3.2.11 TABLE MEMORY OPERATIONS (OPTIONAL) ’
+These subroutines are for use with the optional writable table memory
+(TMRAM). This table memory is used in conjunction with the standard
+read only table memory in the AP.
+The TMRAM allows the user to either create a table of his own special
+purpose constants, or use the additional memory space as an adjunct to
+the main data memory. The TMRAM has a 167ns memory access time. When
+used in conjunction with the main data memory, it can speed up basic
+vector arithmetic operations such as add, subtract, multiply and move.
+For example, MTTADD adds one vector from the main data memory to a
+vector from the TMRAM, and stores the resultant vector in the TMRAM.
+Since the AP can access a word in the main data memory and a word in
+the TMRAM in the same machine cycle, one machine cycle is saved in the
+calculation.
+The nomenclature used in these calls refers to the main data memory (M)
+and the TMRAM (T). In the MMTADD(A, I, B, J, C, K, N) command, for
+example, A and B are base addresses in main data memory (M), and C is a
+base address in the TMRAM (T). The addresses in the table memory are
+numbered consecutively from 0 as in the main data memory.
+3.2.12 APAL-CALLABLE UTILITY OPERATIONS
+These routines are called by many of the FORTRAN callable routines in
+the AP Math Library (refer to the category EXTERNALS below the dotted _
+line in the routine descriptiomns). They are callable from programs
+written in APAL, but are not callable from FORTRAN programs. This
+miscellaneous assortment of routines includes scalar functions such as
+sine, cosine and square root, several routines called in the FFT
+operations, and double-precision scalar functions. All pertinent
+information is given for each routine except for the FORTRAN CALL,
+PARAMETERS and EXAMPLE. The execution times given are gemerally the
+total executing time since most of the routines are non-repetitive.
+FPS 860-7288-004 3 - 7
+CHAPTER &
+PROGRAMMING EXAMPLES
+
+4.1 INTRODUCTION
+This chapter contains four examples illustrating the use of the AP Math
+Library routines in FORTRAN programs. The first two examples show the
+replacement of FORTRAN arithmetic DO loops with FORTRAN code which
+perform equivalent processing in the AP. The last two examples
+ijllustrate programs which perform double-tapered convolution operations
+in the AP -- one using time-domain techniques, the other using
+frequency-domain techmiques. .
+FPS 860-7288-004 4 - 1
+4.1.1 EXAMPLE 1: A BENCHMARK PROGRAM, INCLUDING AP MEMORY MAP
+This section lists a benchmark program which includes an AP memory map.
+Ckxkkkxkx* EXAMPLE 1 = BENCHMARK PROGRAM ***kkkkkkkkkkkhkkkkhkk
+C
+C========8======S==========-‘=======“=“==============a====“========
+C ORIGINAL FORTRAN
+C
+C SUBROUTINE EXI (SCLR,AM,V,VX,VY,X,X0,Y,Y0,Z,N)
+C DIMENSION AM(N),V(N),VX(N),VY(N),X(N),X0(N),¥Y(N),YO(N),Z(N)
+c DO 1 I=1,N
+C VX(I)=SCLR * (X(I1)-X0(I))
+C VY (I)=SCLR * (Y(I)-YO0(I))
+C V(I)=SQRT (VX (I)**2 + VY (L)**2)
+c 1 Z(I)=AM(I) * (X(L)*VY (L) -~ Y (I)*VX(I))
+C RETURN
+C END _
+C
+SUBROUTINE EX1 (SCLR,AM,V,VX,VY,X,X0,Y,Y0,Z,N)
+DIMENSION AM(N),V(N),VX(N),VY(N),X(N),X0(N),Y(N),YON),Z(N)
+C---—ALLOCATE AP MEMORY (SEE MEMORY MAP AT END OF PROGRAM)
+ISCLR=0
+IAM=ISCLR+1 :
+IV=1AM+N
+IVX=IVHN
+IVY=1VX+N
+IX=IVY+N
+IX0=IXHN
+IY=IX0O+N
+v IY0=IYHN
+IZ=TYOHN
+' C--——-~INITIALIZE AP
+FPS 860-7288-004 4 - 2
+CALL APCLR
+C----PUT OUT DATA TO AP
+CALL APPUT (AM,IAM,N,2)
+CALL APPUT (X,IX,N,2)
+CALL APPUT (X0,IX0,N,2)
+CALL APPUT(Y,IY,N,2)
+CALL APPUT (Y0,IYO,N,2)
+CALL APPUT (SCLR,ISCLR,1,2)
+CALL APWD
+C
+C----DO THE COMPUTATION
+C
+C AP COMPUTATION TIME FOR N=1000 IS 8.2 MS FOR 167 NS MEMORY,
+C 11.9 MS FOR 333 NS MEMORY, EXCLUSIVE OF HOST SYSTEM OVERHEAD
+C
+CALL VSUB(IX,1,IX0,1,IVX,1,N)
+CALL VSUB(IY,1,IY0,1,IVY,1,N)
+CALL VSMUL (IVX,1l,ISCLR,IVX,1,N)
+CALL VSMUL (IVY,1,ISCLR,IVY,1,N)
+CALL VMMA(IVX,1,IVX,1,IVY,1,IVY¥,1,IV,1,N)
+CALL VSQRT(IV,1,IV,1,N)
+CALL VMMSE(IX,l,IvY,1,IY,1,IVX,1,IZ,1,N)
+CALL VMUL (IAM,1,1Z,1,IZ,1,N)
+CALL APWR
+C----GET RESULTS FROM AP
+CALL APGET (VX,IVX,N,2)
+CALL APGET (VY,IVY,N,2)
+CALL APGET(V,IV,N,2)
+CALL APGET(Z,1Z,N,2)
+CALL APWD
+RETURN
+END
+FPS 860-7288-004 4 - 3
+C
+C AP MEMORY MAP FOR N=1000
+. .
+c
+C ADDRESS CONTENTS
+C e e e e e e e e e
+C ISCLR = 0 I SCLR ]
+c | - -
+o IAM =1 | AM |
+o I !
+C I |
+C 1V = 1001 I v |
+C | |
+c | - ===
+C IVX = 2001 | VX |
+c | | |
+C | == -—-—— ]
+C IVY = 3001 I VY |
+o . | i
+c i
+S C X = 4001 I X l
+C | I
+C | =-==-=-=-=-
+C IX0 = 5001 | X0 I
+c | |
+c I
+C 1Y = 6001 | Y |
+o | |
+c e
+C 1Y0 = 7001 | Y0 |
+c | | |
+o I
+C 17 = 8001 | v/ [
+c I !
+C R |
+c 9001 | UNUSED |
+c | I
+c I |
+c ————— e n e
+FPS 860-7288-004 4 - 4
+4.1.2 EXAMPLE 2: A GEOPOTENTIAL CALCULATION PROGRAM
+This section lists a geopotential calculation program.
+Ck*k*k*kk*x EXAMPLE 2 = GEOPOTENTIAL CALCULATION *#*%&#kkkkkkixkx
+C .
+C=====================================‘==============================
+C ORIGINAL FORTRAN
+c
+C SUBROUTINE EX2
+C COMMON /B/PHIB(100,10),HB(100,10),PKB(100),DS12
+C DO 1 J=1,9 :
+c DO 1 I=1,100 ’
+c 1 PHIB(I,J+1)=PHIB(I,J)+DS12*PKB(I)*(HB(I,J+1)+HB(1,J))
+C RETURN ‘
+c END
+C===============================================ﬂ=================== N
+C
+
+SUBROUTINE EX2
+
+COMMON /B/PHIB(100,10),HB(100,10),PKB(100),DS12
+C—=--=-AP MEMORY LAYOUT
+
+IDS12=0
+
+IPRB=1
+
+IHB=IPKB+100
+
+IPHIB=IHB+1000
+C-—--—-INITIALIZE THE AP
+
+CALL APCLR
+C-----PUT OUT THE DATA TO AP
+FPS 860-7288-004 4 - 5
+CALL APPUT (PHIB,IPHIB,1000,2)
+CALL APPUT (HB, IHB, 1000,2)
+CALL APPUT (PKB, IPKB,100,2) .
+CALL APPUT (DS12,IDS12,1,2)
+CALL APWD
+C
+C-----DO THE COMPUTATION
+c
+C AP COMPUTATION TIME IS 2.3 MS FOR 167 NS MEMORY, 3.7 MS FOR
+c 333 NS MEMORY, EXCLUSIVE OF HOST SYSTEM OVERHEAD »
+C
+CALL VSMUL (IPKB,1,IDS12,IPKB,1,100)
+CALL VADD(IHB+100,1,IHB,1,IHB,1,900)
+JHB=THB
+DO 1 J=1,9
+CALL VMUL (IPKB,1,JHB,1,JHB,1,100)
+1 JHB=JHB+100
+CALL VADD(IPHIB,1,IHB,1,IPHIB+100,1,900)
+CALL APWR
+C--—---GET THE RESULTS FROM AP ,
+CALL APGET (PHIB(1,2),IPHIB+100,900,2)
+: CALL APWD
+RETURN '
+END
+FPS 860-7288-004 4 - 6 . |
+4.1.3 EXAMPLE 3: A TIME-DOMAIN CONVOLUTION PROGRAM
+This section lists a time-domain convolution program.
+Ck*%kk%%% EXAMPLE 3 = TIME DOMAIN CONVOLUTION #**#***%%k&kkkkikk
+C
+SUBROUTINE TCONV(TRACE,FILTER,RESULT,NTRACE,NFILT,NRESLT)
+INTEGER NTRACE,NFILT,NRESLT
+REAL TRACE (NTRACE),FILTER(NFILT),RESULT (NRESLT)
+C
+C DOES A TIME DOMAIN CONVOLUTION OF ‘TRACE’ WITH ‘FILTER’,
+c PRODUCING ‘RESULT’.
+c A DOUBLE TAPERED CONVOLUTION IS DONE BY PADDING THE SUPPLIED
+C TRACE WITH BOTH LEADING AND TRAILING ZEROS IN THE AP-120B.
+C
+C~-=-—--=PARAMETERS:
+C
+C TRACE - INPUT DATA TRACE
+C FILTER - INPUT FILTER
+C RESULT - OUTPUT RESULT
+C NTRACE - NUMBER OF TRACE POINTS
+C NFILT -~ NUMBER OF FILTER POINTS
+C NRESLT - NUMBER OF RESULT POINTS, MUST EQUAL
+C NTRACEHNFILT~1 !1!1tltl}
+C
+C NOTE: THE RESULT MAY BE STORED IN THE HOST ON TOP OF EITHER THE
+C DATA OR THE FILTER
+c
+C---——--ROUTINES USED: APPUT,APGET,APCLR,APWR,APWD,VCLR,CONV
+C
+C LOCAL STORAGE
+INTEGER IFMT,NPAD,ITRACE,IFILT
+c
+C=======METHOD: '
+C :
+C FOR EXAMPLE, NTRACE=5, NFILT=3:
+c THEN:
+C NRESLT=7 ,
+C - ITRACE=0
+C IRESLT=0 '
+C IFILT=9
+C NPAD=2
+C
+FPS 860-7288-004 bh o= 7
+C AP MEMORY LAYOUT:
+C
+C LocC
+c 0 0 <--- ITRACE <=--- IRESLT
+c 1 0 ’ ‘
+c 2 TRACE PT #1 ‘ ’
+: C 3 " " 2 L4 4
+C 4 " 1 3 L4 ’
+C 5 " " 4 ’ -’
+C 6 " n 5 ’ ’ .
+c 7 0 ‘ ‘
+C 8 0 ’ ’
+c 9 FILTER PT #1 <=-— IFILT
+C 10 1" 1" 2 L4
+C 1 1 " " 3 ’
+c
+C
+IFMT=2 /*FORMAT 2 FOR FLOATING POINT
+C---—-INITIALIZE AP
+CALL APCLR
+C-~-——ALLOCATE AP MEMORY
+, NPAD=NFILT-1 /*NUMBER OF ZERO PADS -
+ITRACE=0 /*TRACE LOCATION IN THE AP
+IFILT=ITRACENTRACE-NPAD*2 /*FILTER LOCATION IN THE AP
+C-----TRANSFER DATA TO AP
+CALL APPUT (TRACE, ITRACE+NPAD,NTRACE,IFMT) /*PUT THE TRACE
+CALL APPUT (FILTER,IFILT,NFILT,IFMT) /*PUT THE FILTER
+CALL APWD
+C-----DO THE COMPUTATION
+CALL VCLR (ITRACE,1,NPAD) /*FRONT ZERO PAD
+CALL VCLR (ITRACENRESLT,1,NPAD) /*BACK ZERO PAD
+C--====DO 1T :
+CALL CONV(ITRACE,l,IFILT+NFILT-1,-1,ITRACE,1,NRESLT,NFILT)
+CALL APWR
+C=~-=~~-TRANSFER RESULTS FROM AP
+CALL APGET (RESULT,ITRACE,NRESLT,IFMT) /*GET RESULTS
+CALL APWD
+RETURN
+END
+FPS 860-7288-004 4 - 8
+4.1.4 EXAMPLE 4: A FREQUENCY-DOMAIN CONVOLUTION PROGRAM
+This section lists a frequency-domain convolution program.
+Ck***k*xk* EXAMPLE 4 = FREQUENCY DOMAIN CONVOLUTION *##*kkkkki
+C
+SUBROUTINE FCONV(TRACE,FILTER,RESULT,NTRACE,NFILT,NRESLT)
+INTEGER NTRACE,NFILT,NRESLT
+REAL TRACE (NTRACE),FILTER (NFILT),RESULT (NRESLT)
+C
+C DOES A FREQUENCY DOMAIN CONVOLUTION OF ‘TRACE” WITH ‘FILTER’,
+c PRODUCING ‘RESULT . A DOUBLE TAPERED CONVOLUTION IS DONE.
+C
+C--~—=—-—--PARAMETERS: ' :
+C
+C TRACE -~ INPUT DATA TRACE
+c FILTER - INPUT FILTER
+c RESULT - OUTPUT RESULT
+c NTRACE - NUMBER OF TRACE POINTS (MUST BE A PCWER OF 2)
+C NFILT - NUMBER OF FILTER POINTS
+C (MUST BE A POWER OF 2 <= NTRACE) .
+C NRESLT - NUMBER OF RESULT POINTS (MUST EQUAL NTRACE)
+C
+C NOTE: THE RESULT MAY BE STORED IN THE HOST ON TOP OF EITHER THE
+c DATA OR THE FILTER
+(o
+C-=——=—-ROUTINES USED: APPUT,APGET,APCLR,APWR,APWD,VCLR,RFFT,VMUL,
+C CVMUL,RFFTSC
+c .
+c LOCAL STORAGE
+INTEGER IFMT,NFFT,ITRACE,IFILT
+FPS 860-7288-004 4 - 9
+c
+IFMT=2 /*FORMAT 2 FOR FLOATING POINT
+C-—--—-INITIALIZE AP
+CALL APCLR
+C--—-—-ALLOCATE AP MEMORY
+NFFT=NTRACE*2 /*FFT SIZE
+ITRACE=0 /*LOCATION OF TRACE IN AP
+IFILT=ITRACE+NFFT /*LOCATION OF FILTER IN AP
+C-=-=--TRANSFER DATA TO AP
+CALL APPUT (TRACE,ITRACE,NTRACE, IFMT) /*PUT TRACE
+CALL APPUT (FILTER,IFILT,NFILT,IFMT) /*PUT FILTER
+CALL APWD
+C-=-=-—DO THE COMPUTATION
+CALL VCLR (ITRACEHNTRACE, 1 ,NFFT-NTRACE) /*PAD TRACE
+CALL VCLR(IFILTHNFILT,l,NFFT-NFILT) /*PAD FILTER
+CALL RFFT (ITRACE,NFFT,1) /*FORWARD FFT TRACE
+CALL RFFT(IFILT,NFFT,1) /*FORWARD FFT FILTER
+CALL VMUL (ITRACE,1,IFILT,1,ITRACE,1,2) /*CROSS MUL 1ST 2
+C--=-—=DO REST '
+CALL CVMUL (ITRACE+2,2,IFILT+2,2,ITRACE+2,2,NTRACE-1,1)
+' CALL RFFTSC(ITRACE,NFFT,0,-1) /*SCALE RESULTS BY 1/(4*NFFT)
+CALL RFFT(ITRACE,NFFT,-1) /*INVERSE FFT
+CALL APWR
+C---—-TRANSFER RESULTS FROM AP
+CALL APGET(RESULT,ITRACE,NFFT,IFMT) /*GET RESULTS
+CALL APWD
+RETURN
+END
+FPS 860-7288-004 4 - 10
+CHAPTER 5
+FORTRAN MATH LIBRARY SIMULATOR (MATHSIM)
+5.1 INTRODUCTION
+The FORTRAN Math Library Simulator (MATHSM) is comprised of a series of ;
+FORTRAN subroutines. These subroutines simulate the AP Math Library ;
+routines and APEX routines which control data flow to and from the AP
+(DMA), process data in the AP, and synchronize host /AP operations. :
+MATHSIM allows the user to check FORTRAN programs which make numerous :
+calls to the Math Library and APEX without use of the AP. It estimates ;
+various host/AP program execution times such as data flow time, AP
+program execution time, and host overhead time. MATHSIM allows '
+detection of possible host/AP synchronization errors. Adjustment of a :
+few program parameters enables MATHSIM to closely simulate all of the
+many host /AP systems, thus allowing the user to predict the effects of f
+possible system modifications upon execution.
+MATHSIM provides the basic features outlined in the following sections.
+5.1.1 MATH LIBRARY ROUTINES
+MATHSIM provides an equivalent FORTRAN routine for each Math Library
+routine simulated. Each routine has a calling sequence identical to
+that used by the actual Math Library routine. No changes in the user’s
+FORTRAN program are necessary. The user simply compiles the calling
+program, links to the simulated Math Library, and runs the program as
+if the AP were present.
+5.1.2 DMA
+MATHSIM simulates the flow of data in and out of the AP by calls to the
+APEX routines APPUT and APGET. This is done just as if the AP were
+present. The simulator also simulates program source loading and
+management via the subroutine APEX.
+FPS 860-7288-004 5 = 1
+5.1+.3 HOST/AP SYNCHRONIZATION
+Since both loading and executing the AP are simulated, MATHSIM also
+simulates the synchronization by calls to the APEX subroutines APWD,
+APWR, and APWAIT. When these calls are omitted, a synchronization
+‘ warning is tallied, but execution continues.
+5.1.4 TIMING ESTIMATES
+MATHSIM estimates three of the system times: AP program execution
+time, DMA time, and AP executive (host overhead) time. The simulator
+does not account for any overlapping of these functioms.
+5.2 DETAILED DESCRIPTION v
+: This section presents a detailed description of the various features of
+‘ MATHSIM.
+5.2.1 MATHSIM ROUTINES
+MATHSIM contains most of the FORTRAN callable routines in the basic AP
+Math Library and the Signal Processing Library. The APEX routines
+described in this manual are included in MATHSIM. The routines
+supported by MATHSIM are listed in Table 5~1 and 5-2.
+FPS 860-7288-004 5 - 2
+Table 5-1 MATHSIM APEX Routines
+NAME QPERATION
+APASGN Assign AP |
+APCHK Check AP program error conditio T
+APCLR Initialize the AP
+APX Program source executive | )
+. APGET Get dta f’rm theAP | T
+APGP Red an AP s-pad register o T
+APINIT To asign an AP and im'tiaHze APEX T )
+APPUT - | Put data. intg the AP ] ) » o
+APRLSE | ' Relase A T
+APSTAT | Get AP hardware sta T
+APSTOP | Pause on AP fatal error ) .
+APWAIT Wait for AP | - T .
+APWD | V Wait for DMA and error ceck "“‘”"‘"’: )
+APWR Wait for AP run complete and error chec )
+APXCLR | Clear APEX tables )
+' APXSET Initialize APEX and reset AP T
+1Loc | Find addess of variable )
+" 0856
+FPS 860-7288-004 5 - 3
+Table 5~2 MATHSIM Math Library Routines
+- i
+NAME QPERATION
+S —
+ACORF Auto-correlation (frequency-domain)
+ACORT Auto-correlation {time-domain}
+| ASPEC | Accumulating auto-specfrum
+ccoRF " Cross-correlation (frequency-domatn]
+B
+CCORT Cross-correlation (time-domain)
+CDOfPR | Complex vector dot product '
+. ===
+CFFT Complex to comple FFT (inplace)
+CFFTB Complex to complex FFT (not in place)
+“ CFFTSC V Complex FFT sc§1e
+COHER Coherence function
+CONV | Convolution (correlation} |
+o CRVADD ‘> “ Complex and real vector add
+CRVDIV | Complex and real vector divide
+_ CRVMUL Complex and real vector multiply
+VCRVSUB Complex and real vector subtract
+CSPEC : | Accumulating cross-spectrum
+| CTRN3 3-Dimension coordinate transformatign
+CVADD Complex vector add -
+CVCMB Complex vector combine
+CVCONJ Complex vector conjugate
+CVEXP Complex exponential
+CVFILL Complex vector fill
+CVMA Complex vector multiply and add .
+0867
+’ FPS 860~7288-004 5 - 4
+Table 5-2 MATHSIM Math Library Routines (cont.)
+NAME OPERATION
+CVMAGS Complex vector magnitude squared
+CVMEXP Vector multiply complex exponential
+CVMOV . Complex vector move .
+CYMUL | Complex vector multiply
+CVNEG Complex vector negate
+CVRCIP Complex vector reciprocal
+CVREAL Form complex vector of reals
+CVSMUL ~ Complex vector scalar multiply
+cvsus Complex vector subtract -
+DEQ22 Difference equation, 2 poles, 2 zeros
+DOTPR ‘Dot product
+FMMM #ast memory matrix multiply
+FMMM32 Fast memory matrix mult (dim 32 or 1ess)r
+HANN Hanning window multiply
+HIST Histogram -
+LVEG Logical vector equal
+LVGE Logical vector greater or equal
+LVGT Logical vector greater than
+LVNE Logical vector not equal
+LVNOT Logical vector not )
+MATINV | Matrix inverse
+MAXMGV Maximum magni?ude element in vector
+MAXY Maximum element in vector '
+0868
+FPS 860-7288-004 5 - 5
+Table 5-2 MATHSIM Math Library Routines (cont.)
+NAME OPERATION
+MEAMGY Mean of vector element magnitudes
+MEANV Mean value of vector elements
+MEASQV Mean of vector element squares
+MINMGY Minimum magnitude element in vector
+MINV Minimum element in vector
+MMUL Matrix multiply
+MMUL32 Matrix multiply (dim 32 or less)
+MTHSIM FORTRAN simulation of APMATH
+MTRANS Matrix transpose
+MVML3 Matrix vector multiply (3x3)
+MVML4 Matrix vector multiply (4x4)
+POLAR Rectangular to polar conversion
+RECT Polar to rectangular conversion
+RFFT Real to complex FFT (in place)
+3 RFFT8 Real to complex FFT (not in place)
+
+RFFTSC Read FFT scale and format
+RMSQY Root-mean-square of vector elements
+SCIMA Self-conjugate multiply and add
+SOLVEQ ) Linear equation solver
+SVE Sum of vector elements
+
+' SVEMG Sum of vector element magnitudes
+SVESQ Sum cf vector element squares
+SVS Sum of vector signed squares
+
+0869
+FPS 860-7288-004 5 = 6
+Table 5-2 MATHSIM Math Library Routines (cont.)
+
+NAME OPERATION |
+| TCONY Posttapered conyolution (correlation)
+
+TRANS Transfer function »
+VAAM Vector add, add, and multiply
+VABS Vector absolute value
+VADD Vector add V
+VALOG Vector antilogarithm (base 1@)
+
+' VAM . Vector add and multiply
+VATAN Vector arctangent
+YATN2 Vector arctangent of y/x
+VAVEXP Vector exponential averaging
+VAVLIN Vector linear averaging
+VCLIP Vector clip
+VCLR Vector clear
+VCcos Vector cosine
+VDBPWR Vector conversion to DB (power)
+VoIV Vector divide
+VEXP Vector exponential
+VFILL ~ Vector fill
+VFIX Vector integer fix
+VFLT Vector integer float
+VFRAC Vector truncate to fraction
+VICLIP Vector inverted clip '
+
+‘ VIMAG Extract imaginaries of complex vectorr
+0870
+FPS 860-7288-004 s -7 |
+Table 5-2 MATHSIM Math Library Routines (cont.)
+NAME OPERATION
+VINDEX Vector index
+VINT Vector truncate to integer
+YLIM Vector 1imit
+' VLLMERG Vector logical merge
+' VLN Vector natural logarithm ‘
+yLOG Vector logarithm {base 19)
+VYMA Vector multiply and add
+VMAX Vector maximum
+VMAXMG Vector maximum magnitude
+VMIN Vector minimum
+YMINMG Vector minimum magnitude
+VMMA Vector multiply, multiply, and add
+VMMSB Vector multiply, multiply, and subtract
+VMoV Vector move
+YMSA Vector muitiply and scalar ada
+VMSB Vector multiply and subtract
+VMUL Yector multiply
+VNEG Vector neqate
+VPOLY Vector polynomial
+VRAMP Vector ramp
+VRAND Vector random numbers
+© VREAL Vector reals of complex vector
+VSADD Vector scalar add
+0871
+FPS 860-7288~004 5 - 8
+Table 5-2 MATHSIM Math Library Routines (cont.)
+MAME OPERATION
+YSBM Vector subtract and multiply
+VSBSBM Vector subtract, subtract, and muitiply
+VSCALE "Vector scale (power 2) and fix
+: VSCSCL | Vector scan, scale (power 2) and fix
+VSHFX Vector shift and fix
+VSIMPS Vector Simpsons 1/3 rule integration
+VSIN Vector sine |
+VSMA Vector scalar multiply and add B
+VSMSA | Vector scalar multiply and scalar add
+VSMSB ‘Vector scalar multiply and subtract
+VSMUL Vector scalar multiply
+¥sQ Vector square
+VSQRT Vector square root
+VSSQ Vector signed square
+vsuB Vector subtract
+VYSUM Vector sum of elements integration
+VSWAP Vector swap
+VTRAPZ Vector trapezoidal rule integration
+WIENER | Wiener Levinson algorithm
+™MD Clear a1l main data memory
+072
+FPS 860-7288-004 5 = 9
+MATHSIM does not include routines which relate to byte packing and
+unpacking, vector logical operations, and support of table memory. The
+routines in the basic AP Math Library and the Signal Processing Library
+which are not included in MATHSIM are:
+
+VAND '
+
+VEQV
+
+VOR
+
+VTSMUL
+
+VUP8
+
+VUPS8
+
+VPK8
+
+VUP16
+
+VUPS16 _
+
+VPK16
+
+VFLT32
+
+VFIX32
+Neither does MATHSIM support APAL callable utility routines, such as
+DIV and SAVESP.
+The following libraries are not supported by MATHSIM:
+
+TMRAM library
+
+Page select/parity library '
+
+IOP library
+
+PIOP library
+
+FPS 860~7288-004 5 - 10
+5.2.2 DMA o 3
+AP main data (MD) is simulated by the array variable APMD. APMD is
+communicated to the MATHSIM routines by the COMMON block:
+COMMON /COMMD/ APMD (1024)
+APPUT transfers the data taken from an array defined in the user
+program into APMD. APGET transfers data taken from APMD into an array
+defined in the user program. Execution of the MATHSIM routines
+requires a number of pointers in the APMD scratch space. These
+pointers are based on the subroutine call parameters.
+MATHSIM supports APPUT and APGET format types 1l (16-bit integer) and 2
+(host floating-point). .
+Via APEX, MATHSIM handles program source management exactly as it is
+handled during actual AP use. Thus, it is possible to encounter
+program souce overflow, which causes the run to halt. Note that PS
+size is set in the subroutine APXSET, PSSIZ = 1024. This size can be
+changed by the user.
+A
+: FPS 860-7288-004 5 - 11
+5.2.3 SYNCHRONIZATION
+MATHSIM simulates synchronization by calls to the APEX subroutines
+APWD, APWR and APWAIT. The variables involved in sensing a possible
+synchronization error are communicated to the necessary subroutines via
+the following:
+
+INTEGER ERRFLG
+
+LOGICAL DMAFLG, RUNFLG, INIFLG
+
+COMMON /FLAGS/ DMAFLG,RUNFLG, INIFLG,ERRFLG
+These statements appear in the following five subroutines:
+
+APPUT
+
+APGET
+
+APEX
+
+APTIME
+
+: APCLR
+
+All flags are initialized by a call to APCLR. INIFLG is set to .FALSE.
+at compile time (in APCLR). Whenever a call to subroutine APEX is made
+before a call to APCLR or APINIT, the run halts and an error message is
+issued.
+Whenever the user omits an APWD or APWR in the program, a synchro-
+nization warning is tallied (ERRFLG = ERRFLG +l) and the run continues.
+Omission of an APWAIT for either case causes the same results. It is
+important to note that some of this type of errors may escape
+detection. Also, the detection of possible errors does not necessarily
+mean that the program is invalid, as in cases where omission of calls
+to the waiting routines actually produces a more efficient program.
+FPS 860-7288-004 5 - 12
+MATHSIM checks synchronization in the following ways:
+
+e When a DMA is initiated, the DMAFLG is set; MATHSIM
+checks the RUNFLG; when the RUNFLG is set, MATHSIM
+tallies a synchronization warning.
+
+® When an AP subroutine is executed, the RUNFLG is set;
+MATHSIM checks the DMAFLG; when the DMAFLG is set,
+MATHSIM tallies a synchronization warning.
+
+e When a call is made to APWD, the DMAFLG is turned off;
+when a call is made to APWR, the RUNFLG is turned off;
+when a call is made to APWAIT, both the DMAFLG and the
+RUNFLG are turned off.
+
+e MATHSIM considers a call to APTIME as hést execution.
+When a call is issued to APTIME, the simulator checks
+the DMAFLG and the RUNFLG. If either of these is
+set, MATHSIM tallies a synchronization warning.
+
+e When a host program is executing with either the
+DMAFLG or the RUNFLG set, but no call is made to APTIME,
+MATHSIM does not detect the possible error.
+
+5.2.4 TIMING ESTIMATES
+The timing accumulators are communicated to the various MATHSIM
+routines via the following:
+
+COMMON /TIMING/ MTYPE,CONAPX,CONDMA, TIMRUN, TIMAPX, TIMDMA
+
+This statement is in all of the algorithm-simulating routines and in
+four APEX subroutines: APEX, APPUT, APGET, and APCLR. The
+accumulators are initialized in APCLR. The following sections define
+and describe the accumulators. '
+
+FPS 860-7288-004 5 - 13
+5.2.4.1 TIMRUN S
+TIMRUN accumulates the AP program execution time estimates. MATHSIM
+estimates loop times for routines represented by a single loop by using
+the TYPICAL loop times given in Appendix D, plus the SETUP times. The
+SETUP times depend upon memory type which is designated in MATHSIM by
+the variable MTYPE in the preceding COMMON statement. These particular
+programs contain the following statement:
+
+DATA SETUP(l), eee..
+Other routines with more complex algorithms contain timing formulas of
+an empirical nature derived from the timing tables in Appendix E. The
+formulas are established so that extrapolation out of the range of the
+tables gives reasonably accurate timing estimates. Interpolations
+within the range of the tables give an accuracy well within five
+percent.
+5.2.4.2 TIMAPX
+TIMAPX accumulates the estimates for the AP executive (host overhead)
+time. All algorithm-simulating routines contain an integer variable
+SIZE, usually dependent upon MTYPE which contains the AP program source
+word length. Each time a particular program is called, it executes the
+following statement:
+
+CALL APEX (SIZE) or CALL APEX (SIZE (MTYPE))
+The subroutine APEX checks to see whether or not the subroutine is
+loaded. 1If the program is designated as already AP-resident, MATHSIM
+adds an estimate of the system overhead time onto TIMAPX. The value of
+this estimate is a constant assigned to CONAPX in MATHSIM. When the
+program is not resident in the AP, simulation is affected by estimating
+the time needed to load a program of the specified SIZE. This estimate
+is based on the constant CONDMA.
+Because it is difficult to arrive at a precise value for CONAPX, TIMAPX
+can be only an order of magnitude estimate when CONAPX is involved in
+its calculation. However, program loading times are more accurate
+because CONDMA can be established more precisely.
+FPS 860-7288-004 5 = 14
+Note that the times for some applications are dominated by TIMAPX. ' : .
+This is true for many calls to simple vector manipulations. Using the
+vector function chainer reduces multiple calls to Math Library routines ‘
+to a single call, and thus reduces system overhead. MATHSIM, however,
+does not simulate the vector function chainer software. Therefore, the
+user must subtract the hest overhead estimate (CONAPX) an appropriate
+number of times from the total timing estimate to account for use of
+vector function chaining.
+5.3 SYSTEM DEPENDENCY
+MATHSIM contains several installation-dependent features, as listed
+below.
+e The subroutine APEX calls the FORTRAN function
+ILOC(X), which returns the location of the variable
+X. This function is FPS-supplied.
+e The subroutine APCLR assigns the following timing
+parameters:
+MYTPE = n
+CONDMA = ss
+CONAPX = tt
+where:
+n 1is the memory type;
+1 = fast, 2 = standard
+(default = 2)
+ss is the time per 16-bit word
+transfer (u sec)
+(default = 2 u sec)
+tt is the time per s-pad load
+and go (u sec)
+(default = 1000 u sec)
+FPS 860-7288-004 5 - 15
+e The subroutine APXSET assigns the program source ’
+size with the statement:
+PSSIZ = n
+where:
+n is the program source size
+(default = 1024)
+e The main data size is indicated in the following
+statement:
+COMMON /COMMD/ APMD (1024)
+It can be changed by changing the entry in every
+occurrence of this statement; the statement appears
+_ in all Math Library routines and in the two APEX
+' routines APPUT and APGET.
+e The MATHSIM routines APSTOP and APEX write messages
+to the unit specified in the following statement:
+IOUNIT = n
+where:
+n is the logical unit number
+(default = 1)
+FPS 860-~7288-004 5 - 16
+5.4 EXAMPLES o ‘ '
+This section contains a sample MATHSIM routine and two programming
+examples applicable to MATHSIM.
+5.4.1 EXAMPLE 1: SAMPLE ROUTINE
+The following VADD routine shown 1is typical of the routines provided in
+MATHSIM:
+Ck%*%%** VADD = VECTOR ADD = REL 1.0, MAY 78 kkkkk
+SUBROUTINE VADD (A,I1,B,J,C,K,N)
+INTEGER*2 A,I,B,J,C,K,N
+INTEGER*2 M,IA,IB,IC
+REAL SETUP(2), LOOP(2)
+INTEGER SIZE(2)
+COMMON /TIMING/ MTYPE,CONAPX,CONDMA, TIMRUN, TIMAPX,
+X TIMDMA
+COMMON /COMMD /APMD (1024)
+DATA SETUP (1), SETUP(2), LOOP(1), LOOP(2)
+X / 2.67 , 1.17 , 0.84 , 1.33 /
+DATA SIZE(1), SIZE(2) / 17 , 8/
+IA=A+1
+IB=B+1
+IC=C+1
+DO 100 M=1,N
+APMD (1C)=APMD (IB)+APMD(TIA)
+TA=TA+T
+. IB=IB+J .
+100 1C=1C+K
+C
+C /* TIMING. */
+CALL APEX (SIZE(MTYPE))
+TIMRUN = TIMRUN + SETUP (MTYPE) + FLOAT (N) * LOOP (MTYPE)
+RETURN
+END '
+Note that the user has access to the timing information by including
+the statement COMMON /TIMING/ ... in the calling program. Also,
+because MTYPE is assigned in the call to APCLR, the user may change the
+memory type after that call. This allows the user to easily obtain
+timing for either standard or fast memorye.
+®P] RAN-7288-004 5 - 17
+5.4.2 EXAMPLE 2: PROGRAM FOR VECTOR ADDITION o o
+The following is an example of a calling program to add two vectors;
+this version can be used with either the AP or MATHSIM.
+' DIMENSION A(100),B(100),C(100)
+C /* TIMING INFO WRITTEN ON LOGICAL UNIT “IOUNIT .. */
+IOUNIT = 1 '
+c /* APCLR INITIALIZES TIMING (AMONG OTHER THINGS). */
+CALL APCLR
+CALL APPUT (A,0,100,2)
+CALL APPUT (B, 100,100,2)
+CALL APWD
+CALL VADD(0,1,100,1,200,1,100)
+CALL APWR
+; CALL APGET(C,200,100,2)
+C /* WRITE ACCUMULATED TIMES... */
+CALL APTIME (IOUNIT)
+END
+FPS 860-7288~004 5 - 18
+5.4.3 EXAMPLE 3: PROGRAM FOR VECTOR ADDITION WITH TIMING
+ESTIMATES
+The following is an example of a program to add two vectors and
+determine timing estimates. This program is written for use with
+MATHSIM only.
+DIMENSION A(100),B(100),C(100)
+c /* TIMING INFO WRITTEN ON LOGICAL UNIT ‘IOUNIT .. */
+IOUNIT = 1
+C /* APCLR INITIALIZES TIMING (AMONG OTHER THINGS). */
+CALL APCLR
+CALL APPUT(A,0,100,2)
+CALL APPUT(B,100,100,2)
+CALL APWD
+CALL vADD(0,1,100,1,200,1,100)
+CALL APWR -
+CALL APGET(C,200,100,2)
+o /* WRITE ACCUMULATED TIMES... */
+CALL APTIME (IOUNIT)
+END
+When this program is run with the parameters set to the default values,
+the subroutine APTIME displays the following message:
+AP-120B TIMING ESTIMATES (ACCUM).
+RUN = 0.13417 (MSEC)
+APEX = 1.06400
+DMA = 1.20000
+SYNCHRONIZATION WARNINGS = 1
+To eliminate the synchronization warning, the user should insert a CALL
+APWD after the CALL APGET statement.
+FPS 860-7288-004 5 - 19
+APPENDIX A  ALPHABETICAL INDEX OF AP MATH LIBRARY ROUTINES
+
+Typical Program .
+
+Execution Size
+Page Name Operation Time/Loop (AP
+
+(us) PS words)
+: 167 | 333 167 | 333
+
+E-195 ACORF AUTO-CORRELATION (FREQUENCY-DOMAIN) 1.80*% 2.70 501 489
+E-193 ACORT AUTO-CORRELATION (TIME-DOMAIN) 0.29% 0.29 121 121
+E-270 ADV2 ADVANCE POINTERS AFTER RADIX 2 F¥FT 0.7 @ 0.7 7 7
+E-271 ADV4 ADVANCE POINTERS AFTER RADIX 4 FFT 0.7 @ 0.7 7 7
+E~13 APCHK CHECK AP PROGRAM ERROR CONDITION .4 #.# Q 0
+E-8 APCLR INITIALIZE THE AP e it #ao 0 0
+E-6 APGET GET DATA FROM THE AP #ott #ait 0 0
+E-12 APGSP READ AN AP S-PAD REGISTER #o #. 4 0 0
+E-4 APPUT PUT DATA INTO THE AP #. 4 ite it 0 0
+E-14 APSTAT GET AP HARDWARE STATUS ' #od #o 0 0
+E-11 APWAIT WAIT FOR AP #.4 #o 0 0
+E-9 APWD WAIT FOR AP DATA TRANSFER : et it it 0 0
+E-10 APWR WAIT FOR AP PROGRAM EXECUTION ot #oit 0 0
+E-186 ASPEC ACCUMULATING AUTO-SPECTRUM 0.8 1.5 21 22 '
+E-234 ATAN SCALAR ARCTANGENT 8.7 @ 8.7 74 74
+E-235 ATN2 SCALAR ARCTANGENT OF Y¥/X 13.8 @13.8 74 74
+E-261 BITREV COMPLEX VECTOR BIT REVERSE ORDERING 0.9 1.4 45 43 '
+E-199 CCORF CROSS=-CORRELATION (FREQUENCY-DOMAIN) 2.58% 3.93 526 510 _
+E=-197 CCORT CROSS~CORRELATION (TIME-DOMAIN) 0.29% 0.29 121 121
+E~115 CDOTPR COMPLEX DOT PRODUCT 0.7 1.3 15 16
+E-156 CFFT COMPLEX TO COMPLEX FFT (IN PLACE) 0.28*% 0.40 186 184
+E-167 CFFT2D COMPLEX TO COMPLEX 2-DIMENSIONAL FFT 0.5 * 0.5 274 274
+E-158 CFFTB COMPLEX TO COMPLEX FFT (NOT IN PLACE) 0.20* 0.28 189 189
+E-164 CFFTSC COMPLEX FFT SCALE 0.8 1.3 42 42
+E-268 CLSTAT CLEAR FFT MODE STATUS BITS 0.5 @ 0.5 19 19
+E~192 COHER COHERENCE FUNCTION 440 4.5 109 114 .
+E-172 CONV CONVOLUTION (CORRELATION) 0.28%* 0.28 106 106
+E-233 COS SCALAR COSINE 5.4 @ 5.4 35 35
+E-103 CRVADD COMPLEX AND REAL VECTOR ADD 1.3 1.8 14 l4
+E-106 CRVDIV COMPLEX AND REAL VECTOR DIVIDE 3.3 3.3 92 92
+E-105 CRVMUL COMPLEX AND REAL VECTOR MULTIPLY 1.3 1.8 14 14 '
+E-104 CRVSUB COMPLEX AND REAL VECTOR SUBTRACT 1.3 1.8 14 14
+E-187 CSPEC ACCUMULATING CROSS~SPECTRUM 1.3 2.7 39 40
+E-281 CTOR COMPLEX TO REAL FFT UNSCRAMBLE 0.13*% 0.13 80 80
+E-149 CTRN3 3-DIMENSION COORDINATE TRANSFORMATION 2.3 * 2,5 37 37
+E-98 CVADD COMPLEX VECTOR ADD 1.0 2.0 13 12
+E=-92 CVCOMB COMPLEX VECTOR COMBINE 1.1 1.7 10 10
+E-97 CVCONJ COMPLEX VECTOR CONJUGATE ' 0.7 1.3 10 12
+E-113 CVEXP COMPLEX VECTOR EXPONENTIAL 2.0 2.0 43 43
+E-91 CVFILL COMPLEX VECTOR FILL 0.5 0.7 8 8
+E-107 CVMA COMPLEX VECTOR MULTIPLY AND ADD 1.3 2.7 29 30 ‘
+E-109 CVMAGS COMPLEX VECTOR MAGNITUDE SQUARED 0.7 1.2 13 18
+E-114 CVMEXP VECTOR MULTIPLY COMPLEX EXPONENTIAL 2.3 2.3 48 48
+E-90 CVMOV  COMPLEX VECTOR MOVE 0.8. 1.3 9 9
+E-100 CVMUL COMPLEX VECTOR MULTIPLY 1.0 2.0 25 26
+E-96 CVNEG COMPLEX VECTOR NEGATE 0.8 1.3 11 11
+FPS 860-7288-004 A - 1
+Typical Program
+Execution Size
+Page Name Operation Time/Loop (AP
+{us) PS words)
+167 | 333 167 | 333
+E-102 CVRCIP COMPLEX VECTOR RECIPROCAL 5.2 5.2 50 50
+E-93 CVREAL FORM COMPLEX VECTOR OF REALS 0.8 1.2 9 9
+E-101 CVSMUL COMPLEX VECTOR SCALAR MULTIPLY 0.8 1.3 12 12
+E=99 CVSUB COMPLEX VECTOR SUBTRACT 1.0 2.0 13 12
+E-257 DAREAD READ DEVICE ADDRESS REGISTER 0.3 @ 0.3 2 2
+E-258 DAWRIT WRITE DEVICE ADDRESS REGISTER 0.3 @ 0.3 2 2
+E-287 DDDA DOUBLE + DOQUBLE TO DOUBLE ADD 7.5 @ 7.5 48 48
+E-288 DDDM DOUBLE * DOUBLE TO DOUBLE MULTIPLY 18.5 4l18.5 117 117
+E-174 DEQ22 DIFFERENCE EQUATION, 2 POLES, 2 ZEROS 0.8 0.8 .25 25
+E-227 DIV SCALAR DIVIDE 3.8 @ 3.8 28 28
+E-66 DOTPR DOT PRODUCT 0.5 0.8 21 9
+E-231 EXP SCALAR EXPONENTIAL 4.2 @ 4.2 28 28
+E-263 FFT2 RADIX 2 FFT FIRST PASS 1.3 2.7 16 16
+'E-265 FFT2B  RADIX 2 FFT FIRST PASS + BIT REVERSE 1.3 2.7 25 25
+E-264 FFT4 RADIX 4 FFT PASS 3.7 5.3 79 79
+E-266 FFT4B RADIX 4 FFT FIRST PASS + BIT REVERSE 2.7 5.3 43 43
+E-151 FMMM FAST MEMORY MATRIX MULTIPLY ' 0.43%* 61
+; E-153 FMMM32 FAST MEMORY MATRIX MULTIPLY (<=32) 0.41% 33
+E-184 HANN HANNING WINDOW MULTIPLY 0.7 0.8 41 41
+E-183 HIST HISTOGRAM 1.3 1.4 71 71
+E-269 1ILOG2 LOGARITHM (BASE 2) 4.0 @ 4.0 19 19
+E-230 LN SCALAR NATURAL LOGARITHM 4.0 @ 4.0 37 37
+E-229 LOG SCALAR LOGARITHM (BASE 10) 4.7 @ 4.7 37 37
+E-85 LVEQ LOGICAL VECTOR EQUAL 0.8 1.3 23 13
+E-84 LVGE LOGICAL VECTORGREATER THAN OR EQUAL 0.8 1.3 23 13
+E-83 LVGT LOGICAL VECTOR GREATER THAN 0.8 1.3 23 13
+E-86 LVNE LOGICAL VECTOR NOT EQUAL 0.8 1.3 23 13
+E-87 LVNOT LOGICAL VECTOR NOT 0.5 0.8 21 12
+E-141 MATINV MATRIX INVERSE 1.6 * 2.1 160 160
+E-69 MAXMGV MAXIMUM MAGNITUDE ELEMENT IN VECTOR 0.3 0.3 19 19
+E-67 MAXV MAXIMUM ELEMENT IN VECTOR 0.3 0.3 19 19
+E-253 MDCOM  MAIN DATA COMPARE AND SET S-PAD 1.8 @ 2.0 11 11
+E-72 MEAMGV MEAN OF VECTOR ELEMENT MAGNITUDES 0.3 0.3 52 52
+E-71 MEANV  MEAN VALUE OF VECTOR ELEMENTS 0.3 0.3 49 49
+E-73 MEASQV MEAN OF VECTOR ELEMENT SQUARES 0.3 0.3 52 52
+E-70 MINMGV MINIMUM MAGNITUDE ELEMENT IN VECTCR 0.3 0.3 19 19
+E-68 MINV MINIMUM ELEMENT IN VECTOR 0.3 0.3 19 19
+E-209 MMTADD VECTOR ADD (MD+MD TO TM) 0.7 0.8 20 13
+E-211 MMTMUL VECTOR MULTIPLY (MD*MD TO TM) 0.7 0.8 20 13
+E-210 MMTSUB VECTOR SUBTRACT (MD-MD TO TM) 0.7 0.8 20 13
+E-137 MMUL MATRIX MULTIPLY 0.62*% 0.83 59 59
+E-139 MMUL32 MATRIX MULTIPLY (DIMENSION <=32) 0.50*% 0.73 27 27 _
+E-206 MTIMOV VECTOR MOVE WITH INCREMENT (MD TO TM) 0.5 0.5 7 7
+E-212 MTMADD VECTOR ADD (MD+TM TO MD) 0.5 0.8 20 9
+E-215 MTMMUL VECTOR MULTIPLY (MD*TM TO MD) 0.5 0.8 20 9
+E-204 MTMOV  VECTOR MOVE (MD TO TM) 0.2 0.3 6 7
+E-213 MTMSUB VECTOR SUBTRACT (MD=-TM TO MD) 0.5 0.8 20 9
+E-136 MTRANS MATRIX TRANSPOSE 0.5 0.9 18 22
+E-216 MTTADD VECTOR ADD (MD+TM TO TM) 0.5 0.5 20 20
+E-219 MTTMUL VECTOR MULTIPLY (MD*TM TO TM) 0.5 0.5 20 20
+FPS 860-7288-004 A - 2
+Typical Program
+Execution Size
+Page Name Operation Time/Loop (AP
+(us) PS words)
+167 | 333 167 | 333
+E=217 MTTSUB VECTOR SUBTRACT (MD-TM TO ™) . 0.5 0«5 20 20
+E-145 MVML3 MATRIX VECTOR MULTIPLY (3%3) 2.0 * 2.2 30 30
+E-147 MVML4 MATRIX VECTOR MULTIPLY (4%4) 3.3 * 3.8 39 39
+E-279 PCFFT PARTTAL COMPLEX FFT 1.05% 1.50 117 117
+E-111 POLAR RECTANGULAR TO POLAR CONVERSION 19.5 19.5 120 120
+E-255 RDCS READ CONTROL BIT 5 INTERRUPT 1.5 @ 1.5 9 9
+£-262 REALTR REAL FFT UNRAVEL AND FINAL PASS 0.4 0.7 68 68
+E-112 RECT POLAR TO RECTANGULAR CONVERSION 2.3 2.3 49 49
+E-160 RFFT REAL TO COMPLEX FFT (IN PLACE) 0.18% 0.27 253 251
+£-169 RFFT2D REAL TO COMPLEX 2-DIMENSIONAL FFT Q.4 * 0.4 585 585
+E-162 RFFTB REAL TO COMPLEX FFT (NOT IN PLACE) 0.l4%* 0.20 252 252
+E-165 RFFTSC REAL FFT SCALE AND FORMAT - 0.7 0.8 59 59
+E-74 RMSQV ROOT-MEAN-SQUARE OF YECTOR ELEMENTS 0.3 0.3 gr . 81 L -
+E-282 RTOC REAL TO COMPLEX FFT SCRAMBLE 0.09* 0.09 143 43
+E-248 SAVESP SAVE g-PAD INTO PROGRAM MEMORY 0.8 * 0.8 18 18
+E-249 SAVSPO SAVE §-PAD O INTO PROGRAM MEMORY 2.0 * 2.0 11 11
+E-110 SCIMA SELF~CONJUGATE MULTIPLY AND ADD 0.8 1.5 14 15
+E-286 SDDA gINGLE + DOUBLE TO DOUBLE ADD 4e5 @ 4.5 28 28
+E-272 SET24B SETUP FOR FFT2B AND FFT4B 1.2 @ 1.2 8 8 }
+E-252 SET2SP LOAD 2 S=PADS FROM PROGRAM MEMORY 5.7 @ 5.7 33 33
+E~256 SETICS SET CONTROL BIT 5 INTERRUPT : 0.2 @ 0.2 1 1
+E-250 SETSP LOAD S-PADS FROM PROGRAM MEMOKY 2.3 * 2.3 33 33
+E-232 SIN SCALAR SINE 4.9 @ 4.9 35 35
+E-143 SOLVEQ LINEAR EQUATION SOLVER 0.7 * 0.9 216 222 :
+E-239 SPADD §-PAD ADD 0.2 @ 0.2 1 1
+E-245 SPAND S-PAD AND 0.2 @ 0.2 1 1
+£-242 SPDIV g-PAD DIVIDE 6.2 @ 6.2 43 43 )
+E-236 SPFLT FLOAT S-PAD INTEGER 0.8 @ 0.8 5 5
+E-244 SPLS g-PAD LEFT SHIFT 0.3 * 0.3 5 5
+E-241 SPMUL g-PAD MULTIPLY 2.3 @ 2.3 14 14
+E-238 SPNEG §-PAD NEGATE 0.3 @ 0.3 2 2
+E-247 SPNOT S=PAD NOT 0.2 @ 0.2 1 1
+E-246 SPOR S-PAD OR 0.2 @ 0.2 1 1
+E-243 SPRS §-PAD RIGHT SHIFT 0.3 * 0.3 5 5
+5-240 SPSUB  S-PAD SUBTRACT 0.2 @ 0.2 1 1
+E-237 SPUFLT g-PAD UNSIGNED FLOAT - 0.8 @ 0.8 8 8
+E-228 SQRT SCALAR SQUARE ROOT 3.8 @ 3.8 28 28
+E-284 SSDA SINGLE + SINGLE TO DOUBLE ADD 1.5 @ 1.5 10 10
+E-285 SSDM SINGLE * SINGLE TO DOUBLE MULTIPLY 11.5 @115 81 81
+E-267 STSTAT SET FFT MODE STATUS BITS 5.0 @ 5.0 19 19
+E-62 SVE SUM OF VECTOR ELEMENTS 0.3 0.3 7 7
+- E-63 SVEMG syM OF VECTIOR ELEMENT MAGNITUDES 0.3 0.3 10 10 .
+E-64 SVESQ sUM OF VECTOR ELEMENT SQUARES 0.3 0.3 10 10
+E-65 SVS SUM OF VECTOR STGNED SQUARES 0.3 0.3 11 il
+E-201 TCONV POSTTAPERED CONVOLUTTON (CORRELATION) 0.30% 0.30 112 112
+‘ E-207 TMIMOV VECTOR MOVE WITH INCREMENT (TM TO MD) 0.3 0.3 15 15 :
+£-205 TMMOV VECTOR MOVE (TM TO MD) 0.2 0.3 5 5
+E-214 TMMSUB VECTOR SUBTRACT (TM-MD TO MD) 0.5 0.8 20 9
+E-218 TMTISUB VECTOR SUBTRACT (TM-MD TO TM) 0.5 0.5 20 20
+E-191 TRANS TRANSFER FUNCTION 3.3 3.3 100 100
+FPS 860-7288-004 A - 3
+Typical Program
+
+Execution Size
+Page Name Operation Time/Loop (AP
+
+(us) PS words)
+
+167 | 333 167 | 333
+E-208 TTIMOV VECTOR MOVE WITH INCREMENT (TM TO ™) 0.5 0.5 7 7
+E-220 TTMADD VECTOR ADD (TM+IM TO MD) 0.5 0.5 20 20
+E-222 TTMMUL VECTOR MULTIPLY (TM*TM TO MD) 0.5 0.5 20 20
+E-221 TTMSUB VECTOR SUBTRACT (TM~TM TO MD) 0.5 0.5 20 20
+E-223 TTTADD VECTOR ADD (TM+TM TO TM) 0.7 0.7 9 9
+E-225 TTTMUL VECTOR MULTIPLY (TM*TM TO TM) 0.7 0.7 10 10
+E-224 TTTSUB VECTOR SUBTRACT (TM~-TM TO TM) 0.7 0.7 9 9
+E-53 VAAM VECTOR ADD, ADD, AND MULTIPLY 1.5 2.3 13 20
+E-32 VABS VECTOR ABSOLUTE VALUE 0.5 0.8 17 7
+E-22 VADD VECTOR ADD 0.8 1.3 20 8
+E-36 VALOG VECTOR ANTILOGARITHM (BASE 10) 2.3 2.3 58 58
+E-48 VAM VECTOR ADD AND MULTIPLY 1.2 1.8 23 14
+E-~55 VAND VECTOR LOGICAL AND 0.8 1.3 20 8
+E-40 VATAN VECTOR ARCTANGENT 9.7 9.8 87 87
+E-41 VATN2 VECTOR ARCTANGENT OF Y/X 14.2 14.2 88 88
+E~189 VAVEXP VECTOR EXPONENTIAL AVERAGING 0.8 1.3 55 46
+E-~188 VAVLIN VECTOR LINEAR AVERAGING 0.8 1.3 54 46
+E-80 VCLIP VECTOR CLIP 0.5 0.8 16 16
+E-16 VCLR VECTOR CLEAR 0.2 0.3 16 4
+E-39 VCos VECTOR COSINE 1.3 1.3 34 34
+E-190 VDBPWR VECTOR CONVERSION TO DB (POWER) 1.2 1.3 75 75
+E-25 VDIV VECTOR DIVIDE 1.7 1.7 75 75
+E~56 VEQV VECTOR LOGICAL EQUIVALENCE 0.8 1.3 20 8
+E-37 VEXP VECTOR EXPONENTIAL 2.3 2.3 55 55
+E-259 VFCLI VECTOR FUNCTION CALLER (1 ARGUMENT) 0.8 1.0 10 10
+E-260 VFCL2 VECTOR FUNCTION CALLER (2 ARGUMENT) 1.0 1.0 11 11
+E-19 VFILL VECTOR FILL 0.3 0.3 5 5
+E-118 VFIX VECTOR INTEGER FIX 0.7 0.8 18 7
+E-133 VFIX32 VECTOR 32-BIT INTEGER FIX 1.2 1.2 33 33
+E-117 VFLT VECTOR INTEGER FLOAT 0.5 0.8 13 11
+E-132 VFLT32 VECTOR 32-BIT INTEGER FLOAT 1.7 1.7 65 65
+E-58 VFRAC VECTOR TRUNCATE TO FRACTION 0.7 0.8 13 13
+E-81 VICLIP VECTOR INVERTED CLIP 0.7 0.8 19 19
+E-95 VIMAG EXTRACT IMAGINARIES OF COMPLEX VECTOR 0.5 0.8 18 8
+E-60 VINDEX VECTOR INDEX 0.8 1.3 28 26
+E-59 VINT VECTOR TRUNCATE TQ INTEGER 0.5 0.8 9 9
+E-82 VLIM VECTOR LIMIT 0.5 0.8 14 14
+E-38 VLMERG VECTOR LOGICAL MERGE 0.8 1.5 23 16
+E-35 VLN VECTOR NATURAL LOGARITHM 2.7 2.7 42 42
+E-34 VLOG VECTOR LOGARITHM (BASE 10) 2.7 2.7 54 58
+E-46 VMA VECTOR MULTIPLY AND ADD l.2 1.8 23 15
+E-76 VMAX VECTOR MAXIMUM 0.8 1.3 22 13
+E-78 VMAXMG VECTOR MAXIMUM MAGNITUDE 0.8 1.3 14 14
+E-77 VMIN VECTOR MINIMUM 0.8 1.3 22 13
+E-79 VMINMG VECTOR MINIMUM MAGNITUDE 0.8 1.3 14 14
+E-51 VMMA VECTOR MULTIPLY, MULTIPLY, AND ADD 1.5 2.3 27 19
+E-52 VMMSB VECTOR MULTIPLY MULTIPLY AND SUBTRACT 1.5 2.3 27 19
+E-17 VMOV VECTOR MOVE 0.5 0.8 16 6
+E-43 MSA VECTOR MULTIPLY AND SCALAR ADD 0.8 1.3 23 14
+E-47 VMSB VECTOR MULTIPLY AND SUBTRACT 1.2 1.8 23 15 ,
+FPS 860~-7288-004 A - 4
+Typical Program
+: Execution Size
+Page Name Operation Time/Loop (AP
+' ' (us) PS words)
+167 | 333 167 | 333
+E-24 VMUL VECTOR MULTIPLY 0.8 1.3 20 11
+E-21 VNEG VECTOR NEGATE 0.5 0.8 18 7
+E=-57 VOR VECTOR LOGICAL OR 0.8 1.3 20 8
+E-131 VPK16 VECTOR 16-BIT BYTE PACK 0.8 0.8 46 46
+E-128 VPKS8 VECTOR 8-BIT BYTE PACK - 0.9 0.9 65 65
+E-175 VPOLY VECTOR POLYNOMIAL EVALUATION 1.0 * 1.2 41 41
+E-20 VRAMP VECTOR RAMP 0.3 C.3 12 12
+E-42 VRAND VECTOR RANDOM NUMBERS 1.2 1.2 16 16
+E-94 VREAL EXTRACT REALS OF COMPLEX VECTOR 0.5 0.8 17 7
+E-26 VSADD VECTOR SCALAR ADD 0.5 0.8 19 8 :
+E-49 VSBM VECTOR SUBTRACT AND MULTIPLY 1.2 1.8 23 14
+E-54 VSBSBM VECTOR SUBTRACT SUBTRACT AND MULTIPLY 1.5 2.3 13 20
+E-121 VSCALE VECTOR SCALE (POWER 2) AND FIX 0.7 0.8 12 12
+E-123 VSCSCL VECTOR SCAN, SCALE (POWER 2) AND FIX 1.5 1.7 19 19
+E-134 VSEFLT VECTOR SIGN EXTEND AND FLOAT 0.8 0.8 15 15
+E-125 VSHFX VECTOR SHIFT AND FIX 0.7 0.8 9 9
+E-179 VSIMPS VECTOR SIMPSONS 1/3 RULE INTEGRATION 0.7 0.8 25 25
+E-38 VSIN VECTOR SINE 1.3 1.3 34 34
+E=44 VSMA VECTOR SCALAR MULTIPLY AND ADD 0.8 1.3 21 14
+E-120 VSMAFX VECTOR SCALAR MULTIPLY, ADD, AND FIX 0.7 0.8 14 13
+E-50 VSMSA  VECTOR SCALAR MULTIPLY AND SCALAR ADD 0.5 0.8 23 15
+E-45 VSMSB  VECTOR SCALAR MULTIPLY AND SUBTRACT 0.8 1.3 21 14
+E-27 VSMUL  VECTOR SCALAR MULTIPLY 0.5 0.8 20 9
+E-30 vsQ VECTOR SQUARE 0.5 0.8 9 9
+E-33 VSQRT VECTOR SQUARE ROOT 1.8 1.8 79 79
+E-31 VsSsQ VECTOR SIGNED SQUARE 0.5 0.8 21 9
+E-23 VSUB VECTOR SUBTRACT 0.8 1.3 20 8
+E-177 VSUM VECTOR SUM OF ELEMENTS INTEGRATION 0.7 0.8 13 13
+E-18 VSWAP VECTOR SWAP . 1.2 1.5 21 12
+E=178 VTRAPZ VECTOR TRAPEZOIDAL RULE INTEGRATION 0.7 0.8 16 16
+E-28 VISADD VECTOR TABLE SCALAR ADD 0.5 0.8 8 8
+E-29 VISMUL VECTOR TABLE SCALAR MULTIPLY 0.5 0.8 8 8
+E-129 VUP16 VECTOR 16-BIT BYTE UNPACK 0.8 0.8 61 61
+E-126 VUPS VECTOR 8-BIT BYTE UNPACK 0.5 0.5 71 71
+E-130 VUPS16 VECTOR 16-BIT SIGNED BYTE UNPACK 1.3 1.3 58 58
+E-127 VUPSS8 VECTOR 8-BIT SIGNED BYTE UNPACK 0.9 0.9 107 107
+E-180 WIENER WIENER LEVINSON ALGORITHM 0.50* 0.65 100 100
+E-277 XBITRE EXPANDED BIT REVERSE 3.7 3.7 44 44
+E~-273 XCFFT EXPANDED COMPLEX FFT 0.32% 0.42 187 187
+E-280 XFFT4 EXPANDED RADIX 4 FFT PASS 3.7 5.3 79 79
+E-278 XREALT EXPANDED REAL FFT FINAL PASS 0.4 0.7 71 71
+E-275 XRFFT EXPANDED REAL FFT 0.19*% 0.28 256 256
+E-254 ZMD CLEAR ALL PAGES OF MAIN DATA MEMORY 0.2 0.3 29 29
+Notes: #.# Timing host system dependent
+* Refer to description of routine for explanation of timing
+@ Total execution time
+FPS 860-7288-004 A - 5
+APPENDIX B INDEX OF ROUTINES IN PAGE ORDER
+Typical Program
+] Execution Size
+Page Name Operation Time/Loop (AP
+(us) PS words)
+167 | 333 167 | 333
+DATA TRANSFER AND CONTROL OPERATIONS (APEX)
+E=4 APPUT PUT DATA INTO THE AP #o i #oit 0 3
+E-6 APGET GET DATA FROM THE AP tedt et 0 0
+E-8 APCLR INITIALIZE THE AP _ #ait #aoi 0 0
+E-9 APWD WAIT FOR AP DATA TRANSFER #.i #.# 0 0
+E-10 APWR WAIT FOR AP PROGRAM EXECUTION #. 4 it 0 0
+E-11 APWAIT WAIT FOR AP #oit toit 0 0
+E-12 APGSP READ AN AP S-PAD REGISTER : o #.# 0 0
+E-13 APCHK CHECK AP PROGRAM ERROR CONDITION e # #oit 0 0
+E-14 APSTAT GET AP HARDWARE STATUS ot #.it 0 0
+BASIC VECTOR ARITHMETIC
+E-16 VCLR VECTOR CLEAR 0.2 0.3 16 4
+E-17 mwov VECTOR MOVE 0.5 0.8 16 6
+E-18 VSWAP VECTOR SWAP 1.2 1.5 21 12
+E-19 VFILL VECTOR FILL o 0.3 0.3 5 5 -
+E=20 VRAMP VECTOR RAMP 0.3 0.3 12 12
+E-21 VNEG VECTOR NEGATE 0.5 0.8 18 7
+E-22 VADD VECTOR ADD 0.8 1.3 20 8
+E-23 VSUB VECTOR SUBTRACT 0.8 1.3 20 8
+E=-24 VMUL VECTOR MULTIPLY 0.8 1.3 20 11
+E-25 VDIV VECTOR DIVIDE : 1.7 1.7 75 75
+E=-26 VSADD VECTOR SCALAR ADD 0.5 0.8 19 8
+E-27 VSMUL YECTOR SCALAR MULTIPLY 0.5 0.8 20 9
+E-28 VISADD VECTOR TABLE SCALAR ADD 0.5 0.8 8 8
+E-29 VISMUL VECTOR TABLE SCALAR MULTIPLY 0.5 0.8 8 8
+E-30 vsQ VECTOR SQUARE 0.5 0.8 9 9
+E-31 vVSsQ VECTOR SIGNED SQUARE 0.5 0.8 21 9
+E-32 VABS VECTOR ABSOLUTE VALUE 0.5 0.8 17 7
+E-33 VSQRT VECTOR SQUARE ROCT 1.8 1.8 79 79
+E-34 V8LOG VECTOR LOGARITHM (BASE 10) 2.7 2.7 54 58
+E-35 VLN VECTOR NATURAL LOGARITHM 2.7 2.7 42 42
+E-36 VALOG VECTOR ANTILOGARITHM (BASE 10) 2.3 2.3 58 58
+E-37 VEXP VECTOR EXPONENTIAL 2.3 2.3 55 55
+E-38 VSIN VECTOR SINE 1.3 1.3 34 34
+E-39 vVCos VECTOR COSINE 1.3 1.3 34 34
+E~40 VATAN VECTOR ARCTANGENT 9.7 9.8 87 87
+. E-41 VATN2 VECTOR ARCTANGENT OF Y/X 14.2 14.2 88 88
+E=-42 VRAND VECTCR RANDOM NUMBERS 1.2 1.2 16 16
+FPS 860-7288-004 B - 1
+Typical Program
+Execution Size
+Page Name Operation Time/Loop (AP
+(us) PS words)
+167 | 333 167 | 333
+E=-43 VMSA VECTOR MULTIPLY AND SCALAR ADD 0.8 1.3 23 14
+E-44 VSMA VECTOR SCALAR MULTIPLY AND ADD 0.8 1.3 21 14
+E=45 VSHSB VECTOR SCALAR MULTIPLY AND SUBTRACT 0.8 1.3 21 14
+E-46 VMA VECTOR MULTIPLY AND ADD 1.2 1.8 23 15
+E=47 VMSB VECTOR MULTIPLY AND SUBTRACT 1.2 1.8 23 15
+E=-48 VAM VECTOR ADD AND MULTIPLY 1.2 1..8 23 14
+E-49 VSBM VECTOR SUBTRACT AND MULTIPLY 1.2 1.8 23 14
+E-50 VSMSA  VECTOR SCALAR MULTIPLY AND SCALAR ADD 0.5 0.8 23 15
+E-51 iMA VECTOR MULTIPLY, MULTIPLY, AND ADD 1.5 2.3 27 19
+E=52 VMMSB VECTOR MULTIPLY MULTIPLY AND SUBTRACT 1.5 2.3 27 19
+E-53 VAAM VECTOR ADD, ADD, AND MULTIPLY 1.5 2.3 13 20
+E=-54 VSBSBM VECTIOR SUBTRACT SUBTRACT AND MULTIPLY 1.5 2.3 13 20
+E-55 VAND VECTOR LOGICAL AND 0.8 1.3 20 8
+E~56 VEQV VECTOR. LOGICAL EQUIVALENCE 0.8 1.3 20 8
+E=57 VOR VECTOR LOGICAL OR 0.8 1.3 20 8
+E-58 VFRAC  VECTOR TRUNCATE TO FRACTION 0.7 0.8 13 13
+E-59  VINT VECTOR TRUNCATE TO INTEGER 0.5 0.8 9 9-
+‘ E=-60 VINDEX VECTOR INDEX 0.8 1.3 28 26
+VECTOR-TO-SCALAR OPERATIONS
+E-62 SVE SUM OF VECTOR ELEMENTS 0.3 0.3 7 7
+E-63 SVEMG SUM OF VECTOR ELEMENT MAGNITUDES 0.3 0.3 10 10
+E-64 SVESQ SUM OF VECTOR ELEMENT SQUARES 0.3 0.3 10 10
+E-65 SVs SUM. OF VECTOR SIGNED SQUARES 0.3 0.3 11 11
+E-60 DOTPR DOT PRODUCT 0.5 0.8 21 9
+E-67  MAXV MAXIMIM ELEMENT IN VECTOR 0.3 0.3 19 19
+E-68  MINV MINIMUM ELEMENT IN VECTOR 0.3 0.3 19 19
+E-69 MAXMGV MAXIMUM MAGNITUDE ELEMENT IN VECTOR 0.3 0.3 19 19
+E-70 MINMGV MINIMUM MAGNITUDE ELEMENT IN VECTOR 0.3 0.3 19 19
+E-71 MEANV  MEAN VALUE OF VECTOR ELEMENTS 0.3 0.3 49 49
+E-72 MEAMGV MEAN OF VECTOR ELEMENT MAGNITUDES 0.3 g.3 52 52
+E-73 MEASQV MEAN OF VECTOR ELEMENT SQUARES 0.3 0.3 52 52
+E-74 RMSQV  ROOT-MEAN-SQUARE OF VECTOR ELEMENTS 0.3 0.3 81 81
+VECTOR COMPARISON OPERATIONS
+E-76 VMAX VECTOR MAXIMUM 0.8 1.3 22 13
+E-77 VMIN VECTOR MINIMUM 0.8 - 1.3 22 13
+E-78 VMAXMG VECTOR MAXIMUM MAGNITUDE 0.8 1.3 14 14
+E-79 YMINMG VECTOR MINIMUM MAGNITUDE 0.8 1.3 l4 14
+E-80 VCLIP VECTOR CLIP 0.5 0.8 16 16
+E-81 VICLIP VECTOR INVERTED CLIP 0.7 0.8 19 19
+E-82 VLIM VECTOR LIMIT 0.5 0.8 14 14
+E-83 LVGT LOGICAL VECTOR GREATER THAN 0.8 1.3 23 13
+E~84 LVGE LOGICAL VECTORGREATER THAN OR EQUAL 0.8 1.3 23 13
+FPS 860-7288-004 ' B - 2 '
+Typical Program
+
+Execution Size
+Page YMame Operation Time/Loop (AP
+
+(us) PS words)
+
+167 | 333 167 | 333 4
+E-85 LVEQ LOGICAL VECTOR EQUAL 0.8 1.3 23 13 . '
+E-86 LVNE LOGICAI. VECTOR NOT EQUAL 0.8 1.3 23 13 ’
+E-87 LVNOT LOGICAL VECTOR NOT 0.5 0.8 21 12
+E-88 VLMERG VECTOR LOGICAL MERGE 0.8 1.5 23 16 :
+
+COMPLEX VECTOR ARITHMETIC
+E-S0 CVMOV COMPLEX VECTOR MOVE 0.3 1.3 9 9 .
+E-91 CVFILL COMPLEX VECTOR FILL 0.5 0.7 8 3
+£-92 CVCOMB COMPLEX VECTOR COMBINE 1.1 1.7 10 10 .
+E-93 CVREAL FORM COMPLEX VECTOR OF REALS 0.8 1.2 9 9
+E-94 VREAL EXTRACT REALS OF COMPLEX VECTOR 0.5 0.8 17 7 :
+E-95 VIMAG EXTRACT IMAGINARIES OF COMPLEX VECTOR 0.5 0.8 18 8
+E=-96 CVNEG COMPLEX VECTOR NEGATE 0.8 1.3 11 11 :
+E-97 CVCONJ COMPLEX VECTOR CONJUGATE 0.7 1.3 10 12 -
+E-98 CVADD COMPLEX VECTOR ADD 1.0 2.0 13 12 :
+E-99 CVSUB COMPLEX VECTOR SUBTRACT 1.0 2.0 13 i2
+E-100 CVMUL COMPLEX VECTOR MULTIPLY 1.0 2.0 25 26
+E-101 CVSMUL COMPLEX VECTOR SCALAR MULTIPLY 0.8 1.3 12 12
+E-102 CVRCIP COMPLEX VECTOR RECIPROCAL 5.2 5.2 50 50
+E~103 CRYADD COMPLEX AND REAL VECTOR ADD 1.3 1.8 14 14
+E-104 CRVSUB COMPLEX AND REAL VECTOR SUBTRACT 1.3 1.8 14 l4 '
+E-105 CRVMUL COMPLEX AND REAL VECTOR MULTIPLY 1.3 1.8 14 14 :
+E-106 CRVDIV COMPLEX AND REAL VECTOR DIVIDE 3.3 3.3 92 92 :
+2=-107 CVMA COMPLEX VECTOR MULTIPLY AND "ADD 1.3 2.7 29 30
+E-109 CVMAGS COMPLEX VECTOR MAGNITUDE SQUARED 0.7 1.2 13 18 :
+E-110 SCIMA SELF-CONJUGATE MULTIPLY AND ADD 0.8 1.5 14 15 :
+E-111 POLAR RECTANGULAR TO POLAR CONVERSION 19.5 19.5 120 120 ;
+E-112 RECT POLAR TO RECTANGULAR CONVERSION 2.3 2.3 49 49 :
+E-113 CVEXP COMPLEX VECTOR EXPONENTIAL 2.0 2.0 43 43
+E~-114 CVMEXP VECTOR MULTIPLY COMPLEX EXPONENTIAL 2.3 2.3 48 48 :
+E-115 CDOTPR COMPLEX DOT PRODUCT 0.7 1.3 15 16 :
+DATA FORMATING OPERATIONS
+
+E-117 VFLT VECTOR INTEGER FLOAT N5 0.8 i3 11
+E-118 VFIX VECTOR INTEGER FIX 0.7 0.8 18 7
+E-120 VSMAFX VECTOR SCALAR MULTIPLY, ADD, AND FIX 0.7 0.8 14 13 :
+E-121 VSCALE VECTOR SCALE (POWER 2) AND FIX 0.7 0.8 12 12
+E-123 VSCSCL VECTOR SCAN, SCALE (POWER 2) AND FIX 1.5 1.7 19 19
+E-125 VSHFX VECTOR SHIFT AND FIX 0.7 0.8 9 9
+E-126 VUPS8 VECTOR 8-BIT BYTE UNPACK 0.5 0.5 71 71
+E-127 VUPS8 VECTOR 8-BIT SIGNED BYTE UNPACK 0.9 0.9 107 107 :
+E-128 VPKS8 VECTOR 8-BIT BYTE PACK 0.9 0.9 65 65
+E-129 VUP16 VECTOR 16-BIT BYTE UNPACK 0.8 0.8 61 61 '
+E-130 VUPS16 VECTOR 16-BIT SIGNED BYTE UNPACK 1.3 1.3 58 58
+FPS 860-7288-004 B - 3
+Typical Program
+Execution Size
+Page Name Operation Time/Loop (AP
+(us) PS words)
+167 | 333 167 | 333
+E-131 VPKX1é6  VECTOR 16-BIT BYTE PACK 0.8 0.8 46 46
+E-132 VFLT32 VECTOR 32-BIT INTEGER FLOAT 1.7 1.7 65 65
+E-133 VFIX32 VECTOR 32-BIT INTEGER FIX 1.2 1.2 33 33
+E-134 VSEFLT VECTOR SIGN EXTEND AND FLOAT 2.8 0.8 15 15
+MATRIX OPERATIONS
+E-136 MTRANS MATRIX TRANSPOSE 0.3 0.9 18 22
+E-137 MMUL MATRIX MULTIPLY 0.62*% 0.83 59 59
+E-139 MMUL32 MATRIX MULTIPLY (DIMENSION <=32) 0.50* 0.73 27 27
+E-141 MATINV MATRIX INVERSE 1.6 * 2.1 160 160
+E~143 SOLVEQ LINEAR EQUATION SOLVER 0.7 * 0.9 216 222
+E-145 MVML3  MATRIX VECTOR MULTIPLY (3X3) 2.0 * 2.2 30 30
+E-147 MVML4  MATRIX VECTOR MULTIPLY (4X4) . 3.3 * 3.8 39 39
+E-149 CTRN3 3-DIMENSION COORDINATE TRANSFORMATION 2.3 * 2.5 37 37
+E-151 TFMMM FAST MEMORY MATRIX MULTIPLY 0.43% 61
+' E-153 TrMMM32 FAST MEMORY MATRIX MULTIPLY (<=32) 0.41% 33
+FFT OPERATIONS
+E-156 CFFT COMPLEX TO COMPLEX FFT (IN PLACE) 0.28* 0.40 186 184
+E-158 CFFTB COMPLEX TO COMPLEX FFT (NOT IN PLACE) 0(.20% 0.28 189 189
+E-160 RFFT REAL TO COMPLEX FFT (IN PLACE) 0.18*% 0.27 253 251
+E-162 RFFTB  REAL TO COMPLEX FFT (NOT IN PLACE) 0.14% 0.20 252 252
+E-164 CFFTSC COMPLEX FFT SCALE 0.8 1.3 42 42
+E-165 RFFTSC REAL FFT SCALE AND FORMAT 0.7 0.8 59 59
+E-167 CFFT2D COMPLEX TO COMPLEX 2-DIMENSIONAL FFT 0.5 * 0.5 274 274
+E-169 RFFT2D REAL TO COMPLEX 2-DIMENSIONAL FFT 0.4 * 0.4 585 585
+AUXILIARY OPERATIONS
+E-172 CONV CONVOLUTION (CORRELATION) 0.28*% 0.28 106 106
+E~-174 DEQ22 DIFFERENCE EQUATION, 2 POLES, 2 ZEROS 0.8 0.8 25 25
+E-175 VPOLY  VECTOR POLYNOMIAL EVALUATION 1.0 * 1.2 41 41
+E-177 VSUM VECTOR SUM OF ELEMENTS INTEGRATION 0.7 0.8 13 13
+E-178 VTRAPZ VECTOR TRAPEZOIDAL RULE INTEGRATION 0.7 0.8 16 16
+E-179 VSIMPS VECTOR SIMPSONS 1/3 RULE INTEGRATION 0.7 0.8 25 25
+E-180 WIENER WIENER LEVINSON ALGORITHM 0.50*% Q.65 100 100
+SIGNAL PROCESSING OPERATIONS (optional)
+E-183 HIST HISTOGRAM 1.3 l.4 71 71
+FPS 860-7288-004 B - &4
+Typical Program )
+Execution Size
+Page Name Operation Time/Loop (AP
+(us) PS words)
+167 | 333 167 | 333
+E-184 HANN HANNING WINDOW MULTIPLY 0.7 0.8 41 41
+E-186 ASPEC ACCUMULATING AUTO-SPECTRUM 0.8 1.5 21 22
+E-187 CSPEC ACCUMULATING CROSS=SPECTRUM 1.3 2.7 39 40
+E-188 VAVLIN VECTOR LINEAR AVERAGING 0.8 1.3 54 46 '
+E~189 VAVEXP VECTOR EXPONENTIAL AVERAGING 0.8 1.3 35 46
+£-190 VDBPWR VECTOR CONVERSION TO DB (POWER) 1.2 1.3 75 75
+E~191 TRANS TRANSFER FUNCTION 3.3 3.3 100 100
+E-192 COHER COHERENCE FUNCTION 4.0 4.5 109 114
+E-193 ACORT  AUTO-CORRELATION (TIME-DOMAIN) 0.29% 0.29 121 121
+E-195 ACORF AUTO-CORRELATION (FREQUENCY-DOMAIN) 1.80*% 2.70 501 489
+E-197 CCORT CROSS-CORRELATION (TIME-DOMAIN) 0.29*% 0.29 121 121
+E-199 CCORF CROSS-CORRELATION (FREQUENCY-DOMAIN) 2.58% 3.93 526 510
+E-201 TCONV  POSTTAPERED CONVOLUTION (CORRELATION) 0.30* 0.30 112 112
+TABLE MEMORY OPERATIONS (optional)
+E-204 MTMOV  VECTOR MOVE (MD TO TM) 0.2 0.3 6 7
+E-205 TMMOV  VECTOR MOVE (TM TO MD) 0.2 0.3 5 5
+E-206 MTIMOV VECTOR MOVE WITH INCREMENT (MD TO TM) 0.5 0.5 7 7
+E-207 TMIMOV VECTOR MOVE WITH INCREMENT (TM TO MD) 0.3 0.3 15 15
+E-208 TTIMOV VECTOR MOVE WITH INCREMENT (TM TO TM) 0.5 0.5 7 7 )
+E-209 MMTADD VECTOR ADD (MD+MD TO T™) 0.7 0.8 20 13
+E-210 MMTSUB VECTOR SUBTRACT (MD-MD TO TM) 0.7 0.8 20 13
+E-211 MMTMUL VECTOR MULTIPLY (MD*MD TO TM) 0.7 0.8 20 13
+Z-212 MTMADD VECTOR ADD (MD+TM TO MD) 0.5 0.8 20 9
+E-213 MTMSUB VECTOR SUBTRACT (MD-TM TO MD) 0.5 0.8 20 9
+E-214 TMMSUB VECTOR SUBTRACT (TM-MD TO MD) 0.5 0.8 20 3J
+E~-215 MTMMUL VECTOR MULTIPLY (MD*TM TO MD) 0.5 0.8 20 9
+E-216 MTTADD VECTOR ADD (MD+TM TO TM) 0.5 0.3 20 20
+E-217 MTTSUB VECTOR SUBTRACT (MD-TM TO TM) 0.5 0.5 - 20 20
+E-218 TMTSUB VECTOR SUBTRACT (TM-MD TO TM) 0.5 0.5 20 20
+. g=219 WMTTMUL VECTOR MULTIPLY (MD*TM TO TM) 0.5 0.5 20 20
+E-220 TTMADD VECTOR ADD (TM+TM TO MD) 0.5 0.5 20 20
+E-221 TTMSUB VECTOR SUBTRACT (TM-TM TO MD) 0.5 0.5 20 20
+E=222 TTMMUL VECTOR MULTIPLY (TM*TM TO MD) 0.5 0.5 20 20
+E-223 TTTADD VECTOR ADD (TM+IM TO T™) 0.7 0.7 9 9
+E-224 TTTSUB VECTOR SUBTRACT (TM-TM TO TM) 0.7 0.7 9 9
+E-225 TTTMUL VECTOR MULTIPLY (TM*TM TO TM) 0.7 0.7 10 10
+APAL-CALLABLE UTILITY OPERATIONS
+E-227 DIV SCALAR DIVIDE 3.8 @ 3.8 28 28
+E-228 SQRT SCALAR SQUARE ROOT 3.8 @ 3.8 28 28
+E-229 LOG SCALAR LOGARITHM (BASE 10) bel @ 4.7 37 37
+E-230 LN SCALAR NATURAL LOGARITHM 4.0 @ 4.0 37 37 '
+FPS 860-7288-004 "B - 5 :
+Typical Program
+Execution Size
+Page Name Operation Time/Loop (AP
+(us) PS words)
+167 | 333 167 | 333
+E-231 EXP SCALAR EXPONENTIAL 4.2 @ 4.2 28 28
+E-232 SIN SCALAR SINE 4.9 @ 4.9 35 35
+E-233 Co0S SCALAR COSINE 5.4 @ 5.4 35 35
+E-234 ATAN SCALAR ARCTANGENT 8.7 @ 8.7 74 74
+E=235 ATN2 SCALAR ARCTANGENT OF Y/X 13.8 @13.8 74 74
+E-236 SPFLT FLOAT S~PAD INTEGER 0.8 @ 0.8 5 5
+E-237 SPUFLT S$-PAD UNSIGNED FLOAT 0.8 @ 0.8 8 8
+E-238 SPNEG S-PAD NEGATE 0.3 @ 0.3 2 2
+E-239 SPADD S~PAD ADD 0.2 @ 0.2 1 1
+E-240 SPSUB S=-PAD SUBTRACT 0.2 @ 0.2 1 1
+E-241 SPMUL S-PAD MULTIPLY 2.3 @ 2.3 14 14
+E-242 SPDIV S-PAD DIVIDE 6.2 @ 6.2 43 43
+E-243 SPRS S5=-PAD RIGHT SHIFT 0.3 * 0.3 5 5
+E-244 SPLS S-PAD LEFT SHIFT 0.3 * 0.3 5 5
+E-245 SPAND S-PAD AND 0.2 @ 0.2 1 1
+E~246 SPOR S-PAD OR 0.2 @ 0.2 1 1
+E-247 SPNOT S-PAD NOT 0.2 @ 0.2 1 1
+: E-248 SAVESP SAVE S-PAD INTO PROGRAM MEMORY 0.8 * 0.8 18 18
+‘ E-249 SAVSPG SAVE S-PAD 0 INTO PROGRAM MEMORY 2.0 * 2.0 11 11
+E-250 SETSP LOAD S~PADS FROM PROGRAM MEMORY 2.3 % 2.3 33 33
+E-252 SET2SP LOAD 2 S-PADS FROM PROGRAM MEMORY 5.7 @ 5.7 33 33
+E-253 MDCOM MAIN DATA COMPARE AND SET S=PAD 1.8 @ 2.0 11 11
+E-254 2zZMD CLEAR ALL PAGES OF MAIN DATA MEMORY 0.2 0.3 29 29
+E-255 RDCS READ CONTROL BIT 5 INTERRUPT . 1.5 @ 1.5 9 9
+E-256 SETCS SET CONTROL BIT 5 INTERRUPT 0.2 @ 0.2 1 1
+E-257 DAREAD READ DEVICE ADDRESS REGISTER 0.3 @ 0.3 2 2
+E~258 DAWRIT WRITE DEVICE ADDRESS REGISTER 0.3 @ 0.3 2 2
+E-259 VFCL1 VECTOR FUNCTION CALLER (1 ARGUMENT ) 0.8 1.0 10 190
+E-260 VFCL2 VECTOR FUNCTION CALLER (2 ARGUMENT) 1.0 1.0 11 11 ‘
+E-261 BITREV COMPLEX VECTOR BIT REVERSE ORDERING 0.9 1.4 45 43
+E~262 REALTR REAL FFT UNRAVEL AND FINAL PASS 0.4 0.7 68 68
+E-263 FFT2 RADIX 2 FFT FIRST PASS 1.3 2.7 16 16
+E-264 TFFT4 RADIX 4 FFT PASS 3.7 5.3 79 79
+E-265 FFT2B RADIX 2 FFT FIRST PASS + BIT REVERSE 1.3 2.7 25 25
+E-266 FFT4B RADIX 4 FFT FIRST PASS + BIT REVERSE 2.7 5.3 43 43
+E-267 STSTAT SET FFT MODE STATUS BITS 5.0 @ 5.0 19 19
+E-268 CLSTAT CLEAR FFT MODE STATUS BITS 0.5 @ 0.5 19 19
+E-269 T1ILOG2 LOGARITHM (BASE 2) 4.0 @ 4.0 19 19
+E-270 ADV2 ADVANCE POINTERS AFTER RADIX 2 FFT 0.7 @ 0.7 7 7
+E-271 ADV4 ADVANCE POINTERS AFTER RADIX 4 FFT 0.7 @ 0.7 7 7
+E-272 SET24B SETUP FOR FFT2B AND FFT4B 1.2 @ 1.2 8 8
+E-273 ZXCFFT EXPANDED COMPLEX FFT 0.32*% 0.42 187 187
+E-275 ZXRFFT EXPANDED REAL FFT 0.19% 0.28 256 256
+E=277 XBITRE EXPANDED BIT REVERSE 3.7 3.7 44 44
+E-278 XREALT EXPANDED REAL FFT FINAL PASS 0.4 0.7 71 71
+E-279 PCFFT PARTTAL COMPLEX FFT 1.05% 1.50 117 117
+E-280 XFFT4 EXPANDED RADIX 4 FFT PASS 3.7 5.3 79 79
+E-281 CTOR COMPLEX TO REAL FFT UNSCRAMBLE 0.13*% 0.13 80 80
+E-282 RTOC REAL TO COMPLEX FFT SCRAMBLE 0.09*% 0.09 143 143
+E-284 SSDA SINGLE + SINGLE TO DOUBLE ADD 1.5 @ 1.5 10 10
+FPS 860~7288-G04 B - 6
+Typical Program
+Execution Size
+Page Name Operation Time/Loop (AP
+(us) PS words)
+167 | 333 167 | 332
+E-285 SsDM SINGLE * SINGLE TO DOUBLE MULTIPLY 11.5 @11.5 81 81
+E-286 SDDA SINGLE + DOUBLE TO DOUBLE ADD 4.5 @ 4.5 28 28
+E-287 DDDA DOUBLE + DOUBLE TO DOUBLE ADD 7.5 @ 7.5 48 48
+' E-288 DDDM DOUBLE * DOUBLE TO DOUBLE MULTIPLY 18.5 @18.5 117 117 :
+Notes: #.# Timing host system dependent
+* Refer to description of routine for explanation of timing
+@ Total execution time
+FPS 860-7288-004 B - 7 '
+¢
+/
+APPENDIX C ABBREVIATED DESCRIPTIONS OF ROUTINES
+Page Routine Purpose
+DATA TRANSFER AND CONTROL OPERATIONS (APEX)
+E=4 CALL APPUT (HOST,AP,N,TYPE) PUT DATA INTO THE AP
+HOST = An array name, array element, To transfer data from the host
+variable, or comstant which computer memory into the AP
+specifies the initial host data main data memory.
+element to be transferred.
+AP = An integer constant, variable, or
+expression which specifies the base
+address in AP main data memory
+into which data is to be transferred.
+N = Element count (AP data words)
+TYPE = An integer specifying the host data
+type and format conversion during
+data transfer to the AP.
+0 32-bit integers. Stored without
+format conversion into the low
+32-bits (bits 8=39) of AP
+main data memory words.
+1 16-bit integers. Converted into un=-
+normalized AP floating-point
+numbers. These numbers must be
+normalized (using VFLT) before they
+can be processed by the AP.
+2 Host single-precision (real) floating-
+point numbers. Converted "on the £1y"
+to normalized AP floating-point
+numbers.
+3 TIBM 360 32-bit format floating-point
+numbers. Converted "on the £ly"
+to normalized AP floating-point
+numbers.
+E-6 CALL APGET (HOST,AP,N,TYPE) GET DATA FROM THE AP
+HOST = An array name, array element, To transfer data from the AP
+variable, or comstant which main data memory into the host :
+specifies the initial host memory computer memory.
+location to receive transferred data.
+AP = An integer constant, variable, or
+expression which specifies the base
+address in AP main data memory
+from which data is to be transferred.
+N = Element count (AP data words)
+FPS 860-7288-004 c - 1
+Page Routine Purpose
+TYPE = An integer specifying the host data
+type and format conversion during
+data transfer from the AP. ;
+G 32-bit integers. The low 32 bits .
+(bits 8=39) of AP memory words
+are transferred without format
+conversion into the host memory.
+1 16-bit integers. The low 16 bits _
+(bits 24=39) of AP memory words
+are stored into host integer
+locations.
+2 AP floating~point numbers are
+converted "on the fly" into host
+single-precision (real) floating-
+point naumbers. ‘
+3 AP floating-point numbers are
+converted "on the fly" into IBM 360
+32-bit format floating-point numbers
+in the host. _
+E-8 CALL APCLR INITIALIZE THE AP
+To initialize the AP by
+clearing the hardware status
+) and initializing APEX.
+E-9  CALL APWD - WAIT FOR AP DATA TRANSFER
+To delay host program execution
+until any previously initiated
+data transfer between the host
+and the AP has been completed.
+E-10 CALL APWR WAIT FOR AP PROGRAM EXECUTION
+To delay host program execution
+until any previously initiated
+AP program has been completed.
+E-11 CALL APWAIT WALT FOR AP
+To delay host program execution
+until the AP is done
+transferring data and executing
+a program.
+E-12 CALL APGSP(I,NREG) READ AN AP S-~PAD REGISTER
+I = Value contained in S-Pad register To read the contents of an AP
+NREG = S-Pad register aumber (1 to 15) S-Pad register.
+E-13 CALL APCHK(IERR) CHECK AP PROGRAM ERROR CONDITION
+IERR = Error information from AP To check error information
+program. returned by certain AP Math
+Library programs.
+FPS 860-7288-004 9] - 2
+Page Routine Purpose
+Z-14 CALL APSTAT(IERR,ISTAT) GET AP HARDWARE STATUS
+IZRR = Set to 1 if hardware error To read the AP status and DMA
+detectad, 0 otherwise control registers.
+ISTAT = A 4-element array to delineate
+the error conditions as follows:
+ISTAT(l) = Arithmetic overflow
+ISTAT{(2) = Arithmetic underflow
+ISTAT (3) = Divide by zero
+ISTAT(4) = Format conversion
+overflow/underflow
+BASIC VECTOR ARITHMETIC
+E-16 CALL VCLR(C,K,N) VECTOR CLEAR
+C = Destination vector base address To clear elements of a vector.
+K = C address increment
+N = Element count
+E-17 CALL VMOV(A,I,C,K,N) VECTOR MOVE
+A = Source vector base address To move elements of a vector
+1 = A address increment from one location to another.
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-18 CALL VSWAP(A,I,C,K,N) VECTOR SWAP
+A = Vector base address To swap data between two
+I = A address increment vectors.
+C = Vector base address
+K = C address increment
+_ N = Element count
+E-19 CALL VFILL(A,C,K,N) VECTOR FILL
+A = Address of constant value To £fill elements of a vector
+C = Destination vector base address with a constant.
+K = C address increment
+N = Element count ‘
+E-20 CALL VRAMP(A,B,C,K,N) VECTOR RAMP
+A = Address of initial ramp value To fill elements of a vector
+B = Address of ramp increment with a ramp function.
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-21 CALL VNEG(A,I,C,K,N) VECTOR NEGATE
+A = Source vector base address To negate elements of a vector.
+I = A address increment
+C = Destination vector base address
+K = C address increment
+FPS 860-7288-004 C - 3
+Page Routine Purpose
+N = Element count
+E-22 CALL VADD(A,I1,B,J,C,K,N) VECTOR ADD
+A = Source vector base address To add the elements of two
+I = A address increment vectors.
+B = Source vector base address :
+J = B address increment
+C = Destination vector base address
+K = C address increment
+. N = Element count
+E-23 CALL VSUB(A,I,B,J,C,K,N) VECTOR SUBTRACT
+A = Source vector base address To subtract the elements of :fwo
+I = A address increment vectorse.
+B = Source vector base address
+J = B address increment
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-24 CALL VUL (A,I,3,J,C,K,N) VECTOR MULTIPLY
+A = Source vector base address To multiply the elements of two
+. I = A address increment Vectors.
+B = Source vector base address
+J = B address increment
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-25 CALL VDIV{(A,I1,B,J,C,K,N) VECTOR DIVIDE
+A = Source vector base address To divide the elements of two
+I = A address increment vectors.
+B = Source vector base address
+J = B address increment
+C = Destination vector base address
+K = C address increment
+N = Element count
+E~26 CALL VSADD(A,IL,B,C,K,N) VECTOR SCALAR ADD
+) A = Source vector base address To add a scalar to the elements
+I = A address increment of-a vector.
+B = Scalar address
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-27 CALL VSMUL(A,I,B,C,K,N) VECTOR SCALAR MULTIPLY
+A = Source vector base address To multiply the elements cf a
+I = A address increment vector by a scalar.
+B = Scalar address
+C = Destination vector base address
+K = C address increment "
+N = Element count
+FPS 860-~7288-004 C - 4
+Page Routine Purpose
+E-28 CALL VTSADD(A,I,B,C,K,N) VECTOR TABLE SCALAR ADD
+A = Source vector base address To add a table memory scalar to
+I = A address increment the elements of a vector.
+B = Scalar address (Table Memory)
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-29 CALL VISMUL(A,I1,3,C,K,N) VECTOR TABLE SCALAR MULTIPLY
+A = Source vector base address To multiply the elements of a
+I = A address increment vector by a table memory
+B = Scalar address (Table Memory) scalar.
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-30 CALL VsSQ(a,I,C,K,N) VECTOR SQUARE
+A = Source vector base address To square the elements of a
+I = A address increment vector.
+C = Destination vector base address
+K = C address increment
+: N = Element count
+E-31 CALL VSSQ(A,I,C,K,N) VECTOR SIGNED SQUARE
+A = Source vector base address To multiply each element of a
+I = A address increment vector by the absolute value of
+C = Destination vector base address that element.
+X = C address increment
+N = Element count
+E-32 CALL VABS(A,I,C,K,N) VECTOR ABSOLUTE VALUE
+A = Source vector base address To take the absolute value of
+I = A address increment the elements of a vector.
+C = Destination vector base sddrzass
+K = C address increment :
+N = Element count
+E-33 CALL VSQRT(A,I,C,K,N) VECTOR SQUARE ROOT
+A = Source vector base address To take the square root of the
+I = A address increment elements of a vector.
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-34 CALL VLOG(A,I,C,K,N) VECTOR LOGARITHM (BASE 10)
+A = Source vector base address To take the logarithm (base 10)
+I = A address increment of the elements of a vector.
+C = Destination vector base address
+K = C address increment
+N = Element count '
+E-35 CALL VLN(A,I,C,K,N) VECTOR NATURAL LOGARITHM
+A = Source vector base address To take the natural logarithm
+I = A address increment of the elements of a vector.
+FPS 860-7288-004 C - 5
+Page Routine Purpose
+C = Destination vector base address
+K = C address increment
+N = Element count
+
+E-36 CALL VALOG(A,I,C,K,N) VECTOR ANTILOGARITHM (BASE 10)
+A = Source vector base address To take the antilogarithm of
+I = A address increment the elements of a vector.
+C = Destination vector base address
+K = C address increment
+N = Element count
+
+E-37 CALL VEXP(A,I,C,K,N) VECTOR EXPONENTIAL
+A = Source vector base address To take the exponential of the
+I = A address increment elements of a vector.
+C = Destination vector base address
+K = C address increment _
+N = Element count
+
+E-38 CALL VSIN(A,I,C,K,N) VECTOR SINE
+A = Source vector base address . To compute the sine of the
+I = A address increment elements of a vector.
+C = Destination vector base address
+K = C address increment
+N = Element count ‘
+
+E-39 CALL VCOS(A,I,C,X,N) VECTOR COSINE
+A = Source vector base address To compute the cosine of the
+I = A address increment elements of a vector.
+C = Destination vector base address
+K = C address increment
+N = Element count
+
+E-40 CALL VATAN(A,I,C,K,N) VECTOR ARCTANGENT
+A = Source vector base address To take the arctangent of the
+I = A address increment elements of a vector.
+C = Destination vector base address
+X = C address increment
+N = Element count
+
+E-41 CALL VATN2(A,I,B,J,C,K,N) VECTOR ARCTANGENT OF Y/X
+A = Source vector base address To take the arctangent of the
+I = A address increment ratio of the elements of two
+B = Source vector base address vectorse.
+J = B address increment
+C = Destinatiqn vector base address
+K = C address increment
+N = Element count
+
+E-42 CALL VRAND (A,C,X,N) VECTOR RANDOM NUMBERS
+A = Address of random number seed To fill elements of a vector
+C = Destination vector base address with random numbers.
+K = C address increment
+
+’ N = Element count
+FPS 860-7288-004 C - 6
+Page Routine Purpose
+E-43 CALL VMsSA (A,I,B,J,C,D,L,N) VECTOR MULTIPLY AND SCALAR ADD
+A = Source vector base address To multiply the elements of two
+I = A address increment vectors and add a scalar to the
+B = Source vector base address products.
+J = B address increment
+C = Scalar address
+D = Result vector base address
+L =D address increment
+N = Vector length
+E-44 CALL VSMA(A,I,B,C,K,D,L,N) VECTOR - SCALAR MULTIPLY AND ADD
+A = Source vector base address To multiply the =2lements of a
+I = A address increment vector by a scalar and add a
+B = Scalar address second vector to the products.
+C = Source vector base address
+K = C address increment
+D = Destination vector base address
+L =D address increment
+N = Element count
+E-45 CALL VSMSB(A,I,B3,C,K,D,L,N) VECTOR SCALAR MULTIPLY AND SUBTRACT '
+A = Source vector base address To multiply the elements of a
+I = A address increment vector by a scalar and subtract
+B = Scalar address a second vector from the
+C = Source vector base address products.
+K = C address increment
+D = Destination vector base address
+L =D address increment
+N = Element count
+E-46 CALL VMA(A,I,B,J,C,K,D,L,N) VECTOR MULTIPLY AND ADD
+A = Source vector base address To multiply the elements of two
+I = A address increment vectors, and add the products
+B = Source vector base address to a third vector, i.e.,
+J = B address increment D={(A*B)+C.
+C = Source vector base address
+K = C address increment
+D = Destination vector base address
+L = D address increment
+N = Element count
+E-47 CALL VMSB(A,I,B,J,C,X,D,L,N) VECTOR MULTIPLY AND SUBTRACT )
+A = Source vector base address ‘ To multiply the elements of two .
+I = A address increment vectors, and subtract a third .
+B = Source vector base address vector from the products, i.e., !
+J = B address increment D=(A*B)-C.
+C = Source vector base address
+K = C address increment
+D = Destination vector base address
+L =D address increment
+N = Element count
+E-48 CALL VAM(A,I,B,J,C,K,D,L,N) VECTOR ADD AND MULTIPLY
+A = Source vector base address To add the elements of two
+FPS 860-7288-004 C - 7
+Page Routine Purpose
+I = A address increment vectors, and multiply the sum
+B = Source vector base address by a third vector, i.e.,
+J = B address increment D=(A+B)*C.
+C = Source vector base address
+K = C address increment
+D = Destination vector base address
+L = D address increment
+N = Element count
+E-49 CALL VSBM(A,I,B,J,C,X,D,L,N) VECTOR SUBTRACT AND MULTIPLY
+A = Source vector base address To subtract the elements of two
+I = A address increment vectors, and multiply the
+B = Source vector base address difference bv a third vector,
+J = 3 address increment i.e., D=(A~B)*C. :
+C = Source vector base address
+X = C address increment
+D = Destination vector base address
+L = D address increment
+N = Element count _
+E-50 CALL VSMSA(A,I1,3,C,D,L,N) : VECTOR SCALAR MULTIPLY AND SCALAR ADD
+A = Source vector base address To multiply the elements of a
+I = A address increment vector by a scalar and add a
+' B = Multiplying scalar address second scalar tc the products.
+C = Adding scalar address
+D = Destination vector base address
+L = D address increment
+N = Element count
+E-51 CALL VMMA(A,I,B,J,C,K,D,L,E,M,N) ‘ VECTOR MULTIPLY, MULTIPLY, AND ADD
+A = Source vector base address To multiply the elements of two
+1 = A address increment vectors, multiply the elements
+3 = Source vector base address of a second set of two vectors,
+J = B address increment and add the two product
+C = Source vector base address vectors, i.e. E=(A*B)+(C*D).
+¥ = C address increment
+D = Source vector base address
+L = D address increment
+% = Degtination vector base address
+M = E address increment
+N = Element count
+£-52 CALL VMMSB(A,I,B,J,C,K,D,L,E,M,N) VECTOR MULTIPLY MULTIPLY AND SUBTRACT
+A = Source vector base address To multiply the elements of two
+I = A address increment vectors, multiply the elements
+B = Source vector base address of a second set of two vectors,
+J = B address increment and subtract the two product
+C = Source vector base address vectors, i.e. E=(A*B)=(C*D).
+K = C address increment
+D = Source vector base address
+L = D address increment
+E = Destination vector base address
+M = E address increment
+‘ N = Element count
+FPS 860-7288-004 C - 8
+Page Routine Purpose
+E-53 CALL vAAM(A,I,3,J,C,%,D,L,E,M,N) VECTOR ADD, ADD, AND MULTIPLY
+A = Source vector base address To add the elements of two
+I = A address increment vectors, add the elements of a
+B = Scurce vector base address second set of two vectors, and
+J = B address increment multiply the two sum vectors, :
+C = Source vector base address i.2. E=(A+B)*(C4+D).
+K = C address increment
+D = Source vector base address
+L = D address increment , '
+E = Destination vector base address
+M = E address increment
+N = Element count
+E-54 CALL VSBSBM(A,I1,B8,J,C,X,D,L,E,M,N) VECTOR SUBTRACT SUBTRACT AND MULTIZPLY
+A = Source vector base address To subtract the elements cf two
+I = A address increment vectors, subtract the elements
+B = Source vector base address of a second set of two vectors,
+J = B address increment and multiply the two difference
+C = Source vector base address vectors, i.e. E=(A-B)*(C-D).
+K = C address increment
+D = Source vector base address
+L. = D address increment
+E = Destination vector base address
+M = E address increment
+N = Element count
+E-55 CALL VAND(A,I,B,J,C,K,N) VECTOR LOGICAL AND
+A = Source vector base address To logically AND the elements
+I = A address increment of two vectors.
+3 = Source vector base address
+J = B address increment )
+C = Destination vector base address
+K = C address increment )
+N = Element count
+£-56 CALL VEQV(A,I1,B,J,C,K,N) VECTOR LOGICAL EQUIVALENCE
+A = Source vector base address To logically EQUIVALENCE the
+I = A address increment elements of two vectors.
+B = Source veector base address
+J = B address increment
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-57 CALL VOR(A,I,B,J,C,K,N) VECTOR LOGICAL OR
+A = Source vector base address To logically OR the elements of
+I = A address increment two vectors.
+B = Source vector base address
+J = B address increment
+C = Destination vector base address
+K = C address increment
+N = Element count
+FPS 860-7288-004 C - 9
+Page Routine Purpose
+T-38 CALL VFRAC(A,I,C,K,N) VECTOR TRUNCATE TO FRACTION
+A = Source vector base address To truncate the elements of a
+I = A address increment , vector to their fractional
+C = Destination vector base address parts.
+K = C address increment '
+N = Element count
+£-59 CALL VINT(A,I,C,K,N) VECTOR TRUNCATE TO INTEGER
+A = Source vector base address To truncate the slements of a
+I = A address increment ' vector to integer floating
+C = Destination vector base address point numbers.
+K = C address increment
+N = Element count
+£-60 CALL VINDEX(A,B,J,C,K,N) VECTOR INDEX
+A = Source vector base address To form a vector by using the
+B = Index vector base address elements of one vector as the
+J = B address increment ' addresses by which to select
+C = Destination vector base address the elements of a second
+K = C address increment vector.
+N = Element count
+VECTOR-TO-SCALAR OPERATIONS
+E-62 CALL SVE(A,I,C,N) SUM OF VECTOR ELEMENTS
+A = Source vecter base address To sum the elements of a
+I = A address increment vector.
+C = Destination scalar address
+N = Element count
+E-63 CALL SVEMG(A,I,C,N) SUM OF VECTOR ELEMENT MAGNITUDES
+A = Source vector base address To sum the absolute values of
+I = A address increment ' the elements of a vector.
+C = Destination scalar address
+N = Element count
+T-64 CALL SVESQ(A,I,C,N) SUM OF VECTOR ELEMENT SQUARES
+A = Source vector base address To sum the squares of the
+I = A address increment elements of a vector.
+C = Destination scalar address
+N = Element count
+£Z-65 CALL SVS(A,I,C,N) SUM OF VECTOR SIGNED SQUARES
+A = Source vector base address To sum the signed squares of
+1 = A address increment the elements of a vector.
+C = Destination scalar address
+N = Element count
+E-66 CALL DOTPR(A,I,B,J,C,N) DOT PRODUCT
+A = Source vector base address To compute the dot product of
+I = A address increment the elements of two vectors.
+FPS 860-7288-004 C - 10
+Page Routine Purpose
+B = Source vector base address
+J = B address increment
+C = Destination scalar address -
+N = Element count
+E-67 CALL MAXV(A,I,C,N) MAXIMUM ELEMENT IN VECTOR
+A = Source vector base address To scan a vector for its
+I = A address increment maximum element.
+C = Destination scalar address .
+(2 words required)
+N = Element count
+E-68 CALL MINV{(A,I,C,N) MINIMUM ELEMENT IN VECTOR
+A = Source vector base address : To scan a vector for its
+I = A address increment minimum element.
+C = Destination scalar address
+(2 words required) , _
+N = Element count
+E-69 CALL MAXMGV(A,I,C,N) MAXIMUM MAGNITUDE ELEMENT IN VECTOR .
+A = Source vector base address To scan a vector for its
+I = A address increment maximum magnitude (absolute
+C = Destination scalar address value) element.
+(2 words required)
+N = Element count
+E-70 CALL MINMGV(A,I,C,N) MINIMUM MAGNITUDE ELEMENT IN VECTOR
+A = Source vector base address To scan a vector for its
+I = A address increment minimum magnitude (absolute
+C = Destination scalar address value) element.
+(2 words required)
+N = Element count
+E-71 CALL MEANV(A,I,C,N) MEAN VALUE OF VECTOR ELEMENTS
+A = Source vector base address To compute the mean (average)
+I = A address increment value of the elements of a
+C = Destination scalar address ! vector.
+N = Element count
+E-72 CALL MEAMGV(A,I,C,N) MEAN OF VECTOR ELEMENT MAGNITUDES .
+A = Source vector base address To compute the mean (average)
+I = A address increment value of the absolute values of
+C = Destination scalar address the elements of a vector.
+N = Element count
+E-73 CALL MEASQV(A,I,C,N) MEAN OF VECTOR ELEMENT SQUARES
+A = Source vector base address To compute the mean (average)
+I = A address increment value of the squares of the
+C = Destination scalar address elements of a vector.
+N = Element count
+E~74 CALL RMSQV(A,IL,C,N) ROOT-MEAN-SQUARE OF VECTOR ELEMENTS
+A = Source vector base address : To compute the square root of
+I = A address increment the mean (average) value of the
+FPS 860-7288-004% C - 11
+Page Routine Purpose
+C = Destination scalar address squares of the elements of a
+¥ = Element count vector. ,
+VECTOR COMPARISON OPERATIONS
+E-76 CALL VMAX(A,I,B,J,C,K,N) VECTOR MAXIMUM
+A = Source vector base address To form a vector from the
+I = A address increment maximum value of each
+B = Source vector base address corresponding pair of elements
+J = B address increment of two vectors.
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-77 CALL VMIN(A,I,B,J,C,K,N) VECTOR MINIMUM
+A = Source vector base address To form a vector from the
+I = A address increment minimum value of each
+B = Source vector base address corresponding pair of elements
+J = B daddress increment of two vectors.
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-78 CALL VMAXMG(A,I,B,J,C,K,N) VECTOR MAXIMUM MAGNITUDE
+A = Source vector base address To form a vector from the
+1 = A address increment maximum absolute value of each
+B = Source vector base address corresponding pair of elements
+J = B address increment of two vectors.
+C = Destination vector base address
+K = C address increment
+" N = Element count
+E-79 CALL VMINMG(A,I,B,J,C,K,N) VECTOR MINIMUM MAGNITUDE
+A = Source vector base address To form a vector from the
+1 = A address increment minimum absolute value of each
+B = Source vector base address corresponding pair of elements
+: J = B address increment of two vectors.
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-30 CALL VCLIP(A,I,B,C,D,L,N) VECTOR CLIP
+A = Source vector base address To clip the values of a vector
+I = A address increment to within a specified range.
+B = Address of smaller scalar
+C = Address of larger scalar _
+D = Destination vector base address
+L = D address increment
+N = Element count
+E-81 CALL VICLIP(A,I,B,C,D,L,N) VECTOR INVERTED CLIP
+FPS 860-7288-004 C - 12
+Page Routine Purpose
+A = Source vector base address To exclude values of a vector
+I = A address increment from within a specified range.
+3 = Address of smaller scalar
+C = Address of larger scalar
+D = Destination vector base address
+L =D address increment
+N = Element count
+E=-82 CALL VLIM(A,I,B,C,D,L,N) VECTOR LIMIT
+A = Source vector base address To create a vector limited to a
+I = A address increment single value in magnitude,
+3 = Address of scalar to compare where the sigzn of each element
+with source depends on whether the
+C = Address of destination magnitude corresponding element of a
+scalar ) second vectcr exceeds a cerctain
+D = Destination vector base address value.
+L =D address increment
+N = Element count
+E-83 CALL LVGT(A,I,B,J,C,K,N) LOGICAL VECTOR GRFATER THAN
+A = Source vector base address To compare the elements of two
+I = A address increment vectors A and B and output a
+B = Source vector base address vector C such that:
+J = B address increment C(mK)=1.0 1if A(ml)>B(aJ)
+C = Destination vector base address C(mK)=0.0 if A(mI)=<B(mJ)
+K = C address increment
+N = Element count
+E-84 CALL LVGE (A, I,B8,J,C,K,N) LOGICAL VECTOR GREATER THAN OR EQUAL ‘
+A = Source vector base address To compare the elements of two
+I = A address increment vectors A and B and output a
+B = Source vector base address vector C such that:
+J = B address increment C(mK)=1.0 1if A(mI)>=B (mJ)
+C = Destination vector base address C(mK)=0.0 1if A(mI)<B(mJ)
+X = C address increment
+N = Element count
+E-85 CALL LVEQ(a,I,B,J,C,K,XN) LOGICAL VECTOR EQUAL
+A = Source vector base address To compare the elements of two i
+I = A address increment ‘ vectors 4 and B and output a
+B = Source vector base address vector C such that:
+J = B address increment C(mK)=1.0 if A(mI)=B (nJ)
+C = Destination vector base address C(mK)=0.0 if A(mI)not=B{(mJ)
+K = C address increment
+N = Element count
+E-86 CALL LVNE(4,ILB,J,C,K,N) LOGICAL VECTOR NOT EQUAL
+4 = Source vector base address To compare the elements of two
+I = A address increment vectors A and B and output a
+B = Source vector base address vector C such that:
+J = B address increment C(mK)=1.0 if A(mI)not=B (mJ)
+C = Destination vector base address C{mK)=0.0 if A(mI)=B(mJ)
+K = C address increment
+N = Element count
+FPS 860-7288-004 C - 13
+Page Routine Purpose
+E-87 CALL LVNOT(A,I,C,X,N) LOGICAL VECTOR XNOT
+A = Source vector base address To examine the elements of a
+I = A address increment vector A and output a vector ¢
+C = Destipation vector base address such that:
+K = C address increment C(mK)=1.0 if A(mI)=0.0
+N = Element count C(mK)=0.0 if A(mI)mnot=0.0
+Z-88 CALL VLMERG(A,I,B,J,C,K,D,L,N) VECTOR LOGICAL MERGE
+A = Source vector base address To examine the elements of
+I = A address increment three vectors,A,B,and C and
+B = Source vector base address output a vector D such that:
+J = B address increment D(mL)=A(mI) if C(mK)not=0.0
+C = Source vector base address D(mL)=B(mJ) if C(mK)=0.C
+K = C address increment
+D = Destination. vector base address
+L =D address increment
+N = Element count
+COMPLEX VECTOR ARITHMETIC
+E-90 CALL CVMOV(A,I,LC,K,N) COMPLEX VECTOR MOVE
+A = Source vector base address To move the elements of a
+. I = A address increment complex vector from one
+C = Destination vector base address location to another.
+K = C address increment
+¥ = Element count
+E-91 CALL CVFILL(A,C,K,X) COMPLEX VECTOR FILL
+A = Complex constant base address To fill the elements of a
+C = Destination vector base address complex vector with a complex
+K = C address increment constant.
+N = Complex element count
+E-92 CALL CVCOMB(A,I,B,J,C,K,N) COMPLEX VECTOR COMBINE
+A = Real source vector base address To form a complex vector by
+I = A address increment combining two real vectors.
+B = Imaginary source vector base address
+J = B address increment
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-93 CALL CVREAL(A,I,C,K,N) FORM COMPLEX VECTOR OF REALS
+A = Real source vector base address To form a complex vector by
+I = A address increment combining a real vector and
+C = Destination vector base address zeroing the imaginaries.
+K = C address increment .
+N = Element count
+E-94 CALL VREAL(A,I,C,K,N) EXTRACT REALS OF COMPLEX VECTOR
+FPS 860-7288-004 C - 14 :
+Page Routine Purpose
+A = Complex source vector base address To form a real vector by
+I = A address increment extracting the real parts from
+C = Real destination vector base address a complex vector.
+K = C address increment
+N = Element count
+E-95 CALL VIMAG(A,I,C,K,N) EXTRACT IMAGINARIES QOF COMPLEX VECTOR
+A = Complex source vector base address To form a real vector by
+I = A address increment extracting the imaginary parts
+C = Real destination vector base address from a complex vector.
+K = C address increment
+N = Element count
+E-96 CALL CWNEG(A,ILC,X,N) COMPLEX VECTOR XNEGATE
+A = Source vector base address To negate the elements of a
+I = A address increment complex vector.
+C = Destination vector base address
+X = C address increment
+N = Element count
+E-97 CALL CVCONJ(A,I,C,X,N) COMPLEX VECTOR CONJUGATE
+A = Source vector base address To conjugate the elements of a
+I = A address increment complex vector.
+C = Destination vector base address
+K = C address increment
+N = Complex element count
+E-98 CALL CVADD(A,I,3,J,C,K,N) COMPLEX VECTOR ADD
+A = Source vector base address To add the elements of two
+I = A address increment complex vectors.
+B = Source vactor base address
+J = B address increment
+C = Destination vector base address
+K = C address increment
+N = Element count ‘
+E-99 CALL CVSUB(A,I1,B,J,C,K,N) COMPLEX VECTOR SUBTRACT
+A = Source vector base address To subtract the elements of two
+I = A address increment complex vectors.
+B = Source vector base address
+J = B address increment
+C = Destination vector base address
+K = C address increment
+N = Element count '
+E-100 CALL CVMUL(A,I,B,J,C,K,N,F) COMPLEX VECTOR MULTIPLY
+A = Source vector base adaress To multiply the elements of two
+I = A address increment complex vectors.
+B = Source vector base address
+J = B address increment
+C = Destination vector base address
+K = C address increment
+. N = Complex element count
+F = Conjugate flag,
+FPS 860~7288-004 c - 15 7
+Page Routine ' Purpose
++1 = normal complex multiply
+-1 = multiply with conjugate of A
+£-101 CALL CVSMDL (A,I,B,C,X,N) © COMPLEX VECTOR SCALAR MULTIPLY
+A = Source vector base address To multiply the elements of a
+I = A address increment complex vector by a real
+B = Scalar address scalar. _
+C = Destination vector base address
+K = C address increment
+N = Element count
+£-102 CALL CVRCIP(A,I,C,X,N) COMPLEX VECTOR RECIPROCAL
+A = Source vector base address To obtain reciprocal of a
+I = A address increment complex vector.
+C = Destination vector base address
+X = C address increment
+N = Complex element count
+£-103 CALL CRVADD(A,I,B,J,C,K,N) COMPLEX AND REAL VECTOR ADD
+A = Source vector base address (complex) To add the elements of a
+I = A address increment complex vector to the elements
+3 = Source vector base address (real) of a real vector.
+J = B address increment
+C = Destination vector base address
+X = C address increment
+N = Element count
+E-104 CALL CRVSUB(A,I1.B3,J,C,K,N) COMPLEX AND REAL VECTOR SUBTRACT
+A = Source vector base address (complex) To subtract the elements of a
+I = A address increment real vector from the elements
+B = Source vector base address (real) of a complex vector.
+J = B address increment
+¢ = Destination vector base address
+K = C address increment : »
+N = Element count
+£-105 CALL CRVMUL(A,I,3,J,C,%X,N) COMPLEX AND REAL VECTOR MULTIPLY
+A = Source vector base address (complex) To multiply the elements of a
+I = A address increment complex vector by the elements
+B = Source vector base address (real) of a real vector.
+J = B address increment
+C = Destination vector base address
+K = C address increment
+N = Element count
+£-106 CALL CRVDIV(A,I,B,J,C,K,N) COMPLEX AND REAL VECTOR DIVIDE
+A = Source vector base address (complex) To divide the elements of a
+I = A address increment complex vector by the elements
+B = Source vector base address (real) of a real vector.
+J = B address increment ,
+C = Destination vector base address
+K = C address increment
+N = Element count
+FPS 860-7288-004 c - 16
+Page Routine Purpose
+E-107 CALL CVMA(A,I,B,J,C,K,D,L,N,F) : COMPLEX VECTOR MULTIPLY AND ADD
+A = Source vector base address To multiply the elements of two
+I = A address increment complex vectors, and add the
+B = Source vector base address products to a third complex
+J = B address increment vector.
+C = Source vector base address
+K = C address increment
+D = Destination vector base address
+L = D address increment
+N = Complex element count
+F = Conjugate £flag,
++1 = normal complex multiply
+-1 = multiply with conjugate of A
+E-109 CALL CVMAGS(A,I,C,K,N) _ COMPLEX VECTOR MAGNITUDE SQUARED
+A = Source vector base address To compute the squared
+I = A address increment magnitude of the elements of a
+C = Destination vector base address complex vector. .
+K = C address increment
+N = Complex element count ,
+E-110 CALL SCJMA(A,I,B,J,C,K,N} SELF-CONJUGATE MULTIPLY AND ADD
+A = Source complex vector base address To multiply the elements of a
+I = A address increment complex vector by the conjugate
+B = Source real vector base address of that vector (squared
+J = B address increment magnitude), and add the real
+C = Destination real vector base address products to a real vector.
+K = C address increment
+N = Complex element count
+E-111 CALL POLAR(A,I,C,K,N) RECTANGULAR TO POLAR CONVERSION
+A = Source vector base address To convert a complex vector
+I = A address increment from rectangular to polar form.
+C = Destination vector base address
+K = C address increment
+N = Complex element count
+E-112 CALL RECT(A,I,C,K,N) POLAR TO RECTANGULAR CONVERSION
+A = Source vector base address To convert a complex vector
+I = A address increment from polar to rectangular form.
+C = Destination vector base address
+K = C address increment
+N = Complex element count
+E-113 CALL CVEXP(A,I,C,K,N) COMPLEX VECTOR EXPONENTIAL
+A = Source vector base address To calculate the complex
+I = A address increment exponential exp(iX)=
+C = Destination vector base address COS (X)+iSIN(X) .
+X = C address increment
+N = Element count
+E-114 CALL CVMEXP(A,I,B,J,C,K,N) VECTOR MULTIPLY COMPLEX EXPONENTIAL
+A = Source vector base address To multiply a real vector by a
+I = A address increment complex exponential.
+FPS 860-7288-004 ' C - 17
+Page Routine Purpose
+B = Source vector base address
+J = B address increment
+C = Destination vector base address
+K = C address increment
+N = Complex element count
+E-115 CALL CDOTPR(),I,B,J,C,N) COMPLEX DOT PRODUCT
+A = Source vector base address To compute the complex dot
+I = A address increment product of two complex vectors.
+: 3 = Source vector base address
+J = 3 address increment
+C = Destination scalar address
+N = Complex element count
+) DATA FORMATING OPERATIONS
+£E-117 CALL VFLT(A,I,C,K,N) ’ VECTOR INTEGER FLOAT
+A = Source vector base address To convert a vector of integers
+I = A address increment to a vector of floating-point
+C = Destination vector base address numbers.
+K = C address increment
+N = Element count ‘
+E-118 CALL VFIX(A,I,C,K,N) VECTOR INTEGER FIX
+A = Source vector base address To fix to integers the elements
+I = A address increment of a floating=point vector.
+C = Destination vector base address .
+X = C address increment :
+N = Element count '
+E-120 CALL VSMAFX(4,I,3,C,D,L,N) VECTOR SCALAR MULTIPLY, ADD, AND FIX
+A = Source vector base address To multiply the elements of a
+I = A address increment vector by a scalar, add a
+B = Multiplying scalar address second scalar to the products,
+. C = Adding scalar address and fix the resulting sums to
+D = Destination vector base address integers. ' ’
+L =D address increment
+N = Element count
+E-121 CALL VSCALE(A,I,B,C,X,N,NB) VECTOR SCALE (POWER 2) AND FIX
+A = Source vector base address To scale the elements of a _
+I = A address increment vector by a power of 2 such
+B = Scalar base address that a selected scalar will
+C = Destination vector base address just fit into a specified
+K = C address increment integer bit width, and then fix
+N = Element count the scaled elements to
+NB = Desired width (2 to 28 bits) of integers. :
+integers, including sign bit
+E-123 CALL VSCSCL(A,I,C,K,N,NB) VECTOR SCAN, SCALE (POWER 2) AND FIX
+_ A = Source vector base address To scale the elements of a
+FPS 860-7288-004 ' c - 18
+Page Routine Purpose
+I = A address increment vector by a power of 2 such
+C = Destination vector base address that the largest magnitude
+X = C address increment element will just £it intoc =z
+¥ = Element count ’ specified integer bit width,
+NB = Desired width (2 to 28 bits) of and then fix the scaled
+integers, including sign bit elements to integers.
+E-125 CALL VSHFX(A,I,C,K,N,NS) VECTOR SHIFT AMND FIX
+A = Source vector base address To shift (multiply by a power
+I = A address increment of 2) and then fix to integers
+C = Destination vector base address the elements of a
+K = C address increment floating=-point vector.
+N = Element count
+NS = Power of 2 (may be negative)
+E-126 CALL vUPS(A,I,C,K,N) VECTOR 8-BIT BYTE UNPACK
+A = Source vector base address To unpack four 8-bit unsigned
+1 = A address increment bytes f£rom each source vector
+C = Destination vector base address word and store them in four
+K = C address increment destination words as 38-bit
+N = Element count (source words) floating=-point numbers.
+E-127 CALL VUPS8(A,I,C,K,N) VECTOR 8-BIT SIGNED BYTE UNPACK
+A = Source vector base address To umpack four 8-bit 2°'s
+I = A address increment complement signed bytes from
+C = Destination vector base address each source word and store them
+K = C address increment in four destination words as
+N = Element count (source words) 38-bit floating-point numbers.
+E-128 CALL VPK8(A,I,C,K,N) VECTOR 8=-BIT BYTE PACK
+A = Source vector base address To pack each four 38-bit
+I = A address increment floating=point numbers into one
+C = Destination vector base address destination word as 8-bit
+K = C address increment bytes.
+N = Element count (destination words)
+E-129 CALL VUP16(A,I,C,K,N) VECTOR 16-BIT BYTE UNPACK
+A = Source vector base address To unpack two 16=bit unsigned
+I = A address increment bytes from each source word and
+C = Destination vector base address store them in two destinationm
+K = C address increment words as 38-bit floating- point
+¥ = Element count (source words) positive numbers.
+E-130 CALL VUPS16(aA,I,C,K,N) VECTOR 16-BIT SIGNED BYTE UNPACK
+A = Source vector base address To unpack two 16-bit signed 2°s
+I = A address increment complement bytes from each
+~ C = Destination vector base address source word and store them in
+K = C address increment two destination words as signed
+N = Element count (source words) N 38-bit floating-point numbers.
+E-131 CALL VPK16(A,I,C,K,N) VECTOR 16-BIT BYTE PACK
+A = Source vector base address To pack each two 38-bit
+I = A address increment floating-point numbers into one
+C = Destination vector base address destination word as l6-bit
+FPS 860-7288-004 C - 19
+Page Routine Purpose
+K = C address increment bvtes.
+N = Element count (destination words)
+£Z-132 CALL VFLT32(A,I1,C,XK,N) VECTOR 32-BIT INTEGER FLOAT
+A = Source vector base address To float 32-bit signed 2°s
+I = A address increment complement integers and store
+C = Destination vector base address them as 38~bit floating point
+K = C address increment integers.
+N = Element count
+E-133 CALL VFIX32(A,I,C,K,N) VECTOR 32-3IT INTEGER FIX
+A = Source vector base address To fix floating-point numbers
+I = A address increment from =-2147483648 to 2147483647
+C = Destination vector base address and store them in a destinaticn
+K = C address increment vector as 32-bit signed 27s
+N = Element count complement integers.
+=134 CALL VSEFLT(A,I,C,K,N) VECTOR SIGN EXTEND AND FLOAT
+A = Source vector base address To extend the sign of a vector
+I = A address increment of 16-bit integers and convert
+C = Destination vector base address them to floating-point numbers.
+K = C address increment
+N = Element count
+MATRIX OPERATIONS
+E-136 CALL MTRANS(A,I,C,K,MC,NC) MATRIX TRANSPOSE
+A = Source matrix base address To transpose a matrix.
+I = A address increment
+C = Destination matrix base address
+X = C address increment
+MC = Number of rows of C
+(Columns of A)
+NC = Number of columns of C
+{(rows of A)
+E-137 CALL MMUL(A,I1,B,J,C,K,MC,NC,NA) MATRIX MULTIPLY
+A = Source matrix base address To multiply twc matrices.
+1 = A address increment
+B = Source matrix base address
+J = B address increment
+C = Destination matrix base address
+X = C address increment
+YMC = Number of rows in C
+(Rows in A)
+NC = Number of columns in C
+(Columns in B)
+NA = Number of columns im A
+: (Rows in B) '
+E-139 CALL MMUL32(A,I1,B,J,C,X,MC,NC,NA) MATRIX MULTIPLY (DIMENSION <=32)
+FPS 860-~7288-004 C - 20
+Page Routine Purpose
+A = Source matrix base address To multiply two matrices with
+I = A address increment dimensions <=32.
+B = Source matrix base address
+J = B address increment
+C = Destination matrix base address
+K = C address increment
+MC = Number of rows in C
+(Rows {in A)
+NC = Number of columns in C
+(Columns in B)
+NA = Number of columms in A (<=32)
+(Rows in B)
+E-141 CALL MATINV(A,N) MATRIX INVERSE
+A = Source matrix base address To invert a matrix.
+A + N*N = Destination matrix base address
+N = Numbers of rows (and columns) in A
+E-143 CALL SOLVEQ(A,N,B,M,ROWADD,X,IERR) LINEAR EQUATION SOLVER
+A = Coefficient matrix base address To solve a system of
+N = Number of rows (and columns) in A simultaneous linear equatioms.
+B = Base address of matrix of M N-element
+right hand sides
+M = Number of N-element solution vectors
+ROWADD = Base address of 2*N-element work
+vector for row addresses
+X = PBase address for matrix of M N-element
+solution vectors :
+IERR = Address of singularity value
+E-145 CALL MWL3(a,I1,3,J,JP,C,K,KP,N) MATRIX VECTOR MULTIPLY (3X3)
+A = 3x3 matrix base address To multiply a 3x3 matrix by a
+1 = A address increment series of 3-element column
+3 = First source vector base address vectors.
+J = Increment between the three
+elements in each vector of B
+JP = Increment between the first '
+element of each vector of B
+C = First destination vector base address
+K = Increment between the three
+elements in each vector in C
+KP = Increment between the first
+element of each vector in C
+N = Number of 3-element vectors
+®=-147 CALL MVML4(A,I1,3,J,JP,C,K,KP,N) MATRIX VECTOR MULTIPLY (4X4)
+A = 4x4 matrix base address To multiply a 4x4 matrix by a
+I = A address increment series of 4—elecment column
+B = First source vector base address vectors.
+J = Increment between the three
+elements in each vector of B
+JP = Increment between the first
+element of each vector of B
+C = First destination vector base address
+FPS 860~7288-004 C - 21
+Page Routine Purpose
+¥ = Increment between the three
+elements in each vector in C
+XP = Increment between the first
+element of each vector in C
+N = Number of 4-element vectors
+£E-149 CALL CTRN3(A,B,J,JP,C,D,L,LP,N) 3-DIMENSION COORDINATE TRANSFORMATION
+A = 3x3 rotation matrix base address To transform a series of
+B = First source vector base address 3=dimensional coordinates
+J = Increment between the three (translation and rotatiocn).
+elements in each vector of B
+JP = Increment between the first
+elements (x-coordinates) of
+each vector of B
+C = Base address of 3-element translation
+vector
+D = First destination vector base address
+L = Increment between the three
+elements in each vector in D
+LP = Increment between the first
+elements of each vector in D
+N = Number of 3-element coordinate
+. vectors
+E-151 CALL FPMMM(A,B,C,MC,NC,NA) FAST MEMORY MATRIX MULTIPLY
+A = Source matrix base address To multiply two matrices.
+B = Source matrix base address (Available for 167 ns memory
+C = Destination matrix base address only.)
+MC = Number of rows in C
+(Rows in A)
+NC = Number of colummns in C
+(Columns in B)
+NA = Number of columns in A
+(Rows in B)
+£-153 CALL FMMM32(A,B,C,MC,NC,NA) FAST MEMORY MATRIX MULTIPLY (<=32)
+A = Source matrix base address To multiply two matrices with
+B = Source matrix base address dimensions <=32. (Available
+C = Destination matrix base address for 167 ns wmemory only.)
+MC = Number of rows in C '
+(Rows in A)
+NC = Number of columns in C
+(Columns in B)
+NA = Number of columns in A (<=32)
+(Rows in B)
+FFT OPERATIONS
+E-156 CALL CFFT(C,N,F) COMPLEX TO COMPLEX FFT (IN PLACE)
+C = Source and destination vector To perform an in-place complex
+base address forward or inverse fast Fourier
+FPS 860-7288-004 C - 22
+Page Routine Purpose
+N = Complex element count (power of 2) transform (FFT).
+
+F = Direction flag, +1 for forward
+-1 for inverse
+
+E-158 CALL CFFTB(A,C,N,F) COMPLEX TO COMPLEX FFT (NOT IN PLACE) '
+A = Source vector base address To perform a not-in-place
+C = Destination vector base address complex forward or invarse fast
+1 = Complex element count (power of 2) Fourier transform (FFT).
+
+T = Direction flag, +1 for forward
+-1 for inverse
+E-160 CALL RFFT(C,N,F) REAL TO COMPLEX FFT (IN PLACE)
+C = Source and destination vector To perform an in-pnlace
+base addrfess real-to-complex forward or a
+N = Real element count (power of 2) complex-to-real inverse fast
+F = Direction flag, +1 for forward Fourier transform (FFT).
+-1 for inverse
+
+E-162 CALL RFFTB(A,C,N,F) REAL TO COMPLEX FFT (NOT IN PLACE)
+A = Source vector base address To perform a not-in-place
+C = Destination vector base address real-to~-complex forward or a
+N = Real element count (power of 2) complex~to-real inverse fast
+F = Direction flag, +1 for forward _ Fourier transform (FFT).
+
+-1 for inverse
+
+-164 CALL CFFTSC(C,N) COMPLEX FFT SCALE
+
+C = Source and destination vector To scale complex-to-complex
+base address forward FFT results.
+N = Complex element count (power of 2)
+E-165 CALL RFFTSC(C,N,F,FS) REAL FFT SCALE AND FORMAT
+C = Source and destination vector To scale real-to complex FX¥T
+base address results and/or change a complex
+N = Real element count (power of 2) vector between the special RFFT
+F = Formatting flag complex format and the normal '
+1,0,-1 = No format change complex vector format.
+2 = Unpack RFFT result into N/2
+complex elements
+3 = Unpack RFFT result into N/2 + 1
+complex elements
+-2 = Pack N/2 complex elements
+into RFFT format
+-3 = Pack N/2 + 1 complex elements :
+into RFFT format
+FS = Scaling flag
+0 = No scaling
+1 = Multiply by 1/(2*N)
+=1 = Multiply by 1/(4*N)
+
+E-167 CALL CFFT2D(C,N1,N2,F) COMPLEX TO COMPLEX 2-~DIMENSIONAL FFT
+C = source and destination array address Two perform an in place complex
+N1 = Number of columns = length of rows two-dimensional FFT on
+N2 = Number of rows = length of columns rectangular arrays which occupy
+
+(Note: N1*N2 <= 32768) B no more than 65536 main data
+
+FPS 860-7288-004 ' c - 23
+Page Routine Purpose
+¥ = Forward-Inverse flag memory locations (ome paze).
+=-169 CALL RFFT2D(C,N1,N2,F) REAL TO COMPLEX 2~DIMENSIONAL FFT
+C = Source and destination array address To perform an in place real
+N1 = Number of columns = length of rows two-dimensional FFT on
+N2 = Number of rows = length of columns rectangular arrays which occupy
+(Note: N1#N2 <= $5536) no more than 65536 main data
+F = Forward-inverse flag memory locations (one page).
+AUXILTARY OPERATIONS :
+E-172 CALL CONV(4A,I1,B3,J,C,K,N,M) CONVOLUTION (CORRELATION)
+A = Operand vector base address To perform a comvolution or
+I = A address increment correlation cperation on two
+B = Cperator vector base address vectors. _
+J = B address increment
+C = Destination vector base address
+K = C address increment
+N = Element count for C (result) ,
+_ M = Element count for B (operator)
+: (Element count for A (operand) must
+be N+HI-1) .
+E-174 CALL DEQ22(4,I,B,C,K,N) DIFFERENCE EQUATION, 2 POLES, 2 ZERCS
+A = Source vector base address To perform a 2-pole, 2~-zero
+I = A address increment recursive digital filtering
+3 = Base address of 5 filter coefficients difference equation on a
+C = Destination vector base address vector.
+X = C address increment
+N = Element count
+£-175 CALL VPOLY(A,I,3,J,C,K,N,P) VECTOR POLYNOMIAL EVALUATION
+A = Coefficient vector base address To evaluate a vector
+(dighest order coefficient is first) polynomial.
+I = A address increment -
+B = Source vector base address
+J = B address increment
+C = Destination vector base address
+K = C address increment
+N = Element count (of B and C)
+? = Order of polymomial (>1)
+E-177 CALL VSUM(A,I,L,C,K,N,H) VECTOR SUM OF ELEMENTS INTEGRATION
+A = Source vector base address To integrate a vector by
+I = A address increment performing a running scaled sum
+C = Destination vector base address of the elements of the vector.
+K = C address increment
+N = Element count
+H = Address of integration step size
+E~178 CALL VTRAPZ(A,I,C,K,N,H) VECTOR TRAPEZOIDAL RULE INTEGRATION
+FPS 860-7288-004 c - 24 '
+Page Routine Purpose
+A = Source vector base address To integrate a vector by using
+I = A address increment the trapezoidal rule.
+C = Destination vector base address
+K = C address increment
+N = Element count
+H = Address of integration step size
+E-~179 CALL VSIMPS(A,I,C,K,N,H) VECTOR SIMPSONS 1/3 RULE INTEGRATION
+A = Source vector base address To integrate a vector by using
+I = A address increment Simpson’s 1/3 rule.
+C = Destination vector base address
+K = C address increment
+N = Element count
+H = Address of integration step size
+E-180 CALL WIENER(LR,R,G,F,A,ISW) WIENER LEVINSON ALGORITHM
+LR = Filter length To solve a system of single
+R = Source vector base address channel normal equations which
+(auto-correlation coefficients) arise in least squares
+G = Source vector base address filtering and prediction
+(cross-correlation) problems.
+T = Destination vector base address
+(filter weighting coefficients)
+A = Destination vector base address
+(prediction error operator)
+ISW = Algorithm switch :
+0 for spike deconvolution
+1 for general deconvolution .
+SIGNAL PROCESSING OPERATIONS (optional)
+E-183 CALL EIST(A,I,C,N,NB,AMAX,AMIN) HISTOGRAM
+A = Source vector base address To perform a histogram on a
+I = A address increment vector.
+C = Histogram vector base address
+N = Element count for A
+NB = Element count (bins) in C
+AMAX = Address of maximum histogram value
+AMIN = Address of minimum histogram value
+E-184 CALL HANN(A,I,C,X,N,F) HANNING WINDOW MULTIPLY
+A = Source vector base address To multiply a vector by a
+I = A address increment Hanning window.
+C = Destination vector base address
+K = C address increment
+N = Element count (a power of 2)
+F = Normalization flag
+F=0 means unnormalized Hanning window
+(peak window value=1.0)
+F=1 means normalized Hanning window
+(peak window value=1.63)
+FPS 860-7288-004 c - 25 : .
+Page Routine Purpose .
+£-186 CALL ASPEC(A,C,N) ACCUMULATING AUTO-SPECTRUM
+A = Source complex vector base address To perform accumulating
+C = Destination real vector base address auto-spectrum calculation on a
+N = Element count complex vector.
+(Note vector elements occupy consecutive
+addresses.)
+E-187 CALL CSPEC(A,B,C,N) ACCUMULATING CROSS=-SPECTRUM
+A = Source vector base address Te perform accumulating
+B = Source vector base address cross-spectrum calculation on
+C = Destination vector base address two complex vectors.
+N = Element count
+(Note vector elements occupy consecutive
+addresses.)
+E-188 CALL VAVLIN(4,I,3,C,K,N) VECTOR LINEAR AVERAGING
+A = Source vector base address To update the linear average of
+I = A address increment - a sequence of vectors to
+B = Address for number of vectors include a new vector.
+included in current average
+C = Averaged vector base address :
+XK = C address increment
+N = Element count
+E-189 CALL VAVEXP(A,I,B,C,K,N) VECTOR EXPONENTIAL AVERAGING
+A = Source vector base address To update the approximately
+I = A address increment exponential average of a
+B = Address for discount factor sequence of vectors to include
+C = Averaged vector base address a new vector.
+K = C address increment
+N = Element count
+E-190 CALL VDBPWR(A,I,B,C,K,N) VECTOR CONVERSION TO DB (POWER)
+A = Source vector base address To compute the decibel (power)
+I = A address increment equivalents of the elements of
+B = Address of scalar reference (0 dB) a vector, relative to a
+value specified scalar value.
+C = Destination vector base address
+K = C address increment
+N = Element count
+E-191 CALL TRANS (A,B,C,N) TRANSFER FUNCTION
+A = Auto-spectrum base address (real) To perform a complex transier
+B = Cross-spectrum base address (complex) function calculation by
+C = Complex transfer function base address dividing the cross-spectrum by
+N = Element count the auto-spectrum.
+(Note vector elements occupy consecutive
+addresses.)
+£-192 CALL COHER(A,B,C,D,N) COHERENCE FUNCTION
+A = Auto-spectrum base address (real) To compute the coherence
+B = Auto-spectrum base address (real) function, given the
+C = Cross—spectrum base address (complex) auto=-spectra of two signals and
+FPS 860-7288~004 c - 26 :
+Page Routine Purpose
+D = Coherence function base address {(real) the cross-spectrum between
+N = Element count them.
+(Note vector elements occupy comsecutive
+addresses.)
+E-193 CALL ACORT (A,C,N,M) - AUTO-CORRELATION (TIME-DOMAIN)
+A = Source vector base address To perform an auto-correlation
+C = Destination vector base address operation on a vector using
+N = Element count for C (number of lags) time-domain techniques.
+M = Element count for A
+(Note vector elements occupy consecutive
+addresses.)
+EZ-195 CALL ACORF(A,C,N,M) AUTO-CORRELATION (FREQUENCY-DOMAIN)
+A = Source vector base address To perform an auto-correlation
+C = Destination vector base address operation on a vector using
+N = Element count for C (number of lags) frequency-domain (FFT)
+M = Element count for A (power of 2) techniques.
+(Note vector elements occupy consecutive
+
+addresses. Requires 2M words storage
+
+for A.)
+
+E-197 CALL CCORT (A,B,C,N,) CROSS—CORRELATION (TIME-DOMAIN)
+A = Source vector (operand) base address To perform a cross-correlation
+B = Source vector (operator) base address operation on two vectors using
+C = Destination vector base address time~domain techniques.
+
+N = Element count for C (number of lags)
+
+M = Element count for A and 3
+
+(Note vector elements occupy comnsecutive
+addresses.)
+
+E-199 CALL CCORF(A,B,C,N,M) CROSS-CCRRELATION (FREQUENCY-DOMAIN)
+A = Source vector (operand) base address To perform an cross-correlation
+B = Source vector (operator) base address operation on two vectors using
+C = Destination vector base address frequency-domain (FFT)
+¥ = Element count for C (number of lags) techniques.
+
+M = Element count for A and B (power of 2)
+(Note vector elements occupy consecutive
+addresses. Requires 2M words storage for
+A and 2M words storage for B.)
+
+E-201 CALL TCONV(A,I,B,J,C,X,N,M,L) POSTTAPERED CONVOLUTION (CORRELATION)
+A = Source (operand) vector base address To perform a post-tapered
+I = A address increment (>0) convolution or correlation
+B = Source (operator) vector base address operation on two vectors.
+
+J = B address increment
+C = Destination vector base address
+K = C address increment
+N = Element count for C (result)
+M = Element count for B (operator) '
+L = Element count for A (operand)
+FPS 860-7288-004 c - 27
+Page Routine Purpose v
+TABLE MEMORY OPERATIONS (optional)
+E-204 CALL MTMOV(A,C,) VECTOR MOVE (MD TO ™)
+A = Source vector base address (D) To transfer elements of a
+C = Destination vector base address (TM) vector from main data to table
+N = Element count memory, where both vectors are
+stored compactly.
+E-205 CALL TMMOV(A,C,X) VECTOR MOVE (TM TO MD)
+A = Source vector base address (TM) To transfer elements of a
+C = Destination vector base address (MD) vector from table memory to
+N = Element count main data memory, where both
+‘ vectors are stored compactly.
+E-206 CALL MTIMOV(A,I,C,K,N) VECTOR MOVE WITH INCREMENT (D TO ™)
+A = Source vector base address (MD) To move elements of a vector
+I = A address increment from main data memory to table
+C = Destination vector base address (TM) memory, where the increments
+K = C address increment between the zlements are
+N = Element count specified.
+E-207 CALL TMIMOV(A,I,C,K,N) VECTOR MOVE WITH INCREMENT (TM TO MD)
+‘ A = Source vector base address (TM) To move elements of a vector in
+I = A address increment table memory to main data
+C = Destination vector base address (MD) memory, where the increments
+K = C address increment between elements are specified.
+N = Element count
+E-208 CALL TTIMOV(A,I,C,K,N) VECTOR MOVE WITH INCREMENT (TM TO ™)
+A = Source vector base address (TM) To move elements of a vector
+I = A address increment within table memory.
+C = Destination vector base address (TM)
+K = C address increment °
+N = Element count
+£-209 CALL MMTADD(A,I,B,J,C,K,N) VECTOR ADD (MD+MD TO TM)
+A = Source vector base address (MD) To add the elements of two
+I = A address increment vectors in main data memory and
+B = Source vector base address (MD) store the results in a vector
+J = B address increment in tazble memory.
+C = Destination vector base address (TM)
+K = C address increment
+N = Element count .
+®-210 CALL MMTSUB(A,I,B,J,C,K,N) VECTOR SUBTRACT (MD-MD TO TM)
+A = Source vector base address (MD) To subtract the elements of two
+I = A address increment vectors in main data memory and
+3 = Source vector base address (MD) store the results in a vector
+J = B address increment . in table memory.
+C = Destination vector base address (TM)
+K = C address increment
+N = Element count )
+FPS 860-7288-004 C - 28
+Page Routine Purpose
+
+©-211 CALL MMTMUL(A,I,B,J,C,K,N) VECTOR MULTIPLY (MD*MD TO TM)
+A = Source vector base address (MD) To multiply the elements of two
+I = A address increment vectors in main data memory and
+3 = Source vector base address (MD) store the results in table :
+J = B address increment © MemoTry.
+C = Destination vector base address (TM)
+XK = C address increment
+N = Element count
+
+£-212 CALL MTMADD(A,I,3,J,C,K,N) VECTOR ADD (MD+TM TO MD)
+A = Source vector base address (MD) To add elements of a vector in
+I = A address increment main data memory to elsments of
+B = Source vector base address (TM) a vector in table memory and
+J = B address increment store the results in main data
+C = Destination vector base address (MD) memory.
+K = C address increment
+N = Zlement count
+
+£-213 CALL MTMSUB(A,I,3,J,C,K,N) VECTOR SUBTRACT (MD-TM TO MD)
+A = Source vector base address (MD) To subtract the elements of a
+I = A address increment ' vector in table memory from the
+B = Source vector base address (TM) elements of a vector in main
+J = B address increment data memory and store the
+C = Destination vector base address (MD) . results in main data memory.
+R = C address increment _
+N = Element count
+
+E-214 CALL TMMSUB(A,I,B,J,C,K,N) VECTOR SUBTRACT (TM=MD TO MD)
+A = Source vector base address (TM) To subtract the elements of a
+I = A address increment vector in main data memory from
+3 = Source vector base address (MD) a vector in table memory and
+J = B address increment store the differences in main
+C = Destination vector base address (MD) data memory.
+
+. K = C address increment
+
+N = Element count
+
+E-215 CALL MTMMUL (A,I1,B,J,C,K,N) VECTOR MULTIPLY (MD*TM TO MD)
+A = Source vector base address (MD) To multiply elements of a
+I = A address increment vector in main data memory by
+B = Source vector base address (TM) elements of a vector in table
+J = B address increment memory and store the products
+C = Destination vector base address (MD) in main data memory.
+K = C address increment
+N = Element count )
+
+E-216 CALL MTTADD(A,I,B,J,C,K,N) VECTOR ADD (MD+TM TO TM)
+A = Source vector base address (MD) To add the elements of a vector
+1 = A address increment in main data memory to elements
+3 = Source vector base address (TM) of a vector in table memory and
+J = B address increment store the sums in a vector in
+C = Destination vector base address (TM) table memory.
+K = C address increment
+N = Element count
+
+FPS 860-7288~004 C - 29
+Page Routine Purpose
+
+E-217 CALL MTTSUB(A,I1,B,J,C,K,N) VECTOR SUBTRACT (MD-TM TO TM)
+A = Source vector base address (MD) To subtract the elements of a
+I = A address increment vector in table memorv from
+B = Source vector base address (TM) elements of a vector in main
+J = B address increment data memory and store the
+C = Destination vector base address (TM) differences in table memory.
+K = C address increment
+N = Element count
+
+E-218 CALL TMTSUB(A,I,B,J,C,K,N) VECTOR SUBTRACT (TM-MD TO TM)
+A = Source vector base address (TM) To subtract the elements of a
+I = A address increment vector in main data amemory from
+3 = Source vector base address (MD) the elements of a vector in
+J = B address increment table memory and store the
+C = Destination vector base address (TM) results in table memory.
+K = C address increment
+N = Element count
+
+E-219 CALL MTTMUL (A,I,B,J,C,K,N) VECTOR MULTIPLY (MD*TM TO TM)
+A = Source vector base address (MD) To multiply the elements of a
+I = A address iacrement vector in main data memory by
+B = Source vector base address (TM) the elements of a vector in
+J = B address increment table memory and store the
+
+: C = Destination vector base address (TM) products in table memory.
+
+K = C address increment
+N = Element count
+
+E-220 CALL TTMADD(A,I,B,J,C,K,N) VECTOR ADD (TM+TM TO MD)
+A = Source vector base address (TM) To add the elements of two
+I = A address .increment vectors in table memory and
+B = Source vector base address (TM) store the sums in main data
+J = B address increment MemOTY .
+C = Destination vector base address (MD)
+K = C address increment
+N = Element count
+
+E-221 CALL TTMSUB{(A,I,B,J,C,K,N) VECTOR SUBTRACT (TM-TM TO MD)
+A = Source vector base address (TM) To subtract the elements of two
+I = A address increment vectcrs in table memory and
+B = Source vector base address (TM) store the difference in main
+J = B address increment data memory.
+C = Destination vector base address (MD)
+K = C address increment
+N = Element count
+
+E-222 CALL TTMMUL (A,I1,B,J,C,K,N) VECTOR MULTIPLY (TM*TM TO MD)
+A = Source vector base address (TM) To multiply the elements of two
+I = A address increment vectors in table memory and
+B = Source vector base address (TM) store the products in main data
+J = B address increment DemOTry.
+C = Destination vector base address (MD)
+K = C address increment
+N = Element count
+
+FPS 860-7288-004 o - 30
+Page Routine Purpose
+E-223 CALL TTTADD(A,I,B,J,C,K,N) VECTOR ADD (TM+TM TO TM)
+A = Source vector base address (TM) To add the elements of two
+I = A address increment vectors in.table memory and
+B = Source vector base address (TY) store the sums in a third
+J = B address increment vector in table memory.
+C = Destination vector base address (TM) :
+X = C address increment
+N = Element count '
+E-224 CALL TTTSUB(A,L,3,J,C,K,N) ' VECTOR SUBTRACT (TM~-TM TO TM)
+A = Source vector base address (TM) To subtract the elements of two
+I = A address increment ‘ vectors in table memorvy and
+B = Source vector base address (TM) store the differences in a
+J = B address increment vector in table memory.
+C = Destination vector base address (TM)
+K = C address increment .
+N = Element count
+E-225 CALL TTTMUL (A,I,B,J,C,K,N) . VECTOR MULTIPLY (TM*TM TO TM)
+A = Source vector base address (TM) To multiply the elements of two
+I = A address increment vectors in table memory and
+3 = Source vector base address (TM) store the products in a veccoer
+J = B address increment in table memory.
+C = Destination vector base address (TM)
+K = C address increment
+N = Element count
+FPS 860-7288-004 ’ c - 31
+APPENDIX D
+
+AP-FORTRAN ROUTINES
+Many of the routines in the AP Math Library are available for use in
+AP-FORTRAN program units. These routines contain alternate entry
+points permitting AP-FORTRAN program units to call them. Because of
+these alternate entry points, the routines are called by diffecrent
+names under AP-FORTRAN. A list cf the routines’ names and their
+corresponding AP-FORTRAN calling names is contained in Table D-1. This
+table lists all routines callable from AP-FORTRAN program units. The
+parameters associated with the routines are described in Appendices c
+and E. Regarding the associated parameters, the AP-FORTRAN user should
+be aware of the following:
+
+. The data transfer and control operations and the
+APAL=-callable utility operations are not available under
+AP-FORTRAN. The data transfer and control operations are
+not needed by the AP-FORTRAN user. The AP-FORTRAN program
+unit executes in the AP, and thus transferring data and
+controlling operations are already provided for. The
+AP-FORTRAN programmer does not need to place data into the
+AP using APPUT or retrieve it using APGET; the data can be
+made available to the routines by passing common blocks or
+defining values in the AP-FORTRAN program unit.
+
+] In Appendices C and E, when parameters are Jdescribed as
+base addresses, the AP-FORTRAN user should subscitute che
+term "name". TFor example, the term "source vector base
+address" translates into "source vector (or array) name'.
+The name specified should be the name of a properly
+dimensioned array.
+
+° Parameters which are described as values in Appendices C
+and E can be specified as variable names under AP-FORTRAN.
+All routines are called by reference under AP-FORTRAN.
+
+wpa RAN=72R8-NN4 D - 1
+Table D-1 AP-FORTRAN Callable Math Library Routines
+
+e e
+ASPEC Accumulati n§ auto-spectrum FASPEC(a,c,n)
+cooTeR FEOOTP (a4 1:0,3,1)
+e
+s | Comlecvectornesae | PGk
+CVREAL From complex vector of reals FCVREAL(a,i,¢,K,n)} '
+R
+DEQ22 Difference squation, 2 poles. 2 zeros FDEQ22(a,i,0,C,k,0) -
+sore FOOTPR (3,1 22 ¢.0)
+
+0812
+FPS 860~7288-004 D - 2
+Table D-1 AP-FORTRAN Callable Math Library Routines (cont.)
+ECVMUL FECVMU(ah,al,1,b0,51,3,ch,c1,k,nh,n1, £)
+ED0TPR FEDTPR(ah,al,1,5n,01.3,ch,c1,an,01)
+EMMUL FEMMUL (ah,al,bh,d1,ch,c1,mc,nc,na;
+EMTRAN FEMTRN(ah,al ,ch, 1, k,mc ,nc)
+EVADD FEVADD (ah,al,,bh,b1,3,ch,cl,konh,n1)
+EVDIV FEVDIV(ah,al,1,bh,b1,3,ch,c1,Kk,nh,n1)
+EUMOV FEVMOV(ah,a1,1,ch,ci,k,nn,n1)
+EUMUL FEVMUL (ah,al,1,bh,b1,4,ch,c1,4,nh,n1)
+EVSUB FEVSUB(ah,al,i,bh,b1,3,ch,cl,k,nh,n1)
+EVSWAP FEVSWP (ah,al,i,ch,cl,k,ni.nl)
+HIST SHIST(a,1,c,n,nb,hmax,amin)
+e et
+10PWD Wait for 10P data transfer FTQPUWD
+e
+w GITTRE
+MMUL32 FMMU32(a,1,5,3,C,K.MC,nC ,na)
+s ZTTRERRRR
+
+2813
+
+FPS 860-7288~004 D - 3 )
+Table D-1 AP-FORTRAN Callable Math Library Routines (cont.)
+‘ ROUTINE AP-FORTRAN CALLABLE NAME
+e e
+MTMSUR Yector subtract (MC-TM to MD) : FSMTMDa,i,b,\j,c,k,n)
+s R e el
+e TG e
+' RFFTB Real to complex FFT (not in place) FBRFFT(a,:,n,f)
+SETPG Set memory page for AP FSETPG (mask ,apmae,nae)
+SCLVED FSOVEQ(a,n,b.m,rowadd,x,ierr)
+SVS Sum of vector signed squares FSvVS(a,i,c,n)
+o G
+TMMSUB Jector subtract (TM-MD to MD) FSTMMD (a,1,b,J,C,kan)
+TMTSUB Yector subtract (TM-MD to M) FSTMT(a,i,b,3.c,k,n) -
+o AT e
+0814
+FPS 860-7288-004 D - 4
+Table D-1 AP-FORTRAN Callable Math Library Routines (cont.)
+AouTENE AP-FORTRAN CALLAGLE VAME
+]
+
+T A ot e
+
+s EUREREREY
+
+7400 FUADD(a,1,6,4¢,k.n)
+
+YCLIP Vector ¢lip FVCLIP(a,1,b,c,d,1,n)
+
+o Ry
+
+VLIM Vector 1imit FVLIM(a,i,b,c,d,1,n) v
+0815
+
+FPS 860-7288-004 D - 5
+Table D-1 AP-FORTRAN Callable Math Library Routines (cont.)
+30UTTHE AP-FORTRAN CALLABLE WAME
+e IS —————————.
+i FIMHAGS..5.3,,,dT,2,m00)
+VPK3 Yector 8 bit byte pack FVPKE(a,1,c,k,n)
+VPOLY Vector polynomial evaluation FVPOLY(a,1,b,d,C,k,n,p)
+YREAL Extract reals of complex vector FVREAL(a,i,c,k,n) ‘
+ISADD Vector scalar add FVSADD(a,i,b,c,k,n)
+; YSEFLT Vector sign extend and float FVSEFL(a,i,c,k,n)
+YSHFX Vector shift and fix v FYSHFX(a,i,c.k,n,ns)
+YSIMPS Yector Simpson's 1/3 rule integration FVSIMP(a,i,c,k,n,n)
+i ISIN Vector sine FYSIN(a,1,c,k.n)
+GETIE
+Y559 Vector signed square FVSSQ(a,i,c,k,n) ‘
+Yysug Vector subtract FVSUB(a,ib,j.c,k,n) .
+0816
+‘ FPS 860-7288-004 D - 6
+' Table D=1 AP-FORTRAN Callable Math Library Routines (cont.)
+ROUTINE DESCRIPTICN AP-FORTRAN CALLABLE NAME
+YSUM Vector sum of elements integration FVSUM(a,i,c;k,n,h)
+
+YTRAPZ Vector trapezoidal rule integration FYTRAP(a,i,c,k,n,0)
+
+YTSMUL Vector table scalar multiply FVTSMU(a,1.Db,c,k,n)
+
+yUP16 Vector 16 bit byte unpack FYUl6(a,i,c,k,n)
+
+YUP8 Yector 3 bit byte unpack FVUP8(a,i,c,k,n)
+
+YUP16 Vector 16 bit signed byte unpack FYUS16(a,i,c,k,nj
+
+VUPsS8 Yector 8 bit signed byte unpack FVUPS8(a,i,c,k,n)
+
+ATENER Wiener Levinson algorithm FWIENR(Ir,r,3,%,a,isw)
+
+ZMD Clear all pages of main data memory FZMD
+
+‘ ‘ 0817
+
+FPS 860-7288-004 D -~ 7
+Notice to the Regder
+
+¢ Help us improve the quality and usefulness
+
+of this manual.
+
+¢ Your comments and answers to the following
+
+READERS COMMENT form would be appreciated.
+——— _
+
+To mail: fold the form in three parts so
+that Floating Point Systems'
+mailing address is visible; sea].
+
+Thank you
+READERS COMMENT FORM
+Document Title
+Your commeﬁts and answers will help Did vou find this material . . .
+us improve the gquality and usefulness _
+of our publications. If your answers
+require qualification or additional YES NO
+explanation, please comment in the
+space provided below. e USEFUL? () ()
+e COMPLETE? () ()
+e ACCURATE? () ()
+How did you use this manual? o WELL ORGANIZED? () ()
+() AS AN INTRODUCTION TO THE SUBJECT ® WELL ILLUSTRATED? ¢y )
+() AS AN AID FOR ADVANCED TRAINING o WELL INDEXED? ¢y 0y
+. ? »
+(') TO LEARN OF OPERATING PROCEDURES o EASY TO READ? ¢y )
+( ) AS A STUDENT IN A CLASS Please indicate below whether your '
+comment pertalns to an addition,
+() AS A REFERENCE MANUAL deletion, change or error; and, where :
+() OTHER applicable, please refer to specific ,
+page numbers.
+Page Description of error or deficiency ]
+From:
+Nom@ e Title
+(o 1 1 Department
+Addres$ —— 2 City, Statep
+Telephone — Daté —
+First Class :
+, Permit No. A-737 |
+Portland,
+Oregon
+'~ BUSINESS REPLY ]
+iq_ponaq- stamp necessary if mailed in the United States —
+L Postage will be paid by: ]
+FLOATING POINT SYSTEMS, INC.
+Portland, Oregon 97223
+Attention: Technical Publications ’
+FLOATING POINT
+SYSTEMS, INC.
+CALL TOLL FREE 800-547-1445
+PO, Box 23489, Portiand, OR 97223
+(503) 641-3151, TLX: 360470 FLOATPOINT PTL

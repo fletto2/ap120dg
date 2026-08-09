@@ -459,18 +459,101 @@ def write_simh_script(linker, filename, entry_name=None):
         f.write(f"\n; Total: {len(linker.linked_code)} instructions\n")
 
 
+def write_e_module(linker, filename):
+    """Write the E command load module — manual 860-7441-000 section 4.4.
+
+    Figure 4-3 shows the real format:
+
+                      8.
+        16384.  00000.  00000.  00048.
+        16452.  00000.  00000.  00048.
+
+    a leading count of program words, then four values per line, DECIMAL,
+    zero padded to five digits, each followed by a period, two spaces
+    between fields.  Not octal — 16384 is 040000 and 48 is 60.  Figure 4-4
+    confirms the count is element one of the array: the A format emits
+    "DATA CODE(1) / 8/".
+
+    This file is read by SIM100 and DBG100.
+    """
+    def field(v):
+        return "%05d." % (v & 0xFFFF)
+
+    with open(filename, 'w') as f:
+        f.write(" %s\n" % field(len(linker.linked_code)))
+        for w in linker.linked_code:
+            words = [(w >> 48) & 0xFFFF, (w >> 32) & 0xFFFF,
+                     (w >> 16) & 0xFFFF, w & 0xFFFF]
+            f.write(" %s\n" % "  ".join(field(x) for x in words))
+    print("Wrote %s: %d instructions (E format)"
+          % (filename, len(linker.linked_code)), file=sys.stderr)
+
+
+def write_a_module(linker, filename, entry_name=None):
+    """Write the A command load module — section 4.5, figure 4-4.
+
+    Host FORTRAN: the routine's arguments (one per s-pad parameter on the
+    first $ENTRY), an SLIST array in COMMON /SPARY/ with the arguments
+    equivalenced into it, a CODE array whose first element is the program
+    word count, and a CALL APEX(CODE, 0, SLIST, n).
+    """
+    name = entry_name
+    if not name:
+        for mod in linker.modules:
+            if mod.aentries or mod.entries:
+                name = (list(mod.aentries) + list(mod.entries))[0]
+                break
+    name = (name or "LMOD")[:6]
+    nsp = 0
+    for mod in linker.modules:
+        if name in mod.aentries or name in mod.entries:
+            nsp = mod.pb_nspads
+            break
+    ncode = len(linker.linked_code) * 4 + 1
+    with open(filename, 'w') as f:
+        args = ",".join("I%d" % (i + 1) for i in range(nsp))
+        f.write("C* %s\n" % name)
+        f.write("      SUBROUTINE %s(%s)\n" % (name, args) if nsp
+                else "      SUBROUTINE %s\n" % name)
+        f.write("      INTEGER CODE(%6d)\n" % ncode)
+        for i in range(nsp):
+            f.write("      INTEGER I%d,J%d\n" % (i + 1, i + 1))
+        f.write("      INTEGER SLIST(16)\n")
+        f.write("      COMMON /SPARY/SLIST\n")
+        for i in range(nsp):
+            f.write("      EQUIVALENCE (J%d,SLIST(%d))\n" % (i + 1, i + 1))
+        f.write("      DATA CODE(1) /%6d/\n" % len(linker.linked_code))
+        vals = []
+        for w in linker.linked_code:
+            vals += [(w >> 48) & 0xFFFF, (w >> 32) & 0xFFFF,
+                     (w >> 16) & 0xFFFF, w & 0xFFFF]
+        for i in range(0, len(vals), 4):
+            grp = vals[i:i + 4]
+            idx = ",".join("CODE(%6d)" % (i + j + 2) for j in range(len(grp)))
+            f.write("      DATA %s/\n" % idx)
+            f.write("     X %s/\n" % ",".join(":%06o" % v for v in grp))
+        for i in range(nsp):
+            f.write("      J%d=I%d\n" % (i + 1, i + 1))
+        f.write("      CALL APEX(CODE,%6d,SLIST,%6d)\n" % (0, nsp))
+        f.write("      RETURN\n      END\n")
+    print("Wrote %s: A format, entry %s, %d s-pad args"
+          % (filename, name, nsp), file=sys.stderr)
+
+
 def write_load_module(linker, filename):
-    """Write linked load module in FSLMLD format.
+    """Write an FSLMLD-format load module.
 
-    FSLMLD format: array of 16-bit integers, processed as 8-word records.
-    Record header: [LMBUF(IPTR), COUNT, ADDR, PAGE+1, DEST, 0, 0, 0]
-    Followed by data words.
+    NOTE: this is LOD100's output format, not LNK100's.  LNK100's E and A
+    commands produce the formats above.  Kept because the SimH tests and
+    the DG driver work consume it.
 
-    FSLMLD computes TTYPE = LMBUF(IPTR) + 1, then dispatches:
-      LMBUF=0 → TTYPE=1 → code/integer values (to PS if DEST=0, MD if DEST=1)
-      LMBUF=1 → TTYPE=2 → data block values
-      LMBUF=2 → TTYPE=3 → info record (PPA, LMID)
-      LMBUF=3 → TTYPE=4 → end record
+    Array of 16-bit integers processed as 8-word records.  Header is
+    [LMBUF(IPTR), COUNT, ADDR, PAGE, DEST, 0, 0, 0] followed by data words.
+    FSLMLD computes TTYPE = LMBUF(IPTR) + 1 and dispatches:
+      LMBUF=0 -> code/integer values (PS if DEST=0, MD if DEST=1)
+      LMBUF=1 -> data block values
+      LMBUF=2 -> info record (PPA, LMID)
+      LMBUF=3 -> end record
     """
     words = []
 
@@ -553,7 +636,9 @@ def main():
     parser = argparse.ArgumentParser(
         description='LNK100 — FPS AP-120B/FPS-100 APO Linker')
     parser.add_argument('inputs', nargs='+', help='APO input files')
-    parser.add_argument('-o', '--output', help='Output load module (.lm)')
+    parser.add_argument('-o', '--output', help='Output load module (FSLMLD format)')
+    parser.add_argument('-E', '--e-module', help='E command load module (section 4.4)')
+    parser.add_argument('-A', '--a-module', help='A command load module (section 4.5)')
     parser.add_argument('-S', '--simh', help='Output SimH deposit script')
     parser.add_argument('-C', '--c-header', help='Output C header with microcode array')
     parser.add_argument('-s', '--symbols', action='store_true',
@@ -592,6 +677,10 @@ def main():
     # Output
     if args.output:
         write_load_module(linker, args.output)
+    if args.e_module:
+        write_e_module(linker, args.e_module)
+    if args.a_module:
+        write_a_module(linker, args.a_module, args.entry)
 
     if args.simh:
         write_simh_script(linker, args.simh, args.entry)

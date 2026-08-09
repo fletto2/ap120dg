@@ -142,6 +142,29 @@ class LoadModule:
         self._header(0, len(data), addr, page, DEST_MD)
         self.words.extend(data)
 
+    def add_code_image(self, instrs, addr=0, page=0):
+        """An overlay segment's PS image, staged in main data.
+
+        FSLMLD moves it with APPUT(...,(CNT*PAKFAC)/2,0) under the comment
+        "32 BITS OF HOST PER MD WORD", and advances IPTR by CNT -- so CNT is
+        a host-word count here exactly as it is on the PS path, and one MD
+        word holds two host words.  A 64-bit instruction therefore needs
+        FOUR host words and occupies TWO MD words.
+
+        add_code_md() must not be used for this: it packs each value into
+        32 bits, which silently discards the top half of every instruction.
+        """
+        if not instrs:
+            return
+        data = []
+        for ins in instrs:
+            data.append((ins >> 48) & 0xFFFF)
+            data.append((ins >> 32) & 0xFFFF)
+            data.append((ins >> 16) & 0xFFFF)
+            data.append(ins & 0xFFFF)
+        self._header(0, len(data), addr, page, DEST_MD)
+        self.words.extend(data)
+
     def add_data_block(self, records, page=0):
         """Data block: each record is (valtyp, repcnt, addr, value)."""
         if not records:
@@ -221,6 +244,7 @@ class LoadModule:
 # LOD100 builds one overlay table per task (.MPnnn) plus ISRMAP for the
 # interrupt service routines, and a PS partition table initialised to zero.
 
+MD_WORDS_PER_INSTR = 2   # a 64-bit instruction spans two 38-bit MD words
 OVT_ENTRY_WORDS = 8          # [M table 2-1]
 TCB_WORDS = 150              # [M table 2-2], through the maximum save area
 
@@ -360,7 +384,7 @@ def build_overlay_table(segments, partition_table_addr):
 
 def build_tcb(task_id, ovl_ptr, ovl_count, priority=100, minimal=False,
               front=False, slaved=False, ready_queue=False,
-              ps_addr=0, md_addr=0, term_addr=0):
+              ps_addr=0, md_addr=0, term_addr=0, tcb_addr=0):
     """A task communication block, initialised per [M 2.9] table 2-2."""
     tcb = [0] * TCB_WORDS
     tcb[2] = priority                     # 3  RPRI
@@ -378,6 +402,10 @@ def build_tcb(task_id, ovl_ptr, ovl_count, priority=100, minimal=False,
         status |= 0o001000
     tcb[10] = status                      # 11 STATUS
     tcb[15] = md_addr                     # 16 TADDR
+    # "RCLOCK and LCLOCK are set to the address of RCLOCK" [M 2.9] -- both
+    # point at word 13 of this very TCB, so the clock list starts empty.
+    tcb[12] = tcb_addr + 12               # 13 RCLOCK
+    tcb[13] = tcb_addr + 12               # 14 LCLOCK
     tcb[42] = 0                           # 43 APSTAT2: FP exception disabled
     tcb[47] = 0o55260                     # 48 APSTAT3
     tcb[48] = term_addr                   # 49 SRS(0) termination routine
@@ -598,7 +626,10 @@ class Session:
                     elif u == '/S':
                         opts['slaved'] = True
                     else:
-                        opts['priority'] = self.number(a.lstrip('/'))
+                        # Priority is decimal 1-255 [ASM100 M 3.4.1], not
+                        # subject to the RADIX command -- self.number() would
+                        # read 200 as octal and yield 128.
+                        opts['priority'] = int(a.lstrip('/'))
                 # TASK designates the modules that FOLLOW it [M 2.3.7], so it
                 # must not retag the segment already selected.
                 self.pending_task = (tid, opts)
@@ -614,7 +645,7 @@ class Session:
                     elif u == '/S':
                         opts['slaved'] = True
                     else:
-                        opts['priority'] = self.number(a)
+                        opts['priority'] = int(a)   # decimal, see TASK above
             elif cmd in ('CALL', 'C'):
                 # entry names, each optionally followed by '/' meaning the
                 # HASI routine should contain an APOVLD call [M 2.3.10]
@@ -740,7 +771,7 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     md = mdoff
     for seg in segments:
         seg.md_addr = md
-        md += seg.length
+        md += seg.length * MD_WORDS_PER_INSTR
     ovt_addr = md
     md += OVT_ENTRY_WORDS * len(segments)
     part_bounds = compute_partitions(segments)
@@ -764,14 +795,15 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
             slaved=opts.get('slaved', False),
             ready_queue=sess.readyq,
             ps_addr=first.ps_addr if first else 0,
-            md_addr=first.md_addr if first else 0)
+            md_addr=first.md_addr if first else 0,
+            tcb_addr=tcb_addrs[tid])
         tcb_blocks.append((tcb, opts))
     if sess.readyq and tcb_blocks:
         link_ready_queue(tcb_blocks, [tcb_addrs[t] for t, _ in sess.tasks])
 
     # Emit: each segment image into MD, then the tables.
     for seg in segments:
-        lm.add_code_md(seg.linker.linked_code, addr=seg.md_addr)
+        lm.add_code_image(seg.linker.linked_code, addr=seg.md_addr)
     lm.add_code_md(build_overlay_table(segments, part_addr), addr=ovt_addr)
     if part_bounds:
         lm.add_code_md([0] * len(part_bounds), addr=part_addr)   # zeroed [M 2.8]
