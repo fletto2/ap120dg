@@ -92,3 +92,61 @@ transfers directly. Outstanding work before an image is useful:
 3. Decide the RSX version. V3.1 is what the FPS software was written
    against and what is on the tape's install notes; M-PLUS would relieve
    the 64 KB pressure but is not what FPS shipped for.
+
+## Replica configuration
+
+`rsx/usagi1144.ini` is the machine above as SimH sees it, and it
+validates clean:
+
+| transcript hardware | SimH | note |
+|---|---|---|
+| PDP-11/44 | `set cpu 11/44` | Unibus -- an 11/73 disables RK/HK/TM |
+| 4 MB | `set cpu 4M` | reports 4088KB |
+| floating point | `set cpu fpp` | TKB needs it |
+| commercial instruction set | `set cpu cis` | |
+| Emulex SC12 as RK611 | `set hk enabled` | **HK is RK06/RK07; RK is RK05** |
+| two RK07, one RK06 | `set hk0 rk07` / `hk1 rk07` / `hk2 rk06` | DM0:/DM1:/DM2: |
+| TU58 | `set tdc enabled` | two units |
+| 16 serial lines | `set dz enabled` + `lines=16` | exactly 16 |
+| DELUA | `set xu enabled` | XU defaults to DELUA already |
+
+## SYSGEN: the kit, and how far it gets
+
+The V3.1 pack cannot be system-generated -- `EXEMC`, `RSX11M.OLB`,
+`SYSVMR`, `RSXMC` and `SYSGEN` are all absent from it. It is a 2.3 MB
+pre-built running system, not a distribution.
+
+bitsavers carries full distributions at
+`bits/DEC/pdp11/rsx11m/`:
+
+- `rsx11m40.zip` (5.2 MB) -- **RSX-11M V4.0**, five RL02 images:
+  `rsxm32` (system), `excprv`, `mcrsrc`, `rlutil`, `hlpdcl`
+- `rsx11m42.zip` (5.9 MB) -- V4.2 as a magtape kit, installs to MSCP
+
+The V4.0 RL02 set is the easier route and **it boots on this replica**:
+
+    RSX-11M V4.0 BL32   28.K (BASELINE)
+
+reaching MCR after answering the date and terminal width. RL02 is an
+RL11, which is fine on the Unibus 11/44.
+
+`DEV DM:` on the baseline still answers *device not in system* -- the
+baseline is deliberately minimal and the DM: driver is what SYSGEN adds.
+So the route is confirmed but the generation itself is still to do.
+
+Two reasons to want V4.x rather than a V3 pack:
+
+1. **RK06/RK07 support**, which is the whole point -- an RK07 is 53,790
+   blocks against RK05's 4,800, and the FPS tool builds keep running a
+   4,800-block scratch volume out of space.
+2. **Separate I- and D-space**, which the V4 task builder can emit and
+   the 11/44 supports. That is the one thing that would lift LOD100 past
+   its 64 KB ceiling; no amount of memory or SYSGEN tuning otherwise
+   does, because the limit is the 16-bit address space.
+
+Against that, FPS wrote for V3.2 (INSTAL.TXT says so on every page), so
+anything built under V4 needs re-checking against the install notes.
+
+Known wrinkle: attaching a freshly created RK07 container reports
+`Container has 53790 sectors, drive has: 210 sectors`. Unresolved --
+the drive type appears not to take effect before the attach.
