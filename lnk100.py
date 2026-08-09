@@ -77,6 +77,7 @@ def parse_apo(filename):
     pb_count = 0
     pb_items = 0
     word_idx = 0
+    code_start = 0
 
     # Handle both text and binary-with-text files
     try:
@@ -195,7 +196,13 @@ def parse_apo(filename):
             fields = stripped.split()
             # fields[0]=type(0), fields[1]=word_count, fields[2]=reloc_count
             code_count = parse_octal(fields[1]) if len(fields) > 1 else 0
-            word_idx = 0
+            # A module may hold SEVERAL ***CODE blocks -- DGNLIB's APFET has
+            # two of 32 instructions each, with all its relocations in the
+            # second.  The word index must therefore continue across blocks
+            # within a module and only restart at ***TITLE, or every
+            # relocation in a later block is applied one block too early.
+            code_start = len(current.code)
+            word_idx = code_start
             state = 'code'
             continue
 
@@ -234,7 +241,7 @@ def parse_apo(filename):
 
                 word_idx += 1
 
-            if word_idx >= code_count:
+            if word_idx - code_start >= code_count:
                 state = 'module'
             continue
 
