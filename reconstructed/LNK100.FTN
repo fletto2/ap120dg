@@ -48,8 +48,8 @@ C                                                                       LNKCOM
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
 C
         INTEGER NARG
@@ -179,8 +179,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
 C
         INTEGER I,J
@@ -200,7 +200,7 @@ C
         DO 10 I=1,3
           FIRSTE(I) = 0
 10      CONTINUE
-        DO 20 J=1,512
+        DO 20 J=1,256
           DO 15 I=1,4
             CODE(I,J) = 0
 15        CONTINUE
@@ -219,8 +219,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
 C
         WRITE (ITTO,1000) HIGH
@@ -241,8 +241,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
 C
         INTEGER IVAL
@@ -266,8 +266,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
 C
         INTEGER IVAL
@@ -299,8 +299,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
 C
         INTEGER I,LUN
@@ -339,8 +339,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
 C
         INTEGER I,LUN
@@ -372,8 +372,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
 C
         INTEGER NAME(3),IDX
@@ -408,8 +408,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
 C
         INTEGER I
@@ -464,8 +464,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
         LOGICAL*1 LINE(80)
         INTEGER V(16),NV,BTYPE,ICNT,IL,I,J,K,IDX
@@ -551,7 +551,7 @@ C       FOLLOWED BY (FLDDES,TYPE,ARG) TRIPLES.
           READ (LUN,900,END=800) LINE
           CALL GETNUM (LINE,80,V,NV,16)
           IF (NV .LT. 4) GO TO 450
-          IF (NCODE .GE. 512) GO TO 440
+          IF (NCODE .GE. 256) GO TO 440
           NCODE = NCODE + 1
           DO 410 J=1,4
             CODE(J,NCODE) = V(J)
@@ -574,7 +574,7 @@ C         RESLVE, BOTH OF WHICH FOLLOW IT.  RECORD A FIXUP AND APPLY
 C         IT WHEN THE LOAD MODULE IS GENERATED, WHICH IS WHAT THE
 C         MANUAL MEANS BY THE E OR A COMMAND "FREEZING" THE LINKS
 C         (SECTION 2.10).
-          IF (NFIX .GE. 300) GO TO 428
+          IF (NFIX .GE. 120) GO TO 428
           NFIX = NFIX + 1
           FIXWRD(NFIX) = NCODE
           FIXSYM(NFIX) = J
@@ -704,8 +704,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
         INTEGER I,J,N
 C
@@ -758,8 +758,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
         IF (FROZEN .EQ. 0) GO TO 10
         WRITE (ITTO,1000)
@@ -787,8 +787,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
 C       E AND A BOTH FREEZE THE LINKS (SECTION 2.10).
         IF (NARG .LE. 0) GO TO 10
@@ -814,8 +814,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
         INTEGER I
         LOGICAL*1 LINE(80),BL,GR,GM,GX
@@ -873,8 +873,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
         LOGICAL*1 ZERO,NINE,BLA,BLF
         INTEGER I,D
@@ -906,8 +906,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
         LOGICAL*1 T,Y
         DATA T/'T'/,Y/'Y'/
@@ -934,8 +934,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
         IF (LUN .EQ. ITTO) RETURN
         CLOSE (UNIT=LUN)
@@ -957,8 +957,8 @@ C
         COMMON /LNKCOM/ SYMNAM(3,120),SYMVAL(120),SYMFLG(120),          LNKCOM
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LNKCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LNKCOM
-        COMMON /CODCOM/ CODE(4,512),NCODE                               LNKCOM
-        COMMON /FIXCOM/ FIXWRD(300),FIXSYM(300),NFIX                    LNKCOM
+        COMMON /CODCOM/ CODE(4,256),NCODE                               LNKCOM
+        COMMON /FIXCOM/ FIXWRD(120),FIXSYM(120),NFIX                    LNKCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LNKCOM
         LOGICAL*1 LEQ
         INTEGER I,IEQ,LOUT,LIN
