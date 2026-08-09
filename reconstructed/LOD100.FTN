@@ -173,7 +173,7 @@ C
         INTEGER CODE,NCODE                                              LODCOM
         COMMON /CODCOM/ CODE(4,1200),NCODE                              LODCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LODCOM
-        COMMON /FIXCOM/ FIXWRD(1000),FIXSYM(1000),NFIX                  LODCOM
+        COMMON /FIXCOM/ FIXWRD(600),FIXSYM(600),NFIX                    LODCOM
         INTEGER LMID,PSOFF,MDOFF,MODTSK,HASLUN                          LODCOM
         COMMON /LODCOM/ LMID,PSOFF,MDOFF,MODTSK,HASLUN                  LODCOM
         INTEGER OVNUM,OVPAR,OVPS,OVLN,OVMD,OVTSK,OVPRT,OVNPR            LODCOM
@@ -279,7 +279,7 @@ C
         INTEGER CODE,NCODE                                              LODCOM
         COMMON /CODCOM/ CODE(4,1200),NCODE                              LODCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LODCOM
-        COMMON /FIXCOM/ FIXWRD(1000),FIXSYM(1000),NFIX                  LODCOM
+        COMMON /FIXCOM/ FIXWRD(600),FIXSYM(600),NFIX                    LODCOM
         INTEGER I,J
 C
 C       APPLY RELOCATIONS, EXACTLY AS LNK100 DOES AT E/A TIME.
@@ -775,7 +775,7 @@ C
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LODCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LODCOM
         COMMON /CODCOM/ CODE(4,1200),NCODE                              LODCOM
-        COMMON /FIXCOM/ FIXWRD(1000),FIXSYM(1000),NFIX                  LODCOM
+        COMMON /FIXCOM/ FIXWRD(600),FIXSYM(600),NFIX                    LODCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LODCOM
         LOGICAL*1 LINE(80),NBUF(80)
         INTEGER V(16),NV,BTYPE,ICNT,IL,I,J,K,IDX
@@ -919,7 +919,7 @@ C         THIS INDEX SELECTS IS NOT KNOWN YET.  THE EXT HANDLER TURNS
 C         THESE INTO SYMBOL TABLE INDICES; EMTFIL THEN APPLIES THEM,
 C         WHICH IS WHAT THE MANUAL MEANS BY THE E OR A COMMAND
 C         "FREEZING" THE LINKS (SECTION 2.10).
-          IF (NFIX .GE. 1000) GO TO 428
+          IF (NFIX .GE. 600) GO TO 428
           NFIX = NFIX + 1
           FIXWRD(NFIX) = NCODE
           FIXSYM(NFIX) = -IDX
@@ -1046,7 +1046,7 @@ C
      1  NSYM,HIGH,BASE,NEXTLC,IRADIX,NUNDEF,FROZEN,LODCNT,              LODCOM
      2  FIRSTE(3),ITTI,ITTO,IOBJ,IOUT                                   LODCOM
         COMMON /CODCOM/ CODE(4,1200),NCODE                              LODCOM
-        COMMON /FIXCOM/ FIXWRD(1000),FIXSYM(1000),NFIX                  LODCOM
+        COMMON /FIXCOM/ FIXWRD(600),FIXSYM(600),NFIX                    LODCOM
         INTEGER FIXWRD,FIXSYM,NFIX                                      LODCOM
         INTEGER OVNUM,OVPAR,OVPS,OVLN,OVMD,OVTSK,OVPRT,OVNPR            LODCOM
         INTEGER NOVL,CUROV,TSKID,TSKPRI,TSKOPT,NTSK                     LODCOM
