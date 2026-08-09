@@ -90,7 +90,19 @@ ASM100's usage is consistent with every one of those readings:
 |---|---|---|
 | `PAKS(src,dst,6)` | pack a 6-character symbol | 8 |
 | `UPAKS(src,dst,6)` | unpack a 6-character symbol | 10 |
-| `LENS(str)` | function → current length | 2 |
+
+**`LENS` is not FDUTIL's** -- `IUTIL.FTN` defines it, along with 61 other
+units. This document originally listed it here and called it
+host-independent, which was the tell: independent routines live in
+`IUTIL` by FPS's own naming convention. Defining it in both makes LIB100
+carry the symbol twice and the library build fails. Corrected after
+resolving every symbol `ASM10.CMD` requires.
+
+The same check clears seven more that looked missing -- `ICMP16`,
+`IPFIX`, `ISUB16`, `NEGCHK`, `INEG16`, `PFLOAT`, `IADDC` are all in
+`IUTIL.FTN`. `PFLOAT` and `IPFIX` are declared `REAL FUNCTION` /
+`INTEGER FUNCTION`, so a search for `SUBROUTINE|FUNCTION` anchored at
+the start of the line misses them.
 
 Both packers are always called in place with a length of 6:
 `CALL PAKS (SYM,SYM,6)`. Whether the packing is RAD50 or two characters per

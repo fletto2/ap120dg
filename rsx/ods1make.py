@@ -188,7 +188,7 @@ class Volume:
         o = m + 10
         for count, lbn in extents:
             if count > 256:
-                raise RuntimeError("extent too long for CTSZ=1")
+                raise RuntimeError("extent too long for CTSZ=1")   # caller splits
             h[o] = (lbn >> 16) & 0xFF
             h[o + 1] = count - 1
             struct.pack_into('<H', h, o + 2, lbn & 0xFFFF)
@@ -272,7 +272,20 @@ class Volume:
             struct.pack_into('<H', ufat, 12, ffby)        # FFBY
             fn = self.next_fnum
             self.next_fnum += 1
-            self.header(fn, name, ext_s, ufat, [(max(1, nblk), lbn)])
+            # A retrieval pointer holds count-1 in ONE byte, so a single
+            # extent tops out at 256 blocks.  ASM100.FTN is 501.  The
+            # allocation is contiguous, so just describe it with several
+            # pointers; M.MAX=204 words leaves room for 102 of them.
+            left, cur, ext_list = max(1, nblk), lbn, []
+            while left > 0:
+                take = min(left, 256)
+                ext_list.append((take, cur))
+                cur += take
+                left -= take
+            if len(ext_list) > 102:
+                raise RuntimeError("file needs %d extents, header holds 102"
+                                   % len(ext_list))
+            self.header(fn, name, ext_s, ufat, ext_list)
             ufd += self.direntry(fn, name, ext_s)
             print("  %-14s file %3d  LBN %5d  %3d blocks  %5d bytes"
                   % (base, fn, lbn, max(1, nblk), len(recs)))
