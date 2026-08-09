@@ -61,6 +61,19 @@ AGAINST IT:
   directory entry, 16 bytes: file number, sequence, relative volume,
   name 3 words RAD50, type 1 word, version.
 
+KNOWN LIMITATION: volumes built here are fully readable and RSX creates
+ordinary files on them (the FORTRAN compiler writes its .OBJ without
+complaint), but the task builder sometimes reports
+
+    TKB -- *DIAG*-ALLOCATION FAILURE ON FILE xxx.TSK
+
+even with 4,452 free blocks in a single contiguous run. TKB allocates a
+task image differently from an ordinary file and something in the storage
+bitmap or SCB does not satisfy it. A volume that has been through several
+RSX write cycles has task-built successfully, so the defect is in the
+initial state this tool produces, not in the structures generally. Not yet
+isolated -- build task images on the system pack until it is.
+
   file contents for RTYP=2: a continuous stream of
   [2-byte length][data][pad to even]. Records DO span block boundaries --
   verified on FORRES.MAC, whose record at offset 496 continues into the
