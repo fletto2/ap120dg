@@ -206,6 +206,32 @@ build at `UNITS=17`, `ACTFIL=8`.
 Should the four turn out to be needed at link time, the honest form is a
 stub that reports "not recovered" rather than a guess.
 
+## COMAND's list: 34 commands, and the manual documents 25
+
+`COMAND (IFLAG,STR,MAXLEN)` returns the index of a command in its
+`CMNDS` list, so that list's **order is `.MAIN.`'s dispatch order**:
+
+     1 LO   2 MAP  3 XX   4 HE   5 LIN  6 EX   7 F    8 OU   9 C
+    10 LF  11 OV  12 N   13 LM  14 PP  15 DE  16 B   17 INI 18 LIB
+    19 A   20 MD  21 PS  22 PM  23 MM  24 R   25 INP 26 EC  27 DU
+    28 TR  29 MO  30 HS  31 TA  32 PR  33 MAR 34 PU
+
+Matching them against manual §2.3 accounts for 24: `LO`ad, `MAP`,
+`EX`it, `F`orce, `OU`tput, `C`all, `OV`erlay, `N`oload, `LM`id, `PP`a,
+`INI`t, `LIB`, `MD`off, `PS`off, `PM`ax, `MM`ax, `R`adix, `INP`ut,
+`TR`ee, `MO`de, `TA`sk, `PR`i, `MAR`k, `PU`rge.
+
+**Ten are undocumented**: `XX`, `HE`, `LIN`, `LF`, `DE`, `B`, `A`, `EC`,
+`DU`, `HS`. Two can be guessed from the recovered code — `EC` sets
+`EKOFLG`/`EKOLUN`, an echo of input, and `LIN` pairs with `LINKS`/
+`LINKUP` — but the rest have no evidence at all.
+
+That matters for `.MAIN.`: a faithful dispatch has **34 branches**, not
+25, and the ten undocumented ones must reach *something*. The honest
+form is a branch that reports the command as unimplemented rather than
+one that silently does nothing, so a command file using one fails
+loudly instead of producing a quietly wrong load module.
+
 ## Why this matters
 
 With these written, LOD100 can be built from **40 modules of genuine FPS
