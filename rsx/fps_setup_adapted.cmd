@@ -3,7 +3,9 @@
 .SETS $MM "MT:"       .; no magtape on this system; TREAD is stubbed
 .SETS $MM0 "MT0:"
 .SETS $BPI "1"
-.SETS $LBDSK "DL0:"
+.SETS $LBDSK "DM0:"  .; adapted: DL0: (the original site library disk) is not
+                     .; present; the RK07 stands in for it, and the RSX system
+                     .; disk is an RL02 with no room for MATHLIB
 .SETS $WKDSK "DM0:"   .; adapted: the package lives on the RK07
 .SETS $LUIC "[1,1]"
 .SETS $WUIC "[100,100]"

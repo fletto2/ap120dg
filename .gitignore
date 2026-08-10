@@ -13,3 +13,7 @@ rsx/console.log
 *.OLB
 *.MAP
 HASI
+
+# Built RSX volumes: reproducible from rsx/fps_faithful_install.cmd,
+# far too large for git (the RK07 alone is 55 MB).
+rsx/fps.installed/

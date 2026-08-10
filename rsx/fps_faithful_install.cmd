@@ -26,3 +26,19 @@ ASN DM0:=SY:
 ;
 ; DRIVER STEP DONE
 ;
+;
+; $LBDSK is now DM0:, so the library UIC [1,1] must exist there.
+; A UFD must be OWNED by the UIC it serves, so create it under [1,1].
+;
+SET /UIC=[1,1]
+UFD DM0:[1,1]
+SET /UIC=[100,100]
+PIP LB:/FR
+PIP DM0:/FR
+;
+; INSTALL HSR LIBRARY (MATHLIB) -- FPS's own HSR100.CMD
+;
+@HSR100
+;
+; HSR STEP DONE
+;
