@@ -49,12 +49,9 @@ QA = [
     # --- target configuration ---
     ("Processor Type  [D:",             "11/44"),
     ("switch register",                 ""),
-    # BISECT: 1920 is V4.0's documented maximum and the generated system,
-    # while it boots, cannot execute ANY MCR command -- not even an invalid
-    # one, which needs no disk.  The baseline that works on this same
-    # emulated machine runs at 124 K.  Testing a modest size to find out
-    # whether memory size is what breaks it.
-    ("Memory size",                     "512"),
+    # Memory size is NOT implicated: 512 K behaves identically to 1920 K,
+    # so back to the target's real size.
+    ("Memory size",                     "1920"),
     ("K-series devices",                "N"),
     # --- 11/44 CPU options: FPP and CIS are both fitted on the target ---
     # SimH's expect is CASE-SENSITIVE, and SYSGEN's capitalisation is not
@@ -67,6 +64,11 @@ QA = [
     ("(FIS)",                           "N"),
     ("arity support",                   "N"),
     ("ighest interrupt vector",         ""),
+    # Restored: a block replacement for the controller rules spanned these
+    # and deleted them, which stalled the run at question 9 with no error.
+    ("intrps./sec",                     ""),    # KW11-P not used
+    ("ine frequency",                   ""),    # default A = 60 Hz
+    ("atchdog timer",                   "N"),
     ("ache memory",                     "N"),
     ("apping registers",                "Y"),
     # Speculative rules for questions not yet reached.  A rule that never
@@ -85,17 +87,17 @@ QA = [
     # The first "*" makes SYSGEN print its device table, which is the
     # authoritative list of mnemonics and the entry syntax.
     ("Devices [S]",                     "*"),
-    ("Devices [S]",                     "DM 1"),   # RK611: 2x RK07 + 1x RK06
-    ("Devices [S]",                     "DL 1"),   # RL11, for the RL02 kit
-    # DZ REMOVED for now, deliberately.  With two DZ11s configured, RSX
-    # numbers TT0:-TT15: onto the DZ lines and MCR's session lands on TT0: --
-    # a DZ line with nothing connected under SimH -- while the DL11 console
-    # still receives all CO: output.  That matches the symptom exactly: the
-    # banner appears, typed characters echo, and MCR never acts on them.
-    # The real machine's 16 lines can be added once the console is proven.
-    # ("Devices [S]",                   "DZ 2"),
-    ("Devices [S]",                     "DD 1"),   # TU58
-    ("Devices [S]",                     "."),
+    # SYNTAX IS dev=n, NOT "dev n".  "DM 1" is rejected with
+    #   SGN -- Unrecognizable string "DM 1" -- Ignored
+    # and SYSGEN then reports "Disks: None specified" and force-adds only
+    # the console YL.  That produced a system with NO disk drivers, which
+    # boots but cannot load a single task -- the real cause of the
+    # "generated system executes no MCR command" dead end.
+    # SYSGEN's own text: 'Enter responses as: dev1=number controllers,...'
+    # 'Example: DK,DM=2,YL,NL.'  A trailing "." also terminates the inquiry.
+    #   DM = RK611 (2x RK07 + RK06), DL = RL11 (the kit), DD = TU58,
+    #   YL = console DL11, YZ = the two DZ11s (16 lines), NL = null.
+    ("Devices [S]",                     "DM=1,DL=1,DD=1,YL=1,YZ=2,NL=1."),
     # --- peripheral options section ---
     ("line printer available",          "N"),
     ("RT terminal",                     "Y"),
@@ -118,41 +120,38 @@ QA = [
     ("name would you like to give your system", ""),
     ("system UIC",                      ""),
     ("in ticks",                        ""),
-    # --- peripheral configuration: one question per controller, each with a
-    # correct default already shown (e.g. "YL controller 0 [D: 60,177560,NO]").
-    # Same-string rules fire in definition order, so a batch of identical
-    # rules defaults them in sequence.  Note the trailing space: it stops
-    # these matching "number of controllers" in the earlier device prompt.
-    ("controller ",                     ""),
-    ("controller ",                     ""),
-    ("controller ",                     ""),
-    ("controller ",                     ""),
-    ("controller ",                     ""),
-    ("controller ",                     ""),
-    ("controller ",                     ""),
-    ("controller ",                     ""),
-    ("controller ",                     ""),
-    ("controller ",                     ""),
-    ("controller ",                     ""),
-    ("controller ",                     ""),
-    ("controller ",                     ""),
-    ("controller ",                     ""),
-
-    ("ueue Manager",                    "N"),
-    ("nstall tasks",                    ""),
-    ("System image name",               ""),
-    ("Highest UIC",                     ""),
-    # Speculative terminal/system options.  With a Standard Function System
-    # most of these should be preset, but a rule that never fires is free.
-    ("nsolicited input",                ""),
-    ("ariable length terminal",         "Y"),
-    ("ransparent read",                 ""),
-    ("old screen",                      ""),
-    ("reakthrough write",               ""),
-    ("ower case",                       ""),
-    ("intrps./sec",                     ""),
-    ("atchdog timer",                   "N"),
-    ("ine frequency",                   ""),
+    # --- peripheral configuration -------------------------------------
+    # NOT answerable with a blanket default: the disks take a UNIT COUNT as
+    # parameter 3 with no default, and a bare CR gets
+    #   SGN -- Attempt to use non-existent default for parameter 3 -- RETRY
+    # which loops forever.  Parameter lists read from SGNPER.CMD itself:
+    #   DM  DEF1=210 DEF2=177440, p3=units (no default), DEF4="O"
+    #   DL  DEF1=160 DEF2=174400, p3=units (no default, max 4)
+    #   DD  DEF1=300 DEF2=176500, p3=units (no default, max 2)
+    #   YL  DEF1=60  DEF2=177560 DEF3="NO"      -- all defaulted
+    #   YZ  no vector/CSR default, p3=highest line (0-7), DEF4="300"
+    # Device-specific fragments, so order cannot matter.
+    ("DM controller 0",                 "210,177440,3"),   # 2x RK07 + RK06
+    ("DL controller 0",                 "160,174400,4"),   # 4x RL02 (kit)
+    # TU58 moved off vector 300: its default collides with DZ11 #0, giving
+    #   VMR -- *FATAL*-Interrupt vector already in use  /  LOA DD:
+    # The DZ addresses are fixed by the hardware (autoconfigure reports
+    # 300/160100 and 310/160110), so the TU58 is the one that moves.
+    # 320 is free: in use are 60,70,74,154,160,200,210,220,224,254,264,300,310.
+    ("DD controller 0",                 "320,176500,2"),   # TU58, 2 units
+    ("YL controller 0",                 ""),               # console DL11
+    ("YZ controller 0",                 "300,160100,7"),   # DZ11 #0, 8 lines
+    ("YZ controller 1",                 "310,160110,7"),   # DZ11 #1, 8 lines
+    # Per-unit drive types (SGNPER.CMD 1740 and 1823).  Fragments include
+    # the unit number, so each is unique and order does not matter.
+    ("unit 0. is an RL01/RL02",         "RL02"),
+    ("unit 1. is an RL01/RL02",         "RL02"),
+    ("unit 2. is an RL01/RL02",         "RL02"),
+    ("unit 3. is an RL01/RL02",         "RL02"),
+    # The Usagi drive set: DM0/DM1 are RK07, DM2 is the RK06.
+    ("unit 0. is an RK06/RK07",         "RK07"),
+    ("unit 1. is an RK06/RK07",         "RK07"),
+    ("unit 2. is an RK06/RK07",         "RK06"),
     # --- after Phase II: boot the generated system and make it self-booting.
     # The baseline is consumed by the generation, so this must happen in the
     # SAME run -- the RSXM32 volume will not boot on its own until SAV /WB
@@ -180,6 +179,12 @@ QA = [
      # ACS dropped: a freshly booted system has no checkpoint file, so
      # deallocating one is a no-op at best.  SAV alone, fewest variables.
      "\\003\\rSAV /WB", 400000000),
+    # Is the system still alive after SAV?  Key on the ECHO of the command
+    # (preceded by CRLF, so SYSGEN's ";     >SAV /WB" example cannot match)
+    # and, long afterwards, send another CTRL/C.  A second "MCR>" means the
+    # system survived and SAV simply did nothing visible; silence means SAV
+    # wedged it.
+    (r"\r\nSAV /WB", "\\003", 2000000000),
     (r"\r\nRSX11M V4.0 BL32",
      "\\003\\rRED DL:=SY:\\r\\003\\rRED DL:=LB:\\r"
      "\\003\\rMOU DL:RSXM32\\r\\003\\r@DL:[1,2]STARTUP",
@@ -198,7 +203,7 @@ ini = ["set cpu 11/44", "set cpu 4M", "set cpu fpp", "set cpu cis",
        "set hk0 noautosize", "set hk1 noautosize", "set hk2 noautosize",
        "set hk0 rk07", "set hk1 rk07", "set hk2 rk06",
        "att hk0 usagi0.dsk", "att hk1 usagi1.dsk", "att hk2 usagi2.dsk",
-       "set dz disabled", "set xu enabled"]
+       "set dz enabled", "set xu enabled"]
 for entry in QA:
     frag, ans = entry[0], entry[1]
     after = entry[2] if len(entry) > 2 else 15000000
