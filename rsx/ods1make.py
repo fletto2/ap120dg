@@ -347,15 +347,30 @@ class Volume:
         for b in range(self.next_free, self.nblocks):
             sb[b >> 3] |= 1 << (b & 7)
         self.put(bm_lbn, bytes(sb))
-        # Storage control block. The layout is not fully understood; these
-        # bytes are taken from a working 4800-block RK05 volume and patched
-        # with our geometry. Byte 3 is the bitmap block count and the word at
-        # 14 is the volume size, both of which match that volume exactly.
+        # Storage control block. The layout carries ONE ENTRY PER BITMAP
+        # BLOCK, and the volume size comes AFTER them -- read off a real
+        # RSX-11M V4.0 RL02 (10240 blocks, 3 bitmap blocks):
+        #
+        #   byte  3            3            = bitmap block count
+        #   bytes 4..15        three 4-byte entries, each word 0o10000
+        #   bytes 18..19       0o24000      = 10240 = volume size
+        #
+        # The earlier version hard-coded exactly two entries and put the size
+        # at offset 14. That is right ONLY when there are 2 bitmap blocks --
+        # i.e. the 4800-block RK05 it was derived from, where 4+4*2 = 12 puts
+        # the size at 14 by coincidence. On a 53,790-block RK07 (14 bitmap
+        # blocks) the size landed inside the entry list and the volume size
+        # was never recorded, so RSX mounted the volume but could not read
+        # even the MFD: "PIP -- Cannot find directory file DM1:[0,0]".
+        # Each entry reads 0o10000 (4096) even for the last, partly-used
+        # bitmap block -- the real volume does that too.
         scb = bytearray(BLK)
         scb[3] = bitmap_blocks
-        scb[5] = 16
-        scb[9] = 16
-        struct.pack_into('<H', scb, 14, self.nblocks & 0xFFFF)
+        for i in range(bitmap_blocks):
+            scb[4 + 4 * i + 1] = 16                 # word = 0o10000 = 4096
+        off = 4 + 4 * bitmap_blocks
+        struct.pack_into('<H', scb, off, 0)
+        struct.pack_into('<H', scb, off + 2, self.nblocks & 0xFFFF)
         self.put(scb_lbn, bytes(scb))
 
         self.homeblock()
