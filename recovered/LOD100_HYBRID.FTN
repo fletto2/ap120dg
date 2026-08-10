@@ -99,10 +99,31 @@ C       SET ILUN, THE COMMAND INPUT UNIT.  THAT IS THE MAINLINE'S JOB,
 C       AND LEAVING IT ZERO MAKES THE FIRST RDLIN FAIL WITH A FORTRAN
 C       OTS ERROR BEFORE ANY COMMAND IS READ.
 C
-C       ILUN IS A FORTRAN UNIT, NOT A FILE NUMBER: FDUTIL MAPS FILE
-C       NUMBERS TO UNIT+7, AND RDLIN TAKES THE UNIT.
+C       ILUN IS A FILE NUMBER, NOT A FORTRAN UNIT, AND A NEGATIVE ONE
+C       MEANS THE TERMINAL.  RDLIN'S OWN CODE SETTLES IT:
 C
-        ILUN=5
+C           LU = LUN
+C           IF (LUN .GT. 0) LU = LUN + 7      FILE NUMBER -> UNIT
+C           IF (LUN .GE. 0) GO TO 20
+C           READ (5,...)                      LUN < 0: THE TERMINAL
+C       20  READ (LU,...)
+C
+C       The recovered code uses the convention the same way -- COMAND's
+C       "CALL WRTLIN (CMNDS(PC),-1,-1)" writes to the terminal.  ILUN=5
+C       read unit 12, which nothing had opened, so every RDLIN returned
+C       end of file at once.  The INPUT command replaces this with a
+C       real file number; manual 2.3.1: "an end-of-file causes commands
+C       to be read from the terminal again".
+C
+        ILUN=-1
+C
+C       ITTO IS A REAL FORTRAN UNIT: the -1 convention is interpreted by
+C       FDUTIL's RDLIN and WRTLIN, not by a raw WRITE, and WRITE to unit
+C       -1 gives "INVALID LOGICAL UNIT NUMBER".  WRTLIN itself writes to
+C       unit 5 for a negative LUN, so 5 is the terminal here.  Nothing
+C       in the recovered 40 references ITTO -- it belongs to the modules
+C       that were lost.
+C
         ITTO=5
 C
 C       THE STARTUP DIALOGUE IS MANUAL 2.2: LOD100 ANNOUNCES ITSELF AND
@@ -120,7 +141,15 @@ C
 9810    FORMAT (' *')
         IPTR=1
         IF (RDLIN (STR,ILUN,-1) .LT. 0) GO TO 900
-        CMD=COMAND (0,STR,-1)
+C
+C       MATCH ON AT MOST THREE CHARACTERS.  COMAND's own code:
+C           LEN = MIN0 (MAXLEN,3)
+C           IF (CMPSS(CMNDS(PC),STR,MIN0(CMNDS(PC),LEN)).EQ.0) ...
+C       so it compares the shorter of the list entry and LEN, capped at
+C       three -- which is why the list holds LO, MAP, LIN, INI, MAR.
+C       Passing -1 makes LEN -1 and nothing ever matches.
+C
+        CMD=COMAND (0,STR,3)
         IF (CMD .LT. 1 .OR. CMD .GT. 34) GO TO 800
         GO TO (1001,1002,1099,1099,1099,1006,1007,1008,1009,
      *         1099,1011,1012,1013,1014,1099,1099,1017,1018,
