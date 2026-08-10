@@ -42,3 +42,12 @@ PIP DM0:/FR
 ;
 ; HSR STEP DONE
 ;
+; INSTALL AP LIBRARY (APLIB) -- FPS's own APL100.CMD.
+; Needs APEEL, which HSR100 built and installed as ...APE.
+; LIB100 and PDS100 are skipped: LIB100.CMD is one of the nine files
+; missing from the tape, and PDS100 needs it.
+;
+@APL100
+;
+; APL STEP DONE
+;
