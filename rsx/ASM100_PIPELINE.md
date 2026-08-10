@@ -8,6 +8,26 @@ beside it.
 
 **Result: all nine libraries reproduced. 376 modules, 0 errors.**
 
+**Re-verified end to end (August 2026)** on the V3.1 pack, from a freshly
+fetched kit, with the assembler rebuilt from the tape's own ASM100.FTN
+against a LIB100 carrying the reconstructed FDUTIL:
+
+| shipped | ours | bytes | result |
+|---|---|---|---|
+| `SYMLIB.APO` | `SYMOBJ.APO` | 7,199 | byte-identical |
+| `DGNLIB.APO` | `DGNOBJ.APO` | 10,592 | byte-identical |
+| `APFLIB.APO` | `APFOBJ.APO` | 22,968 | byte-identical |
+| `UTLLIB.APO` | `UTLOBJ.APO` | 38,559 | byte-identical |
+| `IPRLIB.APO` | `IPROBJ.APO` | 50,552 | byte-identical |
+| `AMLLIB.APO` | `AMLOBJ.APO` | 67,220 | byte-identical |
+| `BABLIB.APO` | `BABOBJ.APO` | 98,553 | byte-identical |
+| `SIGLIB.APO` | `SIGOBJ.APO` | -- | identical after `***PB`->`***FPB`, **26 vs 26** |
+| `BAALIB.APO` | `BAAOBJ.APO` | -- | identical after `***PB`->`***FPB`, **88 vs 88** |
+
+The two exceptions differ by exactly their marker counts and by nothing
+else, and 88 is precisely the number of times `BAASRC` uses `$PARAM` --
+so the `***FPB` finding is reproduced independently rather than assumed.
+
 | source | modules | vs shipped |
 |---|---|---|
 | `SYMSRC` -> `SYMLIB` | 66 | identical |
