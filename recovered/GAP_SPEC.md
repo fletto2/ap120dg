@@ -70,6 +70,47 @@ Note §4.2.3's caveat, which an implementation must honour: *"there may be
 multiple occurrences of the information block header. Only the last one
 is meaningful."*
 
+## The overlay table entry is 16 words in task mode, not 8
+
+`ENDLNK` builds each entry into `BUFFER` and strides by 16
+(`IF (J+16 .LE. BUFSIZ)`), filling `J` through `J+15`:
+
+    J+0   (OVDTA(I,6) & 15) * 8      segment number * 8
+    J+1   OVDTA(I,1)                 MD address
+    J+2   (OVDTA(I,6) & 15)          segment number
+    J+3   OVDTA(I,3)                 length in PS words
+    J+4   0
+    J+5   OVDTA(I,2)                 PS address
+    J+6   0
+    J+7   OVDTA(I,4) >> 1            partition count
+    J+8   0
+    J+9   TSKDTA(TSKPTR,1)           task id
+    J+10  0
+    J+11  1 for the first entry, else 0
+    J+12..J+15  0
+
+and the total length is **halved when not in task mode**:
+
+    IVAL(3)=OVPTR*OVMESZ
+    IF (.NOT.TASKFL) IVAL(3)=IVAL(3)/2
+
+So the eight-word entry recorded in CLAUDE.md — from Loader table 2-1 and
+Supervisor table 2-2 — is the **non-task** form; task mode uses 16.
+`OVMESZ` itself is set in one of the missing modules.
+
+That also fixes the `OVDTA` column meanings, which no manual states:
+
+| column | meaning |
+|---|---|
+| 1 | MD address |
+| 2 | PS address |
+| 3 | length in PS words |
+| 4 | partition count (stored doubled) |
+| 5 | masked to 8 bits for the map (`LOADMP`) |
+| 6 | segment number, low 4 bits |
+| 7 | pointer used by `OVLY` to release program data |
+| 8, 9 | masked to 8 bits by `OVLY` |
+
 ## Why this matters
 
 With these written, LOD100 can be built from **40 modules of genuine FPS
