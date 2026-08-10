@@ -1,0 +1,93 @@
+C+++ BLKSKP
+C****** BLKSKP = SKIP AN OBJECT BLOCK = RECONSTRUCTION
+C
+C       NOT RECOVERED FPS SOURCE.  SKPSUB CALLS IT HAVING JUST READ A
+C       BLOCK HEADER AND TAKEN ITS TYPE:
+C
+C           ID=EXTTOK (SYMX,6,STRX,IPTRX,IPTRX,RADIX)
+C           IDENT=STOI (SYMX,RADIX)
+C           CALL BLKSKP (STRX,IPTRX,IDENT)
+C
+C       so IPTR is positioned just past the type and the rest of the
+C       block has to be consumed.  IDENT IS THE OCTAL BLOCK TYPE, not
+C       LOAD1's dispatch index -- LOAD1 uses BLKTYP=type+1 and its
+C       comments number the blocks by that index, which is why they read
+C       "TASK BLOCK (12)" for what the manual calls block 15.
+C
+C       WHICH TYPES CARRY A RECORD COUNT WAS CHECKED AGAINST A SHIPPED
+C       OBJECT (DGNLIB.APO) RATHER THAN ASSUMED:
+C
+C           0     23      0      ***CODE     type, count, relocations
+C           5      4      ***EXT             type, count
+C          13      1      ***AENTRY          type, count
+C           3      ***TITLE                  type only, one name line
+C           1      ***END                    type only, one name line
+C           6      ***LSB                    type only, nothing follows
+C           7      ***LEB                    type only, nothing follows
+C
+        SUBROUTINE BLKSKP (STR,IPTR,IDENT)
+C
+        INTEGER STR(1),IPTR,IDENT
+        INTEGER SYM(8),ICNT,I,ID,STOI,EXTTOK,RDREC
+        COMMON /LDTABS/ PRGDTA (503),PRGMAX,ENTDTA(503),ENTMAX,         LDTABS
+     *                EXTDTA(283),EXTMAX,EX1PTR,                        LDTABS
+     *                OLUN,RADIX,CLUN,MDLOW,PSLOW,                      LDTABS
+     *                PSBRK,DBDTA1(203),DB1MAX,DBDTA2(150,2),DB2MAX,    LDTABS
+     *                DB2PTR,OVDTA(16,9),OVPTR,OVMAX,LRADIX,PSMAX,      LDTABS
+     *                DBST,DBBRK,DB0PTR,DB0MAX,DBDTA0(70),              LDTABS
+     *                EXTDT1(200),                                      LDTABS
+     *                EXTMX1,ENTDT1(100),ENTMX1,ENTPT1,LMLUN,           LDTABS
+     *                PARDTA(100),PARMAX,PARPTR,FLUN,VARSIZ(3),         LDTABS
+     *                CNTMAX,PARADR,MAXPAR,OVID,OVFLG,LMID,             LDTABS
+     *                OVPG,DBPG,BUFFER(200),BUFSIZ,PAKFAC,              LDTABS
+     *                DBLUN,EKOFLG,EKOLUN,CLUNS(2),CCLUN,CUROV,         LDTABS
+     *                NOTUS1,NOTUS2,NOTUS3,LUNMAP,OFFSET,EXTHST,M65536  LDTABS
+        COMMON /LDTABS/ SFFIL(31),SOFIL(31),SLMFIL(31),PGINFO(16,2)     LDTABS
+        COMMON /LDTABS/ SCLUN(16),SCLUN2(16),CLUN2                      LDTABS
+        COMMON /LDTABS/ PPASZ,OTOFLG,OVLEVL,CALFLG,CMPFLG,RSTRCT,       LDTABS
+     *                  PSHLD,OV1FLG,MAPLUN,NAMLUN,LP2LUN,SLP2NM(16)    LDTABS
+        COMMON /LDTABS/FLMLUN,FLMFIL,LMLDSW,MXDATA,SUBCNT,              LDTABS
+     *               CODPTR,LMHDRC                                      LDTABS
+        INTEGER PRGDTA,PRGMAX,ENTDTA,ENTMAX,                            LDTABS
+     *          EXTDTA,EXTMAX,EX1PTR,                                   LDTABS
+     *          OLUN,RADIX,CLUN,MDLOW,PSLOW,                            LDTABS
+     *          PSBRK,DBDTA1,DB1MAX,DBDTA2,DB2MAX,                      LDTABS
+     *          DB2PTR,OVDTA,OVPTR,OVMAX,LRADIX,PSMAX,                  LDTABS
+     *          DBST,DBBRK,DB0PTR,DB0MAX,DBDTA0,EXTDT1,                 LDTABS
+     *          EXTMX1,ENTDT1,ENTMX1,ENTPT1,LMLUN,                      LDTABS
+     *          PARDTA,PARMAX,PARPTR,FLUN,VARSIZ,                       LDTABS
+     *          CNTMAX,PARADR,MAXPAR,OVID,OVFLG,LMID,                   LDTABS
+     *          OVPG,DBPG,BUFFER,BUFSIZ,PAKFAC,                         LDTABS
+     *          DBLUN,EKOFLG,EKOLUN,CLUNS,CCLUN,CUROV,                  LDTABS
+     *          NOTUS1,NOTUS2,NOTUS3,LUNMAP,OFFSET,EXTHST,M65536        LDTABS
+        INTEGER SFFIL,SOFIL,SLMFIL,PGINFO                               LDTABS
+        INTEGER SCLUN,SCLUN2,CLUN2                                      LDTABS
+        INTEGER PPASZ,OTOFLG,OVLEVL,CALFLG,CMPFLG,RSTRCT,PSHLD,OV1FLG   LDTABS
+        INTEGER MAPLUN,NAMLUN,LP2LUN,SLP2NM                             LDTABS
+        INTEGER FLMLUN,FLMFIL(31),LMLDSW,MXDATA,SUBCNT,                 LDTABS
+     *           CODPTR,LMHDRC(8)                                       LDTABS
+C
+C       LIBRARY START AND LIBRARY END STAND ALONE.
+C
+        IF (IDENT .EQ. 6 .OR. IDENT .EQ. 7) RETURN
+C
+C       TITLE AND END ARE FOLLOWED BY ONE LINE, THE MODULE NAME.
+C
+        IF (IDENT .NE. 1 .AND. IDENT .NE. 3) GO TO 100
+        ID=RDREC (OLUN,STR,IPTR)
+        RETURN
+C
+C       EVERYTHING ELSE CARRIES A RECORD COUNT AS THE NEXT HEADER
+C       FIELD.  A COUNT OF ZERO IS LEGAL AND MEANS NO DATA RECORDS --
+C       SYMLIB IS ENTIRELY $EQU AND ITS MODULES HAVE NONE.
+C
+100     CONTINUE
+        IF (EXTTOK (SYM,6,STR,IPTR,IPTR,RADIX) .EQ. 0) RETURN
+        ICNT=STOI (SYM,RADIX)
+        IF (ICNT .LE. 0) RETURN
+        DO 200 I=1,ICNT
+        ID=RDREC (OLUN,STR,IPTR)
+        IF (ID+1 .LE. 0) RETURN
+200     CONTINUE
+        RETURN
+        END
