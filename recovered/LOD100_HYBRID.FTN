@@ -140,7 +140,7 @@ C
         WRITE (ITTO,9810)
 9810    FORMAT (' *')
         IPTR=1
-        IF (RDLIN (STR,ILUN,-1) .LT. 0) GO TO 900
+        IF (RDLIN (STR,ILUN,80) .LT. 0) GO TO 900
 C
 C       MATCH ON AT MOST THREE CHARACTERS.  COMAND's own code:
 C           LEN = MIN0 (MAXLEN,3)
