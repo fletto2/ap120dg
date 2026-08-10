@@ -34,24 +34,41 @@ INSTAL.TXT §9.14, but **invented every signature** — none match:
 
 plus `.MAIN.`, the mainline.
 
-### WRTLM in detail — 16 call sites constrain it tightly
+### WRTLM in detail — the manual specifies it, chapter 4
 
-    CALL WRTLM (0,1,VAL,0,DBPG-1,0,0,0,0,0.0,0.0)
-    CALL WRTLM (1,DT,RPTCNT,ADDR,0,VALVEC(1),VALVEC(2),VALVEC(3),
-                VALVEC(4),SPFPN(1),SPFPN(2))
-    CALL WRTLM (0,2,IVAL(1),PPASZ,LMID,IV2,IV,0,0,0.0,0.0)
-    CALL WRTLM (0,3,0,0,0,0,0,0,0,0.0,0.0)
-    CALL WRTLM (1,4,PSPMAX,DBBRK,0,0,0,0,0,0.0,0.0)
+**The load module format is documented**: LOD100 Reference Manual §4.2.
+Every block is an **eight-word header** optionally followed by data
+records, and the block numbers are exactly WRTLM's second argument:
 
-- arg 1 is 0/1 — a mode
-- arg 2 is 0..4 — the record type
-- args 3-5 are count, address, page
-- args 6-9 are a four-word integer value vector (`VALVEC`)
-- args 10-11 are a REAL pair (`SPFPN`) — the floating value path
+    4.2.1  Code/Overlay/32-Bit MD Data Block (0)
+           header:  0 count addr pg dest 0 0 0
+    4.2.2  Data Block (1)
+           header:  1 count 0 pg 0 0 0 0
+           record:  type rc addr 0 value-a value-b value-c value-d
+    4.2.3  Information Block (2)
+           header:  2 ppaad ppasz lmid ovlen ovaddr 0 0
+    4.2.4  End Block (3)
+           logical:      3 0 0 0 0 0 0 0
+           terminating:  3 1 0 0 0 0 0 0
 
-`lod100.py` already emits this record format correctly (validated
-1160/1160 words against `LOD100.FTN`), so the record layout is known;
-what changes is that the routine must present **this** interface.
+So **argument 1 selects header (0) or data record (1)**, and the rest are
+that record's words in order. Every call site fits:
+
+| call | manual |
+|---|---|
+| `WRTLM(0,0,RECCNT*PACK,VAL,OVPAGE,DEST,0,0,0,0.,0.)` | code header: count, addr, pg, **dest** |
+| `WRTLM(0,2,IVAL(1),PPASZ,LMID,IV2,IV,0,0,0.,0.)` | info header: **ppaad, ppasz, lmid, ovlen, ovaddr** |
+| `WRTLM(0,3,0,...)` / `WRTLM(0,3,1,...)` | **logical** vs **terminating** end block |
+| `WRTLM(1,DT,RPTCNT,ADDR,0,VALVEC(1..4),SPFPN(1),SPFPN(2))` | data record: type, **rc**, addr, value-a..d |
+| `WRTLM(1,4,PSPMAX,DBBRK,...)` | data type **4 = double precision integer (38-bit)** |
+
+Data-record types are `1` 16-bit integer, `2` single precision host real,
+`4` double precision integer (38-bit) — which is why arguments 10-11 are
+a REAL pair: they carry the type-2 value.
+
+Note §4.2.3's caveat, which an implementation must honour: *"there may be
+multiple occurrences of the information block header. Only the last one
+is meaningful."*
 
 ## Why this matters
 
