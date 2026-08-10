@@ -1,0 +1,67 @@
+C+++ TABGET
+C****** TABGET = GET TABLE ENTRY BY INDEX = RECONSTRUCTION
+C
+C       NOT RECOVERED FPS SOURCE.  LOADMP CALLS IT AS
+C
+C           J = LENT (PRGDTA)
+C           DO 2490 I=1,J
+C           ID=TABGET(PRGDTA,I,IVAL,SYM)
+C           CALL UPAKS (SYM,SYM,6)
+C           CALL MAPLIN (SYM,IVAL(1),0,LRADIX,TLUN)
+C
+C       so it takes the INDEX of an entry and returns that entry's NAME
+C       in SYM -- still packed, LOADMP unpacks it itself -- and its
+C       VALUE in IVAL.  It is called the same way on ENTDTA.
+C
+C       IT IS A CONVENIENCE OVER THE CROCK TABLE PACKAGE, WHICH IS IN
+C       LIB100 AND WHICH THE RECOVERED MODULES USE DIRECTLY ELSEWHERE:
+C           EXTST (TABLE,INDEX,SYM,LEN)     extract the string
+C           EXTVT (TABLE,INDEX,1,VAL,1)     extract the value
+C       -- see DTAREL, which does exactly that pair by hand.
+C
+        INTEGER FUNCTION TABGET (ITAB,INDX,IVAL,SYM)
+C
+        INTEGER ITAB(1),INDX,IVAL(1),SYM(1)
+        INTEGER IZ,EXTST,EXTVT
+        COMMON /LDTABS/ PRGDTA (503),PRGMAX,ENTDTA(503),ENTMAX,         LDTABS
+     *                EXTDTA(283),EXTMAX,EX1PTR,                        LDTABS
+     *                OLUN,RADIX,CLUN,MDLOW,PSLOW,                      LDTABS
+     *                PSBRK,DBDTA1(203),DB1MAX,DBDTA2(150,2),DB2MAX,    LDTABS
+     *                DB2PTR,OVDTA(16,9),OVPTR,OVMAX,LRADIX,PSMAX,      LDTABS
+     *                DBST,DBBRK,DB0PTR,DB0MAX,DBDTA0(70),              LDTABS
+     *                EXTDT1(200),                                      LDTABS
+     *                EXTMX1,ENTDT1(100),ENTMX1,ENTPT1,LMLUN,           LDTABS
+     *                PARDTA(100),PARMAX,PARPTR,FLUN,VARSIZ(3),         LDTABS
+     *                CNTMAX,PARADR,MAXPAR,OVID,OVFLG,LMID,             LDTABS
+     *                OVPG,DBPG,BUFFER(200),BUFSIZ,PAKFAC,              LDTABS
+     *                DBLUN,EKOFLG,EKOLUN,CLUNS(2),CCLUN,CUROV,         LDTABS
+     *                NOTUS1,NOTUS2,NOTUS3,LUNMAP,OFFSET,EXTHST,M65536  LDTABS
+        COMMON /LDTABS/ SFFIL(31),SOFIL(31),SLMFIL(31),PGINFO(16,2)     LDTABS
+        COMMON /LDTABS/ SCLUN(16),SCLUN2(16),CLUN2                      LDTABS
+        COMMON /LDTABS/ PPASZ,OTOFLG,OVLEVL,CALFLG,CMPFLG,RSTRCT,       LDTABS
+     *                  PSHLD,OV1FLG,MAPLUN,NAMLUN,LP2LUN,SLP2NM(16)    LDTABS
+        COMMON /LDTABS/FLMLUN,FLMFIL,LMLDSW,MXDATA,SUBCNT,              LDTABS
+     *               CODPTR,LMHDRC                                      LDTABS
+        INTEGER PRGDTA,PRGMAX,ENTDTA,ENTMAX,                            LDTABS
+     *          EXTDTA,EXTMAX,EX1PTR,                                   LDTABS
+     *          OLUN,RADIX,CLUN,MDLOW,PSLOW,                            LDTABS
+     *          PSBRK,DBDTA1,DB1MAX,DBDTA2,DB2MAX,                      LDTABS
+     *          DB2PTR,OVDTA,OVPTR,OVMAX,LRADIX,PSMAX,                  LDTABS
+     *          DBST,DBBRK,DB0PTR,DB0MAX,DBDTA0,EXTDT1,                 LDTABS
+     *          EXTMX1,ENTDT1,ENTMX1,ENTPT1,LMLUN,                      LDTABS
+     *          PARDTA,PARMAX,PARPTR,FLUN,VARSIZ,                       LDTABS
+     *          CNTMAX,PARADR,MAXPAR,OVID,OVFLG,LMID,                   LDTABS
+     *          OVPG,DBPG,BUFFER,BUFSIZ,PAKFAC,                         LDTABS
+     *          DBLUN,EKOFLG,EKOLUN,CLUNS,CCLUN,CUROV,                  LDTABS
+     *          NOTUS1,NOTUS2,NOTUS3,LUNMAP,OFFSET,EXTHST,M65536        LDTABS
+        INTEGER SFFIL,SOFIL,SLMFIL,PGINFO                               LDTABS
+        INTEGER SCLUN,SCLUN2,CLUN2                                      LDTABS
+        INTEGER PPASZ,OTOFLG,OVLEVL,CALFLG,CMPFLG,RSTRCT,PSHLD,OV1FLG   LDTABS
+        INTEGER MAPLUN,NAMLUN,LP2LUN,SLP2NM                             LDTABS
+        INTEGER FLMLUN,FLMFIL(31),LMLDSW,MXDATA,SUBCNT,                 LDTABS
+     *           CODPTR,LMHDRC(8)                                       LDTABS
+C
+        TABGET=EXTST (ITAB,INDX,SYM,6)
+        IZ=EXTVT (ITAB,INDX,1,IVAL,1)
+        RETURN
+        END
