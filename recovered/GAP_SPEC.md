@@ -256,6 +256,19 @@ Where anything disagreed it was this project's notes.
   of `lod100.py`, not the bit's meaning, and `000400` was missing.
   Consistent with the recovered `FINISH`, where an absent READYQ is
   **error 35**, not a condition.
+- **PS partition table** -- Supervisor 2.2.3.3: one table for the whole
+  environment, **one MD word per partition**, holding either zero or
+  *"a pointer to the entry in the overlay table ... actually the address
+  of the residency word (word 6) in that segment's entry"*.
+
+  The recovered `FINISH` writes exactly that:
+
+        CALL WRTLM(0,0,4,OVPDTA(I,1)+6,0,1,0,0,0,0.0,0.0)
+
+  -- the overlay entry address **+6**, the residency word. Manual and
+  code agree on the substance. (Whether `+6` is word 6 one-based or
+  zero-based is worth confirming against a built table before relying on
+  it; the manual says "word 6" and the code adds 6.)
 - **The MD word unit is consistent everywhere**: overlay entries, TCB
   entries and `FSLMLD`'s "32 BITS OF HOST PER MD WORD" all agree, which
   is what makes the host-word/MD-word distinction the thing to check
