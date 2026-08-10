@@ -342,16 +342,35 @@ They are now written VERBATIM with `RTYP=2` preserved, so FCS parses the
 framing that is already in the bytes.  This is what finally let $VINIT
 transfer intact.
 
-## SimH: an RK07 container cannot be RE-ATTACHED
+## SimH: re-attaching an RK07 -- do NOT set the drive type first
 
-Worth knowing before planning any persistent RK07 image.  A container SimH
-itself created with `att -n` comes back as
+An RK07 container DOES persist and re-attach.  An earlier note here said
+it could not; that was wrong, and the cause was the note's own recipe.
+
+SimH records the geometry in a footer in the container's last block (it
+reads `simhPDP-11`).  If you `set hk0 rk07` and THEN attach, it rejects
+its own container:
 
     %SIM-ERROR: HK0: RK07 container created by the PDP-11 simulator is
                 incompatible with the HK device on the PDP-11 simulator
 
-and its own suggested `ATTACH HK0 -C new old` conversion fails the same
-way.  The container also ends up 107,581 blocks for a 53,790-block drive.
-So an RK07 built by running SimH is a SINGLE-SESSION artifact: create it
-with `att -n` and do all the work in that one run.  Any experiment that
-re-attached one was testing a broken drive.
+Attach WITHOUT setting the type and autosize reads the footer:
+
+    set hk enabled
+    att hk0 usagi0.dsk        ! no "set hk0 rk07" first
+    -> Volume Name: USAGI0  Format: DECFILE11A  Sectors In Volume: 53790
+
+Verified end to end: a fresh simulator session mounts the previously
+installed volume and lists it --
+
+    MOU DM0:USAGI0
+    PIP DM0:[200,200]*.*/LI
+    Total of 12735./12735. blocks in 182. files
+
+Set the type only when CREATING a container with `att -n`.  Stripping the
+footer does not help: a plain 53,790-block file is then rejected with
+`larger than simulated device (13MW > 53KW)`, which is a genuine unit
+mix-up in the attach check -- container size in words against capacity in
+sectors, a factor of 256 -- so a raw image would have to be under ~210
+blocks to pass.
+
