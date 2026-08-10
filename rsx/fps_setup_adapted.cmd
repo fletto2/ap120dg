@@ -3,10 +3,9 @@
 .SETS $MM "MT:"       .; no magtape on this system; TREAD is stubbed
 .SETS $MM0 "MT0:"
 .SETS $BPI "1"
-.SETS $LBDSK "DM0:"  .; adapted: DL0: (the original site library disk) is not
-                     .; present; the RK07 stands in for it, and the RSX system
-                     .; disk is an RL02 with no room for MATHLIB
-.SETS $WKDSK "DM0:"   .; adapted: the package lives on the RK07
+.SETS $LBDSK "LB:"
+
+.SETS $WKDSK "DM1:"   .; adapted: the package lives on the RK07
 .SETS $LUIC "[1,1]"
 .SETS $WUIC "[100,100]"
 .SETN $BASLB 0
@@ -85,7 +84,13 @@ INS $EDI/INC=40000/TASK=...EDI
 .;
 .SETS $COM "N"   .; DO NOT SAVE FORTRAN COMMENTS ON MAGTAP READS.
 .SETN $NOAP 1   .; ONE AP IS BEING CONNECTED.
-ASN DL0:=LB:
+.; ADAPTED: the original site had its system disk on DL0:.  Here the
+.; system is on the RK07, so LB: must follow it -- otherwise LB: names
+.; a device that does not exist and every MAC carrying LB:[1,1]EXEMC
+.; fails with 'Open failure on input file', which MAC does not
+.; attribute to LB:.  PIP probes run BEFORE this assignment succeed,
+.; which is what made it look like a privilege difference.
+ASN DM0:=LB:
 .IFNLOA MT:  LOA MT:
 ASN DM0:=SY:   .; adapted: work disk is the RK07
 SET /UIC=[100,100]
