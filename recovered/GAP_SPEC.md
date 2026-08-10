@@ -236,7 +236,24 @@ form is a branch that reports the command as unimplemented rather than
 one that silently does nothing, so a command file using one fails
 loudly instead of producing a quietly wrong load module.
 
-## Why this matters
+## Cross-check against the other manuals
+
+Asked to certify consistency, so: **the manuals agree with each other.**
+Where anything disagreed it was this project's notes.
+
+- **Overlay table entry** -- Loader 2-1 and Supervisor 2-2 both say
+  **eight MD words**. My "16 words" was host words; see above.
+- **TCB** -- Loader table 2-2 and Supervisor table 2-1 are **identical**,
+  both listing sixteen fields, and both state *"each entry consists of
+  one MD word"*. CLAUDE.md's summary listed eleven and omitted `TYPE`
+  (4), `ANSKEY` (6), `LSTMSG` (12) and `ICLOCK` (15) -- enough to put
+  every field after word 3 at the wrong offset. Corrected.
+- **The MD word unit is consistent everywhere**: overlay entries, TCB
+  entries and `FSLMLD`'s "32 BITS OF HOST PER MD WORD" all agree, which
+  is what makes the host-word/MD-word distinction the thing to check
+  first when a count looks doubled.
+
+
 
 With these written, LOD100 can be built from **40 modules of genuine FPS
 source** plus 11 written ones, against the LIB100 that already exists —
