@@ -137,12 +137,28 @@ the file-number+7 rule those are exactly the highest unit each tool can
 reach: LNK100 uses file numbers up to 5, LOD100 up to 10. Nothing else
 explains why a linker would need seventeen logical units.
 
-**Open**: running LNK100 on the assembled objects is not working yet. A
-bare `L DGNOBJ.APO` fails with `NO SUCH FILE` from `LODFIL`, and
-`L DK1:DGNOBJ.APO` gets past the lookup but then hangs without reaching
-`LOAD COMPLETE`. So the reconstruction's `ASSIGN`-plus-implicit-open path
-behaves differently from ASM100's `ASSIGN`-plus-explicit-`OPEN`, and it
-does not pick up `SY:`. That is the next thing to chase.
+**RESOLVED (August 2026): use the command line, not the dialogue.**
+Installing LNK100 and driving it as `LNK out=in` links the assembled
+objects and its output is IDENTICAL to `lnk100.py`:
+
+    >INS LNK100.TSK/TASK=...LNK
+    >LNK DGNLNK.LM=DGNOBJ.APO
+    LNK100  REL. 0.01 , RECONSTRUCTION
+    HIGH=   431
+      3 UNDEFINED SYMBOLS
+    END LNK100
+
+283 lines each, and both report the same unresolved symbol (`!ONE`,
+referenced by `APFET`).  The input is the `DGNOBJ.APO` this pipeline
+assembled, itself byte-identical to the shipped `DGNLIB.APO`, so the
+whole chain is checked against the tape at both ends.
+
+The old failure was the INTERACTIVE path only: a bare `L DGNOBJ.APO`
+reports `NO SUCH FILE` because the manual's dialogue takes the command
+letter on one line and the argument on the NEXT, so `L DGNOBJ.APO`
+consumes the following line as the filename.  FPS hit the same wall and
+solved it the same way -- APEEL is installed as `...APE` and reads the
+MCR command line.
 
 ## The full chain, on the real machine
 
