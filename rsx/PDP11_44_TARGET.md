@@ -174,3 +174,38 @@ long interactive dialogue rather than a command file, so it wants to be
 approached as its own task: boot `rsxm32` on the replica, run `@SYSGEN`,
 and answer for an 11/44 with 4 MB, DM: on an RK611, DZ11 with sixteen
 lines, a DELUA and a TU58.
+
+## Starting the generation
+
+Entry point, confirmed working on the replica:
+
+    boot rl0                      ; rsxm32 -- RSX-11M V4.0 BL32 BASELINE
+    >INS $PIP                     ; the 28K baseline has almost nothing installed
+    >SET /UIC=[200,200]           ; NOT [1,2] -- SYSGEN.CMD lives here
+    >@SYSGEN
+
+which answers
+
+    ; RSX-11M V4.0 BL32   System Generation PHASE I -- version 1.53
+    ; RL01 distribution kit
+    *  3. Do you want to inhibit execution of MCR commands? [Y/N]:
+
+`[200,200]` on `rsxm32` holds `SYSGEN.CMD`, `SYSGEN2.CMD`, `SYSGEN3.CMD`,
+`SGNPARM.CMD`, `SGNBLDDRV.CMD`, `SGNKLAB.CMD`, `SGNSTAND.CMD` -- the
+standard three-phase generation: phase I builds the executive, II the
+privileged tasks and drivers, III the utilities.
+
+Two SimH conflicts to clear first, both found here:
+
+- **`rl4` does not exist** -- SimH's RL has four units, so `hlpdcl.dsk`
+  cannot be mounted alongside the other four. It is the help/DCL disk and
+  is not needed for the generation.
+- **`TDC` (TU58) collides with `SLU8`** at 017776500 and the boot fails
+  with an address conflict. Leave TDC out of the generation configuration
+  and add it afterwards.
+
+The questions are numbered, so the dialogue can be scripted -- but it is
+several hundred questions over three phases plus long build steps, and a
+wrong answer means starting again. The answers that matter for this
+target: 11/44, 4 MB, DM: on an RK611, DZ11 with sixteen lines, DELUA,
+TU58.
