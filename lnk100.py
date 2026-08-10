@@ -296,9 +296,26 @@ class Linker:
     def link(self):
         """Resolve symbols and produce linked output."""
         # Phase 1: Assign base addresses (sequential in PS from the origin)
+        #
+        # A module with NO ***CODE block occupies no program store and its
+        # ***ENTRY records carry ABSOLUTE addresses -- that is what SYMLIB
+        # is: 66 modules of pure $EQU, e.g.
+        #
+        #        4      1      ***ENTRY
+        #   !DIV    10000      0      0
+        #
+        # Biasing those by a base address is meaningless, and produced
+        # !ONE = 4146 instead of 4097 once any code-bearing module was
+        # linked ahead of SYMLIB (4097 + the 49 words of VADD.APO).  The
+        # AP then read the wrong table-memory word for its loop counter
+        # and VADD stored one element instead of three.
+        #
+        # This never showed up against LNK100.FTN because both tools bias
+        # the same way, and never showed up in the existing tests because
+        # they link SYMLIB FIRST, where the bias is zero.
         addr = self.origin
         for mod in self.modules:
-            mod.base_addr = addr
+            mod.base_addr = addr if mod.code else 0
             addr += len(mod.code)
 
         # Phase 2: Build symbol table from AENTRY and ENTRY records
@@ -356,8 +373,34 @@ class Linker:
                     # Similarly: * 40177 103000 2000 0  0 5 1
                     # The low 16 bits = 0, patched with target addr.
                     old_word = mod.code[word_idx]
-                    # Patch low 16 bits with target address
-                    new_word = (old_word & ~0xFFFF) | (target_addr & 0xFFFF)
+
+                    # The VALUE field is not always an absolute address.
+                    # All 867 relocations in the shipped libraries are
+                    # type 5, so the record does not say which it is --
+                    # the INSTRUCTION does.  A JMP/JSR carries a mode in
+                    # its SPD subfield:
+                    #
+                    #   0 = absolute from VALUE   2 = TMA
+                    #   1 = PC-relative           3 = SWR
+                    #
+                    # and VADD's "JSR SPUFLT" is mode 1.  The shipped HSR
+                    # block proves the convention: it holds VALUE=013 (11)
+                    # at PS[1] to reach SPUFLT at PS[12].  Writing the
+                    # absolute address there sent the call 3 words past
+                    # its target.
+                    df  = (old_word >> 63) & 1
+                    sop = (old_word >> 60) & 7
+                    sps = (old_word >> 54) & 0xF
+                    spd = (old_word >> 50) & 0xF
+                    is_pcrel_jump = (df == 0 and sop == 1 and sps == 8
+                                     and ((spd >> 1) & 3) == 1)
+                    if is_pcrel_jump:
+                        psa = mod.base_addr + word_idx
+                        value = (target_addr - psa) & 0xFFFF
+                    else:
+                        value = target_addr & 0xFFFF
+
+                    new_word = (old_word & ~0xFFFF) | value
                     mod.code[word_idx] = new_word
 
         if unresolved:
