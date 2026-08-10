@@ -286,64 +286,61 @@ carrying a PRE-BUILT binary in.  It still cannot round-trip one out and
 back, because the extractor decodes records to lines; both halves would
 have to preserve record structure for that.
 
-## Self-hosting the target: DONE except one link symbol
+## Self-hosting the target: DONE
 
-FORTRAN IV is installed and COMPILES on the generated system
-(`FOR HELLO,HELLO=HELLO` -> `HELLO.OBJ`, `HELLO.LST`).  Building ASM100
-there gets all the way through the compiles, the libraries and the task
-build, but the link leaves exactly ONE symbol undefined:
+The generated V4.0 system builds the FPS toolchain with its own FORTRAN,
+and the object it produces is BYTE-IDENTICAL to the tape:
 
-    TKB -- *DIAG*-1 undefined symbols segment .MAIN.
-    ...  Undefined references:   $VIRIN
+    built on the self-hosted V4.0 target : 10,592 bytes
+    shipped on the 1981 tape             : 10,592 bytes
 
-and the task then traps at `PC = 000002` the first time that path runs --
-TKB writes an image despite the diagnostic, so the build LOOKS fine.
+0 undefined symbols, ASSEMBLY COMPLETED, 0 errors on every module, using
+the tape's OWN overlay descriptor with no local modification.
 
-What is established:
+### The one thing the FORTRAN kit is missing: $VINIT
 
-- `$VIRIN` is FORTRAN's virtual-array initialisation entry.  A RAD50
-  search of the kit shows it lives in `FOREIS.OBJ` (and in FOREAE, FORFIS,
-  FORNHD -- the arithmetic OTS variants), NOT in `FOROTS.OBJ`.
-- The V3.1 pack's SYSLIB contains it (8 RAD50 hits); a pristine V4.0
-  system contains none.  So it genuinely has to be merged in.
-- **`LBR /RP` is the wrong switch.**  It REPLACES modules that already
-  exist; the OTS module names are not in SYSLIB, so it matched nothing and
-  inserted nothing -- silently, with no diagnostic.  Use `/IN`.  With
-  `/RP` the count was 570 undefined symbols; the OTS merge took it to 1.
-- `SHORT.OBJ` is NOT the virtual-array stub.  It is the short-error-text
-  alternative to a FOROTS module and collides:
-  `LBR -- *FATAL*-Duplicate entry point name "$ERTXT"`.
-- With `/IN` both merges run clean and silent (LBR says nothing on
-  success), yet `$VIRIN` is still unresolved at link time.
+`AN-1822C-BC_F4RSX_V2.2` does NOT ship the virtual-array module `$VINIT`,
+which defines `$VIRIN`, `$VRINT`, `$$VIR` and `.VIR`.  Without it **no**
+FORTRAN program links at all -- a three-line `PROGRAM HELLO` fails the
+same way ASM100 does:
 
-**Narrowed to the library's ENTRY POINT TABLE.**  The modules DID land --
-a RAD50 search finds `$VIRIN` in the V4.0 `SYSLIB.OLB` -- but the counts
-differ from a library that works:
+    TKB -- *DIAG*-1 undefined symbols segment HELLO
+        $VIRIN
 
-    V3.1 SYSLIB (links fine)   157,034 bytes   $VIRIN x4
-    V4.0 SYSLIB (fails)        183,846 bytes   $VIRIN x2
+`/-VA` does NOT suppress the reference.  Take the module from the V3.1
+pack, where FORTRAN works:
 
-An RSX object library indexes entry points in a table separate from each
-module's own GSD records.  Two hits is the module alone; four is the
-module plus its index entry.  So `LBR /IN` inserted the modules WITHOUT
-indexing their entry points, which is precisely why TKB cannot resolve a
-symbol whose bytes are demonstrably in the file.
+    LBR VINIT.OBJ=LB:[1,1]SYSLIB/EX:$VINIT      ! on V3.1, 226 bytes
+    LBR LB:[1,1]SYSLIB/IN=[1,24]VINIT.OBJ       ! on V4.0
 
-Naming the library explicitly in the ODL root does NOT help --
+Find it with `LBR LB:[1,1]SYSLIB/LE`, which prints `** MODULE:$VINIT`
+followed by its entry points.  Note the listing forms: `LBR lib/LI` and
+`LBR lib/LE` to the terminal WORK; `LBR TI:/LE=lib` and
+`LBR TI:=lib/LE` do not, and writing the listing to a file fails to open.
 
-    ROOT: .FCTR R1-R4-R5-R6-LB:[1,1]SYSLIB/LB
+### Two wrong diagnoses, recorded so they are not repeated
 
-still leaves `$VIRIN` undefined -- which is consistent: TKB searches the
-entry point table, not the module bodies.
+- **"SYSLIB's entry point table is full."**  It is not.  The V4.0 library
+  reports `EPT entries allocated: 2304; Available: 71`, the OTS modules
+  are indexed, and TKB resolves 13 of the 14 OTS symbols from it.  LBR
+  DOES report `EPT or MNT exceeded` when a table really is full -- it did
+  so for a small library created with `/CR:1000:256:256` (those values are
+  OCTAL: 174 entries).
+- **Naming a private OTS library in the ODL root.**  This "fixed" ASM100
+  while leaving every other FORTRAN program on the system unable to link.
+  The giveaway was that a trivial HELLO also failed; always test the
+  simplest possible program before concluding a fault is project-specific.
 
-Next thing to try: rebuild the index (`LBR ...SYSLIB/SQ`), or check
-whether the library's EPT is simply full -- SYSGEN creates SYSLIB with a
-fixed EPT size and LBR reports `EPT OR MNT EXCEEDED` when it overflows,
-though no such message appeared here.
+### ods1make: object files must keep their record framing
 
-None of this affects any result in this repository: the whole toolchain is
-validated on the V3.1 pack, where ASM100 reproduces nine shipped libraries
-byte-for-byte.  Self-hosting the 11/44 is convenience, not correctness.
+`.OBJ` and `.OLB` files carry their own `[2-byte length][data]` records.
+Writing them as fixed 512-byte records gives
+
+    LBR -- *FATAL*-Invalid module format in VINIT.OBJ;1
+
+They are now written VERBATIM with `RTYP=2` preserved, so FCS parses the
+framing that is already in the bytes.  This is what finally let $VINIT
+transfer intact.
 
 ## SimH: an RK07 container cannot be RE-ATTACHED
 

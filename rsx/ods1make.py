@@ -306,8 +306,28 @@ class Volume:
             # or "TKB -- *FATAL*-Module FROOT not in library". Write them
             # verbatim as fixed 512-byte records instead.
             if ext_s.upper() in BINARY_EXTS:
-                recs = data + b'\0' * (-len(data) % BLK)
-                rtyp, ratt, longest = 1, 0, BLK      # fixed-length, 512
+                # The bytes already carry their own variable-record framing
+                # ([2-byte length][data]) because they were read as raw
+                # blocks off an ODS-1 volume.  Write them VERBATIM but keep
+                # RTYP=2 so FCS parses that framing.  Writing them as fixed
+                # 512-byte records instead gives
+                #   LBR -- *FATAL*-Invalid module format in x.OBJ;1
+                # because LBR then sees one 512-byte record, not the object
+                # records inside it.
+                recs = data
+                longest = 0
+                p = 0
+                while p + 2 <= len(data):
+                    n = struct.unpack_from('<H', data, p)[0]
+                    if n == 0 or p + 2 + n > len(data):
+                        break
+                    longest = max(longest, n)
+                    p += 2 + n + (n & 1)
+                if longest == 0:                     # not record-framed
+                    recs = data + b'\0' * (-len(data) % BLK)
+                    rtyp, ratt, longest = 1, 0, BLK
+                else:
+                    rtyp, ratt = 2, 0
             else:
                 recs, longest = self.textrecs(data)
                 rtyp, ratt = 2, 2                    # variable, implied CC
