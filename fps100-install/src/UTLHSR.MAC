@@ -1,0 +1,23 @@
+;/ APNOP
+        .TITLE APNOP
+        .GLOBL APNOP ,APEX
+APNOP : MOV (%5)+,%0
+        BEQ NONE
+        MOV #SLIST,%1
+LOOP:   MOV @(%5)+,(%1)+
+        DEC %0
+        BNE LOOP
+NONE:   MOV #PARAM,%5
+        JSR %7,APEX
+        RTS %7
+PARAM:  4
+        CODE
+        START
+        SLIST
+        NSPADS
+NSPADS:      0.
+SLIST:  .BLKW      0.
+START:       0.
+CODE:        1.
+        000000,000340,000000,000000
+        .END

@@ -1,0 +1,137 @@
+;/****** DEVTABLE = DRIVER DEVICE TABLES, FPS100 = REL B.1 , JAN 80 *******
+        .TITLE DEVTBL - DRIVER DEVICE TABLES FOR FPS100 DRIVER
+        LD$AP  = 0
+        .MCALL DEVDF$,HWDDF$
+        DEVDF$
+        HWDDF$
+        .LIST ME
+.IF DF FPS100
+;
+; SYSTEM TABLES FOR DRIVER
+;
+X=2                                     ;TWO UCB'S AND SCB'S PER UNIT FOR FPS100
+.IFF
+X=1                                     ;ONE UCB AND SCB PER UNIT FOR AP120
+.IFTF
+;
+; ONE DEVICE CONTROL BLOCK NEEDED FOR THE DRIVER (DCB)
+;
+$APDAT::
+APDCB:  .WORD   0                       ;LINK TO NEXT DCB, ZERO IF NONE
+        .WORD   .AP0                    ;POINTER TO FIRST UCB
+        .ASCII  /AP/                    ;DEVICE NAME
+        .BYTE   0,<X*A$$P11>-1          ;HIGH & LOW UNITS SUPPORTED
+                                        ;EACH AP IS TWO UNITS: DMA, CTL05
+        .WORD   APND0-APST0             ;LENGTH OF A UCB
+        .WORD   0                       ;POINTER TO DRIVER DISPATCH TABLE
+        .WORD   1777                    ;LEGAL FUCNTION CODE MASK
+        .WORD   1531                    ;CONTROL FUNCTION MASK
+        .WORD   0                       ;NO-OP CODES
+        .WORD   0                       ;ACP CODES
+        .WORD   0                       ;LEGAL FUNCTIONS (16-31)
+        .WORD   0                       ;CONTROL (16-31)
+        .WORD   0                       ;NO-OP (16-31)
+        .WORD   0                       ;AC(16-31)
+.IF     DF,L$$DRV                        ;IF LOADABLE DRIVERS SUPPORTED
+        .WORD   0                       ;PARTITION CONTROL BLOCK
+.ENDC
+;
+;
+; NEXT ARE THE UNIT CONTROL BLOCKS (UCB) AND
+; STATUS CONTROL BLOCKS (SCB) FOR EACH UNIT. NOTE THAT
+; EACH AP APPEARS AS TWO UNITS TO ALLOW OVERLAP OF OPERATIONS
+;
+        .MACRO  MAKUCB APN              ;MAKE A UCB FOR AP #N
+        UNITN = <X*APN>                 ;STARTING UNIT, THIS AP
+        MAKDMA  \UNITN                  ;GENERATE DMAUCB
+        UNITN = UNITN+1                 ;NEXT ONE
+.IFT
+        MAKCT5  \UNITN                  ;AND CTL05 UCB
+.IFTF
+        .ENDM   MAKUCB
+;
+;
+;
+        .MACRO  MAKDMA  N               ;MAKE DMAUCB FOR UNIT N
+APST'N:
+        .IF DF, M$$MUP                  ;IF MULTI-USER SUPPORT
+        .WORD   0                       ;LOGON UIC
+        .WORD   0                       ;OWNING TT
+        .ENDC
+.AP'N:
+        .WORD   APDCB                   ;POINTER TO DCB
+        .WORD   .-2                     ;REDIRECT POINTER
+        .BYTE   UC.NPR!UC.ALG!<UC.LGH-2>,0 ;NPR DEVICE
+        .BYTE   N,0                     ;UNIT#, STATUS
+        .WORD   0                       ;CW1
+        .WORD   0                       ;CW2
+        .WORD   0                       ;CW3
+        .WORD   0                       ;CW4
+        .WORD   APSC'N                  ;POINT TO SCB
+        .WORD   0                       ;ATTACHED TCB
+        .BLKW   3                       ;ADR DOUBLEWORD, BYTECNT
+APND'N:
+        .ENDM   MAKDMA
+;
+        .MACRO  MAKCT5  N               ;MAKE CT5UCB FOR UNIT N
+        .IF DF, M$$MUP                  ;IF MULTI-USER SUPPORT
+        .WORD   0                       ;LOGON UIC
+        .WORD   0                       ;OWNING TT
+        .ENDC
+        .WORD   APDCB                   ;POINTER TO DCB
+        .WORD   .-2                     ;REDIRECT POINTER
+        .BYTE   0,0                    ;
+        .BYTE   N,0                     ;UNIT #, STATUS
+        .WORD   0                       ;CW1
+        .WORD   0                       ;CW2
+        .WORD   0                       ;CW3
+        .WORD   0                       ;CW4
+        .WORD   APSC'N                  ;POINTER TO SCB
+        .WORD   0                       ;ATTACHED TCB
+        .BLKW   3                       ;ADR DOUBLEWORD AND BYTECNT
+        .ENDM   MAKCT5
+;
+;
+        .MACRO  MAKSCB  UNIT,APN        ;GENERATE SCB FOR UNIT N, AP#N
+APSC'UNIT:.WORD   0               ;I/O QUEUE LISTHEAD
+        .WORD   .-2                     ;I/O QUEUE PTR.
+        .BYTE   PR4,APVEC'APN/4         ;PRIORITY,VECTOR ADR/4
+        .BYTE   0,0                     ;CURRENT, INITIAL TIMEOUT
+        .BYTE   <APN*X>,0               ;CONTROLLER INDEX,STATUS
+        .WORD   APCSR'APN               ;BASE ADR, AP #'APN
+        .WORD   0                       ;ADR OF CURRENT I/O PACKET
+        .BLKW   4                       ;FORK ALLOCATION BLOCK
+        .IF DF, L$$DRV & M$$MGE         ;IF LOADABLE AND MEMORY MANGMT
+        .WORD   0                       ;
+        .ENDC
+        .IF DF, M$$EXT & M$$MGE         ;IF 11/70 EXTENDED 22 BIT ADR.
+        .WORD   U$$MRN                  ;ADR OF NXT AVAIL UMR
+        .WORD   1                       ;# OF 4K TRANFERS ACTIVE
+        .WORD   U$$MHI                  ;HIGH ADR
+        .WORD   U$$MLO                  ;LOW ADR
+        .BLKW   2                       ;PLACE FOR 22 BITS
+        .ENDC
+        .ENDM   MAKSCB
+;
+;NOW GENERATE THE UCBS
+;
+        APNUM = 0                       ;START WITH FIRST AP
+        .REPT   A$$P11                  ;FOR EACH AP IN SYSTEM
+        MAKUCB  \APNUM                  ;MAKE THE UCB
+        APNUM = APNUM +1                ;NEXT AP
+        .ENDR
+;
+; NOW GENERATE SCBS FOR EACH AP
+        APNUM = 0
+        UNIT = 0
+        .REPT   A$$P11                  ;FOR EACH AP IN SYSTEM
+        .REPT   X                       ;TWO SCB FOR EACH AP
+        MAKSCB  \UNIT ,\APNUM           ;
+        UNIT =UNIT +1                   ;
+        .ENDR                           ;NEXT UNIT
+        APNUM = APNUM +1
+        .ENDR                           ;NEXT AP
+;
+;
+.ENDC
+$APEND::        .END

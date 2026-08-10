@@ -1,0 +1,4 @@
+$COMMON /CONFIG/ DEV1(5) /T, DEV2(5) /T, DEV3(5) /T, DEV4(5) /T,
+                 DEV5(5) /T, DEV6(5) /T, DEV7(5) /T, DEV8(5) /T,
+                 DEV9(5) /T, DEV10(5) /T, DEV11(5) /T, DEV12(5) /T,
+                 DEV13(5) /T, DEV14(5) /T, DEV15(5) /T

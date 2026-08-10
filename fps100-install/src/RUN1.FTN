@@ -1,0 +1,16 @@
+C****** RUN1 = TEST1 HOST MAINLINE = REL 1.0  , NOV 79 ************************
+C
+C       MINI SYSTEM TEST1 HOST MAINLINE
+C
+C
+        CALL APINIT(1,1,I)
+        IF (I.NE.1)  TYPE *,I
+        CALL APLLI ('TEST1.LM',8,8,1,1,0,0)
+        CALL RTSGO(1024,1)
+        CALL SUBR3(5,20)
+        CALL SUBR4
+        CALL SUBR4
+        CALL APWR
+        CALL APRLSE
+        CALL EXIT
+        END

@@ -1,0 +1,120 @@
+C****** PEEL = PEEL APART RSX11 MODULES = REV 4.0, NOV 79 *******************
+        INTEGER INFIL,JCLFIL,OUTFIL,IQ,LS,LL,FIRST,FIRJCL
+        LOGICAL*1 BUFF(80),TITLE(80),LDOT,LM,LA,LC,LSEMI,LSLASH,LSPACE
+        LOGICAL*1 QUIT,TTBUF(80),CMD(3)
+        DATA LDOT  ,LM    ,LA    ,LC    ,LSEMI ,LSLASH,LSPACE/
+     1       '.'   ,'M'   ,'A'   ,'C'   ,';'   ,'/'   ,' '   /
+        DATA CMD/'C','M','D'/
+        INFIL=1
+        OUTFIL=2
+        JCLFIL=3
+        CALL GETMCR(TTBUF,IDS)
+        IF(IDS.LE.4)GO TO 998
+        IDS=IDS-4
+        CALL ASSIGN(INFIL,TTBUF(5),IDS)
+        DO 5 I=1,IDS
+        J=4+I
+        TITLE(I)=TTBUF(J)
+        IF(TTBUF(J).EQ.LDOT)GO TO 6
+5       CONTINUE
+        TITLE(I+1)=LDOT
+        I=I+1
+6       TITLE(I+1)=CMD(1)
+        TITLE(I+2)=CMD(2)
+        TITLE(I+3)=CMD(3)
+        CALL ASSIGN(JCLFIL,TITLE,I+3)
+        LS=IDS
+        LL=I-4
+        FIRST=1
+        FIRJCL=1
+        GO TO 200
+100     CALL JCL(BUFF(4),TITLE,J-3,LL,FIRJCL,JCLFIL)
+        FIRJCL=0
+        IF (FIRST.EQ.1) GO TO 110
+        CALL CLOSE(OUTFIL)
+110     FIRST=0
+        BUFF(J+1)=LDOT
+        BUFF(J+2)=LM
+        BUFF(J+3)=LA
+        BUFF(J+4)=LC
+        TYPE 140,(BUFF(I),I=4,J)
+140     FORMAT(1X,80A1)
+        CALL ASSIGN(OUTFIL,BUFF(4),J+1)
+        WRITE(OUTFIL,205) (BUFF(I),I=1,J)
+200     READ(INFIL,205,END=1000) BUFF
+205     FORMAT(80A1)
+        DO 210 I=1,80
+        J=80-I+1
+        IF (BUFF(J).NE.LSPACE) GO TO 220
+210     CONTINUE
+220     IF (BUFF(1).EQ.LSEMI.AND.BUFF(2).EQ.LSLASH) GO TO 100
+        WRITE(OUTFIL,205) (BUFF(I),I=1,J)
+        GO TO 200
+998     TYPE 999
+999     FORMAT(' PLEASE INCLUDE INPUT FILE ON COMMAND LINE!!!')
+1000    CALL CLOSE(OUTFIL)
+        CALL CLOSE(INFIL)
+        CALL CLOSE(JCLFIL)
+        STOP
+        END
+C****** JCL = MAKES RSX11 JC'S FOR A GIVEN ROUTINE = REL 2.0, FEB 78 ****
+        SUBROUTINE JCL(NAME,TITLE,LS,LL,JCLFIR,LUN)
+        LOGICAL*1 NAME(80),TITLE(80)
+        INTEGER LS,LL,JCLFIR,LUN
+        LOGICAL*1 BUFF(80),MAC(4),PIP(4),LEQU,HSR(3),IOBJ(4)
+        LOGICAL*1 TEMP(4),OPT(3),SAP(3),IDEL(7)
+        INTEGER I,OP
+        DATA MAC/'M','A','C',' '/
+        DATA PIP/'P','I','P',' '/
+        DATA LEQU/'='/
+        DATA HSR/'H','S','R'/
+        DATA TEMP/'T','E','M','P'/
+        DATA IDEL/'.','*',';','*','/','D','E'/
+        DATA  SAP/'/','A','P'/
+        DATA  IOBJ/'.','O','B','J'/
+150     OP=1
+        CALL MOVE(MAC,BUFF,OP,4)
+        CALL MOVE(TEMP,BUFF,OP,4)
+        CALL MOVE(LEQU,BUFF,OP,1)
+        CALL MOVE(NAME,BUFF,OP,LS)
+        OP=OP-1
+        WRITE(LUN,160) (BUFF(I),I=1,OP)
+        OP=1
+        CALL MOVE(PIP,BUFF,OP,4)
+        CALL MOVE(TITLE,BUFF,OP,3)
+        CALL MOVE(HSR,BUFF,OP,3)
+        IF(JCLFIR.EQ.1) GO TO 155
+        CALL MOVE(SAP,BUFF,OP,3)
+155     CONTINUE
+        CALL MOVE(LEQU,BUFF,OP,1)
+        CALL MOVE(TEMP,BUFF,OP,4)
+        CALL MOVE(IOBJ,BUFF,OP,4)
+        OP=OP-1
+        WRITE(LUN,160)(BUFF(I),I=1,OP)
+        OP=1
+        CALL MOVE(PIP,BUFF,OP,4)
+        CALL MOVE(TEMP,BUFF,OP,4)
+        CALL MOVE(IDEL,BUFF,OP,7)
+        OP=OP-1
+        WRITE(LUN,160) (BUFF(I),I=1,OP)
+160     FORMAT( 80A1)
+C
+C      SET UP A PIP ON THE NAME
+        OP = 1
+        CALL MOVE(PIP,BUFF,OP,4)
+        CALL MOVE(NAME,BUFF,OP,LS)
+        CALL MOVE(IDEL,BUFF,OP,7)
+        OP = OP-1
+        WRITE (LUN,160)(BUFF(I),I=1,OP)
+        RETURN
+        END
+C****** MOVE = MOVE A STRING = REL 2.0, JAN 78 ***************************
+        SUBROUTINE MOVE(IN,OUT,OP,N)
+        LOGICAL*1 IN(80),OUT(80)
+        INTEGER OP,N
+        INTEGER I
+        DO 100 I=1,N
+        OUT(OP)=IN(I)
+100     OP=OP+1
+        RETURN
+        END

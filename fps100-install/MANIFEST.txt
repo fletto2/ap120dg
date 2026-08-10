@@ -1,0 +1,193 @@
+FPS-100 install package -- file manifest
+==================================================================
+
+ADUTIL.MAC       tape
+AMLHSR.MAC       tape
+AMLLIB.APO       tape
+AMLNAM.NAM       tape
+AMLSRC.APS       tape
+APCOM.FTN        tape
+APEEL.FTN        tape
+APFLIB.APO       tape
+APFSRC.APS       tape
+APL100.CMD       tape, 10 deletion(s) commented out
+APSTOP.FTN       tape
+APX10.CMD        tape
+ART10.CMD        tape, 1 deletion(s) commented out
+ART100.FTN       tape
+ASM10.CMD        tape, 1 deletion(s) commented out
+ASM100.FTN       tape
+BAAHSR.MAC       tape
+BAALIB.APO       tape
+BAANAM.NAM       tape
+BAASRC.APS       tape
+BABHSR.MAC       tape
+BABLIB.APO       tape
+BABNAM.NAM       tape
+BABSRC.APS       tape
+BOOTMN.B         tape
+BOOTMN.S         tape
+BOOTSP.B         tape
+BOOTSP.S         tape
+CLEAN.CMD        tape, 1 deletion(s) commented out
+CNFGCM.DAT       tape
+COMSYS.DAT       tape
+DAPEX.MAC        tape
+DBG10.CMD        tape, 1 deletion(s) commented out
+DBG100.FTN       tape
+DEVTAB.MAC       tape
+DEVTABLE.MAC     copy of the tape's DEVTAB.MAC under the name DRV100.CMD and the distribution index both use
+DGCOM.FTN        tape
+DGN100.CMD       tape, 7 deletion(s) commented out
+DGNHSR.MAC       tape
+DGNLIB.APO       tape
+DGNNAM.NAM       tape
+DGNSRC.APS       tape
+DRIVER.MAC       tape
+DRV100.CMD       tape
+ECHO.B           tape
+ECHO.S           tape
+ENABLE.B         tape
+ENABLE.S         tape
+FDAPEX.FTN       tape
+FDUTIL.FTN       REIMPLEMENTATION -- validated: the original ASM100, linked against a LIB100 carrying it, reproduces all nine shipped .APO libraries
+FFT10.CMD        tape, 1 deletion(s) commented out
+FFT100.FTN       tape
+FHOSTC.DAT       tape
+FIRST.CMD        tape
+FPSMC.MAC        tape
+FUNC.B           tape
+FUNC.S           tape
+GLBTST.FTN       tape
+HIRP.B           tape
+HIRP.S           tape
+HIRPM.B          tape
+HIRPM.S          tape
+HSR100.CMD       tape, 11 deletion(s) commented out
+HSVC.B           tape
+HSVC.S           tape
+HSVCM.B          tape
+HSVCM.S          tape
+IAPEX.FTN        tape
+INSTAL.TXT       tape
+IOQUE.B          tape
+IOQUE.S          tape
+IPRHSR.MAC       tape
+IPRLIB.APO       tape
+IPRNAM.NAM       tape
+IPRSRC.APS       tape
+IUTIL.FTN        tape
+KERNEL.B         tape
+KERNEL.S         tape
+LED10.CMD        tape, 1 deletion(s) commented out
+LED100.FTN       tape
+LIB100.CMD       recovered verbatim from INSTAL.TXT 9.6; 3 deletion(s) commented out
+LNK10.CMD        recovered verbatim from INSTAL.TXT 9.13; 1 deletion(s) commented out
+LNK100.FTN       REIMPLEMENTATION -- E module matches lnk100.py, and its linked VADD+SPUFLT is byte-identical to the shipped BAAHSR block
+LOD10.CMD        recovered from INSTAL.TXT 9.14; the inline overlay descriptor is replaced by the reconstruction's own, because the module decomposition differs; 1 deletion(s) commented out
+LOD100.FTN       REIMPLEMENTATION -- load module matches lod100.py, 1160 of 1160 words
+LOD100.ODL       overlay descriptor for the reimplementation's own module decomposition, not a copy of FPS's
+MAKE1.INP        tape
+MAKE2.INP        tape
+MAKE22.INP       tape
+MAKE5.INP        tape
+MAKE51.INP       tape
+MAKE6.INP        tape
+MAKE63.INP       tape
+MASTER.CMD       tape
+MEM10.CMD        tape, 1 deletion(s) commented out
+MEM100.FTN       tape
+MEMDAT.DAT       tape
+MINCOM.DAT       tape
+MINDEF.DAT       tape
+MINI.B           tape
+MINI.S           tape
+NORTC.B          tape
+NORTC.S          tape
+PATCH.DAT        tape
+PDS100.CMD       tape, 8 deletion(s) commented out
+PDSTST.CMD       tape
+PDSTST.VFC       tape
+PEEL.FTN         tape
+PTH10.CMD        tape, 1 deletion(s) commented out
+PTH100.FTN       tape
+RTC.B            tape
+RTC.S            tape
+RTCDUM.B         tape
+RTCDUM.S         tape
+RTCISR.B         tape
+RTCISR.S         tape
+RTCREQ.B         tape
+RTCREQ.S         tape
+RTCTST.B         tape
+RTCTST.S         tape
+RUN1.FTN         tape
+RUN2.FTN         tape
+RUN2X.FTN        tape
+RUN5.FTN         tape
+RUN5X.FTN        tape
+RUN6.FTN         tape
+RUN6X.FTN        tape
+SEQV1.DAT        tape
+SEQV1.S          tape
+SEQV2.S          tape
+SETUP.CMD        tape
+SHOOT.B          tape
+SHOOT.S          tape
+SHOOTM.B         tape
+SHOOTM.S         tape
+SHORT.DAT        tape
+SIGHSR.MAC       tape
+SIGLIB.APO       tape
+SIGNAM.NAM       tape
+SIGSRC.APS       tape
+SIM10.CMD        tape, 1 deletion(s) commented out
+SIM100.FTN       tape
+SUB1.B           tape
+SUB1.S           tape
+SUB2.B           tape
+SUB2.S           tape
+SUBR1.B          tape
+SUBR1.S          tape
+SUBR2.B          tape
+SUBR2.S          tape
+SUBR3.B          tape
+SUBR3.S          tape
+SUBR4.B          tape
+SUBR4.S          tape
+SUP100.CMD       tape
+SYMLIB.APO       tape
+SYMSRC.APS       tape
+SYSDEF.DAT       tape
+SYSSVC.B         tape
+SYSSVC.S         tape
+TABLES.B         tape
+TABLES.S         tape
+TASK51.B         tape
+TASK51.S         tape
+TASK52.B         tape
+TASK52.S         tape
+TASK53.B         tape
+TASK53.S         tape
+TCFL.DAT         tape
+TEST2.B          tape
+TEST2.S          tape
+TREAD.CMD        tape
+TSFL.DAT         tape
+TST10.CMD        tape, 1 deletion(s) commented out
+TST100.FTN       tape
+UFT10.CMD        tape, 1 deletion(s) commented out
+UFT100.FTN       tape
+UPEX.B           tape
+UPEX.S           tape
+UPEXM.B          tape
+UPEXM.S          tape
+UTFL.DAT         tape
+UTL10.CMD        tape, 1 deletion(s) commented out
+UTLHSR.MAC       tape
+UTLLIB.APO       tape
+UTLNAM.NAM       tape
+UTLSRC.APS       tape
+VADD.APO         tape
+VFC10.CMD        tape, 1 deletion(s) commented out
+VFC100.FTN       tape
