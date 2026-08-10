@@ -316,11 +316,30 @@ What is established:
 - With `/IN` both merges run clean and silent (LBR says nothing on
   success), yet `$VIRIN` is still unresolved at link time.
 
-Next thing to check: whether the modules really landed, with
-`LBR TI:/LE=LB:[1,1]SYSLIB` (the switch goes on the OUTPUT side; `LBR
-TI:=...SYSLIB/LE` is rejected as an illegal switch).  If they are present,
-the question becomes why TKB's default library search does not reach them
-from the root of an overlaid task.
+**Narrowed to the library's ENTRY POINT TABLE.**  The modules DID land --
+a RAD50 search finds `$VIRIN` in the V4.0 `SYSLIB.OLB` -- but the counts
+differ from a library that works:
+
+    V3.1 SYSLIB (links fine)   157,034 bytes   $VIRIN x4
+    V4.0 SYSLIB (fails)        183,846 bytes   $VIRIN x2
+
+An RSX object library indexes entry points in a table separate from each
+module's own GSD records.  Two hits is the module alone; four is the
+module plus its index entry.  So `LBR /IN` inserted the modules WITHOUT
+indexing their entry points, which is precisely why TKB cannot resolve a
+symbol whose bytes are demonstrably in the file.
+
+Naming the library explicitly in the ODL root does NOT help --
+
+    ROOT: .FCTR R1-R4-R5-R6-LB:[1,1]SYSLIB/LB
+
+still leaves `$VIRIN` undefined -- which is consistent: TKB searches the
+entry point table, not the module bodies.
+
+Next thing to try: rebuild the index (`LBR ...SYSLIB/SQ`), or check
+whether the library's EPT is simply full -- SYSGEN creates SYSLIB with a
+fixed EPT size and LBR reports `EPT OR MNT EXCEEDED` when it overflows,
+though no such message appeared here.
 
 None of this affects any result in this repository: the whole toolchain is
 validated on the V3.1 pack, where ASM100 reproduces nine shipped libraries
