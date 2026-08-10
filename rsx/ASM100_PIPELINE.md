@@ -262,16 +262,33 @@ ASM100 and LNK100) and run on the flat `SYMLIB`+`DGNLIB` job:
       2 UNDEFINED SYMBOLS
     END LOD100
 
-**2,322 of 2,323 words identical to `lod100.py`.**  The single difference
-is word 1 of the first block header:
+**The load module CONTENT is IDENTICAL -- 1,160 words each.**
 
-    word 1   LOD100.TSK = 20000 (octal, = 8192)   lod100.py = 1160
+An earlier note here reported "1 word of 2,323 differs".  That was an
+artefact of comparing the files by pulling every digit string out of
+them.  The differing value is not load module data at all: it is the
+`INTEGER CODE(n)` ARRAY DIMENSION in the generated FORTRAN wrapper.
 
-Word 0 is the block type and both write 1.  Word 1 is the count field;
-`lod100.py` writes the load module's word count (1160), the FORTRAN
-writes 8192, which is the default MMAX -- the main data memory page size
-(Loader manual 2.3.17).  Which is correct is NOT settled here; it is one
-word, in a header, and both readings are defensible from the text.
+    LOD100.TSK :  INTEGER CODE( 20000)
+    lod100.py  :  INTEGER CODE(  1160)
+
+A host-resident load module is a FORTRAN subroutine of DATA statements
+(Loader 4.2.5), so the file has a declaration in front of the data.
+Compare only the DATA values and the two agree completely, 1,160 words,
+starting `0, 1128, 0, 0` -- a type-0 code block of count 1128.
+
+**The manual settles which dimension is right, and it is the FORTRAN's.**
+Figure 4-1's sample declares `INTEGER CODE( 200)` while its DATA
+statements initialise only **84** words.  The dimension is therefore a
+fixed, generous allocation and NOT the exact count, which is what
+`LOD100.TSK` does.  `lod100.py` sizing it to the exact count is the
+divergence from documented practice -- harmless, since a FORTRAN array
+need only be at least as large as what is initialised, but it is not what
+the manual shows.
+
+Lesson for comparing these files: strip the declaration, or compare the
+DATA values only.  A regex over "every number in the file" silently mixes
+the FORTRAN wrapper in with the load module.
 
 **Two traps, both already recorded elsewhere in this repo and both walked
 into again:**
