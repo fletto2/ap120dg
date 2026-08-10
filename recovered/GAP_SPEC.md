@@ -98,18 +98,25 @@ So the eight-word entry recorded in CLAUDE.md — from Loader table 2-1 and
 Supervisor table 2-2 — is the **non-task** form; task mode uses 16.
 `OVMESZ` itself is set in one of the missing modules.
 
-That also fixes the `OVDTA` column meanings, which no manual states:
+That also pins the `OVDTA` columns, which no manual gives. **Derived from
+the writes, not from the emit order** — reading `ENDLNK` alone gave the
+wrong answer for 1/2/3 and this corrects it:
 
-| column | meaning |
-|---|---|
-| 1 | MD address |
-| 2 | PS address |
-| 3 | length in PS words |
-| 4 | partition count (stored doubled) |
-| 5 | masked to 8 bits for the map (`LOADMP`) |
-| 6 | segment number, low 4 bits |
-| 7 | pointer used by `OVLY` to release program data |
-| 8, 9 | masked to 8 bits by `OVLY` |
+| column | set by | meaning |
+|---|---|---|
+| 1 | *not in the recovered 40* | emitted at `J+1`; set by the missing `TREE` |
+| 2 | `OVLY`: `=PSBRK` | **PS address** |
+| 3 | `OVLY`: `=DBBRK` / `=PGINFO(OVPG,2)` | **MD address** |
+| 4 | `LOAD`: `=(PSBRK-PSHLD)*2` | **PS length, stored doubled** — `ENDLNK` emits `>>1` |
+| 5 | *not in the recovered 40* | masked to 8 bits by `LOADMP`; set by the missing `TREE` |
+| 6 | `OVLY`: `=IOR16(...,OVPG-1)` | page in the low bits; `ENDLNK` also reads `&15` for the segment |
+| 7 | `OVLY`: `=PRGDTA(1)+1` | program data pointer, released by `OVLY` |
+| 8 | `OVLY`: `=IOR16(ENTDTA(1)+1,ENTPT1<<8)` | entry table pointer + `ENTPT1` |
+| 9 | `OVLY`: `=IOR16(EXTDTA(1)+1,ENTPT1<<8)` | external table pointer + `ENTPT1` |
+
+**Columns 1 and 5 are the ones `TREE` must set** — they are read by
+`ENDLNK` and `LOADMP` but written nowhere in the recovered 40, which is
+exactly the signature of a value produced by a missing module.
 
 ## What FINISH settles
 
