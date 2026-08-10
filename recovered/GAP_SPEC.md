@@ -169,6 +169,43 @@ The parameter passing area is a symbol `.PPA.` inserted into `DBDTA1`,
 sized `PPASZ = PGINFO(DBPG,1) - DBBRK`, and the information block is
 written only when an LM file is open (`SLMFIL(1).NE.0`).
 
+## Status: 7 written, and the last four should NOT be invented
+
+Written and compiling clean on the PDP-11, each to an interface and a
+data contract derived from the recovered code or the manual:
+
+    WRTLM  WRTBR  TREE  TASKY  TABGET  TSKLNK  BLKSKP
+
+**The remaining four are not called by anything.** `APLDBD`, `APMDIO`,
+`APPRIO` and `WRTDAT` appear in FPS's §9.14 overlay descriptor but are
+referenced by none of the recovered 40 and none of the 7 above. Their
+placement is all the evidence there is:
+
+    R1:    .MAIN. APLDBD LIB LOAD ERRMES      root, always resident
+    R3:    WRTDAT WRTLM WRTBR LDBMAK WRTLIN   root, the writers
+    LMBS1: SRCN SRC1 SRC2 BLNKST COMPOS APPRIO
+    TWIG2: APMDIO
+
+That places `APLDBD` with the loading core, `WRTDAT` with the load-module
+writers, and `APMDIO` on its own twig — suggestive, not a specification.
+Writing them from that would be **invention**, which is the opposite of
+the goal: their contracts cannot be derived, so anything produced would
+be plausible code that no evidence constrains.
+
+**So the next step is `.MAIN.` and a link, not four more modules.**
+Nothing calls the four, so a hybrid LOD100 links without them:
+
+    40 recovered modules + the 7 written + .MAIN. + LIB100
+
+`.MAIN.` *is* constrained — the command set is manual §2.3, its dispatch
+targets (`LIB`, `LOAD`, `OUTPUT`, `INIT`, `FINISH`, `MDOFF`, `MMAX`,
+`NOLOAD`, `PSOFF`, `MARK`, `PURGE`, `LOADMP`) are all present in the
+recovered source with known signatures, and `LOD100C.CMD` fixes its task
+build at `UNITS=17`, `ACTFIL=8`.
+
+Should the four turn out to be needed at link time, the honest form is a
+stub that reports "not recovered" rather than a guess.
+
 ## Why this matters
 
 With these written, LOD100 can be built from **40 modules of genuine FPS
