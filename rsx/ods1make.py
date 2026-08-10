@@ -60,6 +60,26 @@ AGAINST IT:
 
   directory entry, 16 bytes: file number, sequence, relative volume,
   name 3 words RAD50, type 1 word, version.
+    A directory entry is 16 bytes, so ONE BLOCK HOLDS ONLY 32 FILES. The
+    UFD must be sized from the file count, not fixed at one block: with the
+    182 files of the FPS tape the entries ran to six blocks and were written
+    straight over the first user files' data, while the one-block header
+    left the other 150 files invisible to PIP. The volume still mounts and
+    lists cleanly, so the corruption is silent -- ADUTIL.MAC came back as
+    41 bytes of directory entries instead of 9,788 bytes of MACRO-11.
+
+  RAD50 has no bracket and no comma, and r50() maps anything unknown to
+  '?'. The tape filenames carry their UIC as part of the host filename
+  ("[327,010]DAPEX.MAC"), so left in place every one of the 182 files is
+  named "?????????" and they all collide. Strip the prefix on the way in.
+
+  Verified at RK07 scale: the whole tape builds into a 53,790-block volume
+  using 13,273 blocks, and all 182 files extract back byte-identical modulo
+  the CR-LF normalisation that variable-length records impose.
+
+  The extractor also reads REAL DEC volumes, not just ones built here --
+  the RSX-11M V4.0 RL02 kit images extract cleanly, which is how SGNPER.CMD
+  settled the meaning of a SYSGEN answer that no available manual covered.
 
 NOTE ON TKB: volumes built here are fully readable and writable. RSX
 creates ordinary files on them (the FORTRAN compiler writes its .OBJ) and
@@ -88,7 +108,7 @@ Still unexplained. Build task images on the system pack meanwhile.
   following block.
 """
 
-import sys, os, struct
+import sys, os, re, struct
 
 R50 = " ABCDEFGHIJKLMNOPQRSTUVWXYZ$.?0123456789"
 BLK = 512
@@ -223,7 +243,14 @@ class Volume:
         scb_lbn = self.alloc(1)
         bm_lbn = self.alloc(bitmap_blocks)
         mfd_lbn = self.alloc(1)
-        ufd_lbn = self.alloc(1)
+        # The UFD must be sized from the number of files, not fixed at one
+        # block.  A directory entry is 16 bytes, so one block holds 32 files;
+        # with 182 (the FPS tape) the entries ran 6 blocks and self.put()
+        # wrote them straight over the first user files' data, while the
+        # one-block header left the other 150 files invisible to PIP.  Silent
+        # corruption: the volume mounts and lists fine.
+        ufd_blocks = max(1, (len(userfiles) * 16 + BLK - 1) // BLK)
+        ufd_lbn = self.alloc(ufd_blocks)
 
         # ---- system files ------------------------------------------------
         # 1 INDEXF.SYS covers boot + home + index bitmap + all headers.
@@ -248,7 +275,8 @@ class Volume:
         self.header(5, "CORIMG", "SYS", self.contig_ufat(0), [],
                     owner=0o401, ucha=0o200)
         udir = "%03o%03o" % (self.uic[1], self.uic[0])
-        self.header(6, udir, "DIR", self.dir_ufat(1), [(1, ufd_lbn)],
+        self.header(6, udir, "DIR", self.dir_ufat(ufd_blocks),
+                    [(ufd_blocks, ufd_lbn)],
                     owner=(self.uic[1] << 8) | self.uic[0], ucha=0o200)
         self.next_fnum = 7
 
@@ -256,6 +284,14 @@ class Volume:
         ufd = bytearray()
         for path in userfiles:
             base = os.path.basename(path).upper()
+            # The tape files are named "[327,010]DAPEX.MAC" -- the RSX UIC the
+            # file came from, kept as part of the host filename.  Brackets and
+            # commas have no RAD50 encoding and r50() maps anything unknown to
+            # '?', so left in place the whole 9-character name becomes
+            # "?????????" and every file on the volume collides.  Strip it.
+            m = re.match(r'^\[\d+,\d+\](.+)$', base)
+            if m:
+                base = m.group(1)
             name, _, ext_s = base.partition('.')
             data = open(path, 'rb').read()
             recs, longest = self.textrecs(data)
@@ -446,10 +482,31 @@ def main():
     if len(sys.argv) < 3:
         print(__doc__)
         return 1
-    out = sys.argv[1]
-    v = Volume()
-    print("building %s (%d blocks, UIC [200,200]):" % (out, v.nblocks))
-    v.build(sys.argv[2:])
+    # -rk07 / -rk06 build a volume of that drive's geometry instead of the
+    # RK05 default.  The whole FPS tape (182 files) needs 13,268 blocks and
+    # 188 file headers, so neither the 4800-block size nor the 128-file
+    # FMAX default is enough for it.
+    args = sys.argv[1:]
+    nblocks, fmax, vname = 4800, 128, "XFER"
+    while args and args[0].startswith('-'):
+        opt = args.pop(0)
+        if opt == '-rk07':
+            nblocks, fmax = 53790, 512
+        elif opt == '-rk06':
+            nblocks, fmax = 27126, 512
+        elif opt == '-n':
+            vname = args.pop(0)
+        else:
+            print("unknown option", opt)
+            return 1
+    if len(args) < 2:
+        print(__doc__)
+        return 1
+    out = args[0]
+    v = Volume(nblocks=nblocks, fmax=fmax, vname=vname)
+    print("building %s (%d blocks, FMAX %d, volume %s, UIC [200,200]):"
+          % (out, v.nblocks, v.fmax, v.vname))
+    v.build(args[1:])
     v.write(out)
     print("  free blocks: %d" % (v.nblocks - v.next_free))
     print("wrote", out)
