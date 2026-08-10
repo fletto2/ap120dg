@@ -1602,19 +1602,29 @@ switch (FPS_DPY(instr)) {
     case 3: fps_dpy[dpy_widx] = fps_fm; break;
     }
 
-/* Memory input (MI field) - write to main data
-   From SIM100.FTN line 2236: MI=1→FA, MI=2→FM, MI=3→DPBS */
-if (mi_field != 0 && fps_md && fps_ma < MD_SIZE) {
-    switch (mi_field) {
-        case 1: fps_md[fps_ma] = fps_fa;                 /* FA (float adder) */
-                break;
-        case 2: fps_md[fps_ma] = fps_fm; break;        /* FM (float multiplier) */
-        case 3: fps_md[fps_ma] = dpbs_val; break;      /* From DPBS */
-        }
-    }
-}
+/* Memory address updates (when not using VALUE field).
 
-/* Memory address updates (when not using VALUE field) */
+   These run BEFORE the MI write, because an MA field and an MI field in
+   the SAME instruction address the same word: the write goes to the
+   address this instruction establishes, not the previous one.  BAASRC's
+   VADD is explicit about it --
+
+        SUB K,C                       "BACK UP POINTER
+   LOOP: ...
+        ADD K,C;SETMA;MI<FA;          "STORE A(M+2)+B(M+2)
+
+   -- C is backed up by one stride before the loop and stepped forward
+   again in the very instruction that stores, so the store must see the
+   stepped value.  CVADD settles it beyond doubt with
+
+        ADD K,C; SETMA; MI<FA;        "STORE REAL
+        INCMA; MI<FA;                 "STORE IMAGS
+
+   where a pre-increment address would write the real part's word twice
+   and never store the imaginary part at all.
+
+   The read latch below already used the post-update MA, which is why
+   reads paired correctly and only stores came out one element low.  */
 if (!use_value) {
     switch (ma_op) {
         case ADDR_INC:  fps_ma = (fps_ma + 1) & 0xFFFF; break;
@@ -1632,6 +1642,18 @@ if (!use_value) {
         case ADDR_SET:  fps_tma = fps_spad[spd] & 0xFFFF; break;
         }
     }
+
+/* Memory input (MI field) - write to main data
+   From SIM100.FTN line 2236: MI=1→FA, MI=2→FM, MI=3→DPBS */
+if (mi_field != 0 && fps_md && fps_ma < MD_SIZE) {
+    switch (mi_field) {
+        case 1: fps_md[fps_ma] = fps_fa;                 /* FA (float adder) */
+                break;
+        case 2: fps_md[fps_ma] = fps_fm; break;        /* FM (float multiplier) */
+        case 3: fps_md[fps_ma] = dpbs_val; break;      /* From DPBS */
+        }
+    }
+}
 
 /* Push the memory pipeline every cycle -- SIM100 label 41000, user mode
    "time-pushing" -- then start a new cycle if this instruction touched
