@@ -1137,7 +1137,12 @@ int32 result_exp, result_mant;
 if (mant_a == 0 || mant_b == 0) return 0;
 
 prod = (t_int64)mant_a * (t_int64)mant_b;
-result_mant = (int32)(prod >> 27);                     /* Scale 56-bit product to 28-bit */
+/* A mantissa m represents m/2^28 -- fps_38bit_to_double divides by
+   268435456.0 -- so the product of two of them, scaled 2^-56, has to
+   come back by 28 bits, not 27.  Shifting by 27 left every product
+   exactly a factor of two high, which is what VMUL returned: 8, 20, 36
+   for an expected 4, 10, 18. */
+result_mant = (int32)(prod >> 28);
 result_exp = exp_a + exp_b - FP_EXP_BIAS;
 
 /* Normalize */
@@ -1192,6 +1197,10 @@ if (fps_mdb_v[2] == 1)
    This must happen before any early returns (HALT, JMP, RETURN, etc.)
    so that the pipeline advances even on control flow instructions. */
 fps_fa = fps_fab2;
+/* The multiplier output stage, SIM100 line 1339 -- "CALL MOVPRT(FMB3,
+   1,FM,1,7,6,6)" sits on the very next line after the FA<-FAB2 shift,
+   so FM advances at the top of the cycle exactly as FA does. */
+fps_fm = fps_fmb3;
 /* FACOND is a TWO-BIT code, not a sign: SIM100 line 1347 takes
    FACOND = MOD(FAB2(7),4) from the adder's condition element, and the
    branch tests read it as bit0 = zero, bit1 = negative.  That is why
@@ -1631,20 +1640,42 @@ if (fadd_op != 7 && !(fadd_op == 0 && FPS_A1(instr) == 0)) {
     fps_fab1 = fa_new;
     }
 
-/* Multiplier */
+/* Multiplier.  SIM100 label 34000: "IF(FMF.NE.1.OR.IVAL.EQ.1) GO TO
+   35000" -- the multiplier runs, and its pipeline advances, only on an
+   instruction that starts a multiply.  Unlike A1/A2 there is no hold:
+   a select of 0 names a real source on both inputs.
+
+   The field mappings are SIM100's, labels 34100-34103 and 34200-34203:
+
+        M1:  0=FM   1=DPX  2=DPY  3=TMR
+        M2:  0=FA   1=DPX  2=DPY  3=MD
+
+   Both were wrong here -- M1 was shifted by one (1=FM, 2=DPX, 3=DPY)
+   and M2 was wrong outright (1=FM, 2=DPX, 3=TM), so VMUL's
+   "FMUL DPX,MD" multiplied the wrong operands and returned zeros. */
 if (fm_start) {
     t_uint64 m1_val = 0, m2_val = 0;
     switch (m1_field) {
-        case 1: m1_val = fps_fm; break;                 /* FM (previous) */
-        case 2: m1_val = dpx_val; break;
-        case 3: m1_val = dpy_val; break;
+        case 0: m1_val = fps_fm; break;                 /* FM */
+        case 1: m1_val = dpx_val; break;                /* DPX */
+        case 2: m1_val = dpy_val; break;                /* DPY */
+        case 3: m1_val = (fps_tm && fps_tma < TM_SIZE) ? /* TMR */
+                         fps_tm[fps_tma] : 0; break;
         }
     switch (m2_field) {
-        case 1: m2_val = fps_fm; break;
-        case 2: m2_val = dpx_val; break;
-        case 3: m2_val = (fps_tm && fps_tma < TM_SIZE) ? fps_tm[fps_tma] : 0; break;
+        case 0: m2_val = fps_fa; break;                 /* FA */
+        case 1: m2_val = dpx_val; break;                /* DPX */
+        case 2: m2_val = dpy_val; break;                /* DPY */
+        case 3: m2_val = md_val; break;                 /* MD */
         }
-    fps_fm = fps_38bit_mul (m1_val, m2_val);
+    /* Push the three-stage pipeline, SIM100 label 34300: FMB2->FMB3,
+       FMB1->FMB2, then the product into FMB1.  A result issued this
+       cycle reaches FM three cycles later, which is what lets VMUL
+       issue "FMUL DPX,MD" and read "DPY<FM" two instructions on with a
+       bare "FMUL" push between. */
+    fps_fmb3 = fps_fmb2;
+    fps_fmb2 = fps_fmb1;
+    fps_fmb1 = fps_38bit_mul (m1_val, m2_val);
     }
 
 /* Data Pad Bus select */
