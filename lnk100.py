@@ -192,6 +192,16 @@ def parse_apo(filename):
                 state = 'module'
             continue
 
+        # ***LEB (block type 7) ends the library.  LNK100.FTN stops
+        # there -- "IF (BTYPE .EQ. 7) GO TO 800" -- and this parser did
+        # not, so two libraries concatenated into one file silently
+        # merged.  Honouring it changes nothing for a well-formed .APO,
+        # where ***LEB is the last record; it only stops the parser
+        # running past the end of a library.  (VADD.APO has no ***LEB
+        # at all, which is exactly why it is not a usable library.)
+        if '***LEB' in line:
+            break
+
         if '***CODE' in line:
             fields = stripped.split()
             # fields[0]=type(0), fields[1]=word_count, fields[2]=reloc_count
