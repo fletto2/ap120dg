@@ -22,7 +22,6 @@ PIP DM0:[100,100]*.*;*/DE
 PIP DM0:[100,100]/NV=DM0:[200,200]*.*
 PIP DM0:[100,100]/NV=DL2:[200,200]SETUP.CMD
 PIP DM0:[100,100]/NV=DL2:[200,200]TREAD.CMD
-PIP DM0:[100,100]DEVTABLE.MAC=DL2:[200,200]DEVTABLE.MAC
 ;
 ; LIB100.CMD is one of the nine files missing from the tape, but
 ; INSTAL.TXT section 9.6 reproduces it VERBATIM -- as 9.13 and 9.14
@@ -30,8 +29,12 @@ PIP DM0:[100,100]DEVTABLE.MAC=DL2:[200,200]DEVTABLE.MAC
 ; FDUTIL.FTN is also missing (LIB100.CMD itself deletes it); the
 ; validated reconstruction stands in.
 ;
-PIP DM0:[100,100]LIB100.CMD=DL2:[200,200]LIB100.CMD
-PIP DM0:[100,100]FDUTIL.FTN=DL2:[200,200]FDUTIL.FTN
+;
+; PDS100 needs LNK10.CMD and LOD10.CMD -- two more of the nine missing
+; files, both reproduced verbatim by INSTAL.TXT 9.13 and 9.14 -- and the
+; LNK100.FTN / LOD100.FTN sources, which are genuinely gone.  The
+; reconstructions stand in.  LOD100.ODL is the reconstruction's own.
+;
 SET /UIC=[100,100]
 ASN DM0:=SY:
 ;
@@ -63,6 +66,23 @@ PIP DM0:/FR
 @LIB100
 ;
 ; LIB STEP DONE
+;
+; The PDS command files task-build against LB:'$LUIC'LIB100/LB, a
+; hardcoded path.  $LBDSK is the RK07 here because the RL02 system disk
+; cannot hold MATHLIB and APLIB, so LIB100 has to be copied to LB: as
+; well or every TKB dies with "Lookup failure on file LIB100.OLB".
+;
+SET /UIC=[1,1]
+PIP LB:[1,1]LIB100.OLB=DM0:[1,1]LIB100.OLB
+SET /UIC=[100,100]
+PIP LB:/FR
+;
+; INSTALL PDS -- the tape's own PDS100.CMD.  Builds APCOM into LIB100,
+; then ASM100, SIM100, DBG100, LNK100, LOD100, LED100, VFC100.
+;
+@PDS100
+;
+; PDS STEP DONE
 ;
 ; INSTALL AP LIBRARY (APLIB) -- FPS's own APL100.CMD.
 ; Needs APEEL, which HSR100 built and installed as ...APE.

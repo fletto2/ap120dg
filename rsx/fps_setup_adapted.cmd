@@ -43,7 +43,12 @@ INS $MAC/INC=10000/TASK=...MAC
 .;
 .110: .IFINS F4P .GOTO 120
 .IFINS FOR REM FOR
-INS $FOR/INC=37000
+.; ADAPTED: 37000 was the value at the original site and is not enough
+.; for ASM100 here -- the compile dies with DYNAMIC MEMORY OVERFLOW
+.; partway through, and TKB then reports 'Module OPTAB not in library'.
+.; The comment must sit on its OWN line: this one is passed to MCR
+.; verbatim, and a trailing .; gives 'INS -- Syntax error'.
+INS $FOR/INC=44000
 .IFINS FOR  .GOTO 130
 .120: .IFINS F4P  REM F4P
 INS $F4P/INC=20000
