@@ -286,6 +286,46 @@ carrying a PRE-BUILT binary in.  It still cannot round-trip one out and
 back, because the extractor decodes records to lines; both halves would
 have to preserve record structure for that.
 
+## Self-hosting the target: DONE except one link symbol
+
+FORTRAN IV is installed and COMPILES on the generated system
+(`FOR HELLO,HELLO=HELLO` -> `HELLO.OBJ`, `HELLO.LST`).  Building ASM100
+there gets all the way through the compiles, the libraries and the task
+build, but the link leaves exactly ONE symbol undefined:
+
+    TKB -- *DIAG*-1 undefined symbols segment .MAIN.
+    ...  Undefined references:   $VIRIN
+
+and the task then traps at `PC = 000002` the first time that path runs --
+TKB writes an image despite the diagnostic, so the build LOOKS fine.
+
+What is established:
+
+- `$VIRIN` is FORTRAN's virtual-array initialisation entry.  A RAD50
+  search of the kit shows it lives in `FOREIS.OBJ` (and in FOREAE, FORFIS,
+  FORNHD -- the arithmetic OTS variants), NOT in `FOROTS.OBJ`.
+- The V3.1 pack's SYSLIB contains it (8 RAD50 hits); a pristine V4.0
+  system contains none.  So it genuinely has to be merged in.
+- **`LBR /RP` is the wrong switch.**  It REPLACES modules that already
+  exist; the OTS module names are not in SYSLIB, so it matched nothing and
+  inserted nothing -- silently, with no diagnostic.  Use `/IN`.  With
+  `/RP` the count was 570 undefined symbols; the OTS merge took it to 1.
+- `SHORT.OBJ` is NOT the virtual-array stub.  It is the short-error-text
+  alternative to a FOROTS module and collides:
+  `LBR -- *FATAL*-Duplicate entry point name "$ERTXT"`.
+- With `/IN` both merges run clean and silent (LBR says nothing on
+  success), yet `$VIRIN` is still unresolved at link time.
+
+Next thing to check: whether the modules really landed, with
+`LBR TI:/LE=LB:[1,1]SYSLIB` (the switch goes on the OUTPUT side; `LBR
+TI:=...SYSLIB/LE` is rejected as an illegal switch).  If they are present,
+the question becomes why TKB's default library search does not reach them
+from the root of an overlaid task.
+
+None of this affects any result in this repository: the whole toolchain is
+validated on the V3.1 pack, where ASM100 reproduces nine shipped libraries
+byte-for-byte.  Self-hosting the 11/44 is convenience, not correctness.
+
 ## SimH: an RK07 container cannot be RE-ATTACHED
 
 Worth knowing before planning any persistent RK07 image.  A container SimH
