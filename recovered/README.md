@@ -24,8 +24,12 @@ The source identifies itself in every subprogram banner:
     C    *    THIS VERSION OF APLOAD WAS PRODUCED BY CROCK
     C    *    ON TUE, JAN 08 1980 FOR THE PDP11 COMPUTER AT 16:26:32
 
-APLOAD is the loader. 41 of the 54 modules named in LOD100's own overlay
-descriptor (INSTAL.TXT §9.14) are present. The 13 absent ones are exactly
+APLOAD is the loader. **40** of the 54 modules named in LOD100's own overlay descriptor
+(INSTAL.TXT §9.14) are present. (An earlier count said 41: `TYPC`
+appears in this file but its banner reads **APLED**, so it is the
+library editor's same-named utility from the LED100 head, not
+LOD100's. LOD100's own `TYPC` sorts after `SRCN` and is in the lost
+tail.) The 13 absent ones are exactly
 what truncation predicts: `.MAIN.`, `APLDBD`, `APMDIO`, `APPRIO`,
 `BLKSKP` sort *before* `BLNKST`; `TABGET`, `TASKY`, `TREE`, `TSKLNK`,
 `WRTBR`, `WRTDAT`, `WRTLIN`, `WRTLM` sort *after* `SRCN`.

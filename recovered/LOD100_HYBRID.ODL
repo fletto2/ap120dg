@@ -1,0 +1,41 @@
+;
+;  LOD100 overlay descriptor -- FPS's own, from INSTAL.TXT 9.14,
+;  with only these changes:
+;    - APLDBD, WRTDAT, APPRIO, APMDIO and TYPC dropped.  They are called by
+;      nothing in the recovered source and were deliberately not
+;      written, so naming them here would leave four undefined symbols.
+;      TWIG2 held APMDIO alone and collapses to the library alone.
+;      TYPC is the subtle one: a TYPC exists in the LED100 fragment
+;      at the head of the same file, but its banner says APLED, not
+;      APLOAD -- it is the library editor's same-named utility.
+;      LOD100's own TYPC sorts after SRCN and is in the lost tail.
+;    - WRTLIN dropped from R3: FPS's LOD100 library carried its own,
+;      ours does not, and LIB100 supplies it through the root factor.
+;    - SRCN dropped: it is the unit the truncation cut, and only its
+;      70 declaration lines survive -- no executable statement at all.
+;      Nothing in the recovered source calls it.
+;    - LB:'$LUIC' written out as LB:[1,1], since this is not run
+;      through the indirect processor.
+;  Everything else -- the tree shape, the factors, the module lists --
+;  is FPS's.
+;
+        .ROOT ROOT-*(BRNCH1,BRNCH2,BRNCH3)
+ROOT:   .FCTR R1-R2-R3-LB:[1,1]LIB100/LB
+R1:     .FCTR LODHYB/LB:.MAIN.:LIB:LOAD:ERRMES
+R2:     .FCTR LODHYB/LB:LMSRC2:LMDCLR:RDREC
+R3:     .FCTR LODHYB/LB:WRTLM:WRTBR:LDBMAK
+BRNCH1: .FCTR BRCH11-BRCH12-BRCH13-LB:[1,1]LIB100/LB
+BRCH11: .FCTR LODHYB/LB:CALLS:COMAND:FINISH:FORCE:INIT:INPUT:MDOFF
+BRCH12: .FCTR LODHYB/LB:MMAX:NOLOAD:OUTPUT:OUTSCN:PSOFF:SKPBLK
+BRCH13: .FCTR LODHYB/LB:LOADMP:TABGET:MAPLIN
+BRNCH2: .FCTR BRCH21-(LMBS1,LMBS2,LMBS3)
+BRCH21: .FCTR LODHYB/LB:LOAD1:BLKSKP:EXTCNT:SKPSUB-LB:[1,1]LIB100/LB
+LMBS1:  .FCTR LODHYB/LB:SRC1:SRC2:BLNKST:COMPOS-TWIG2
+TWIG2:  .FCTR LB:[1,1]LIB100/LB
+LMBS2:  .FCTR LODHYB/LB:TREE-LB:[1,1]LIB100/LB
+LMBS3:  .FCTR LODHYB/LB:TASKY:PURGE:MARK-LB:[1,1]LIB100/LB
+BRNCH3: .FCTR BRCH31-BRCH32-LB:[1,1]LIB100/LB
+BRCH31: .FCTR LODHYB/LB:LINKUP:OVLY:DTALNK:LINKS:ENDLNK
+BRCH32: .FCTR LODHYB/LB:DTAREL:TSKLNK:ITOSX:SRCBD-TWIG1
+TWIG1:  .FCTR LB:[1,1]LIB100/LB
+        .END
