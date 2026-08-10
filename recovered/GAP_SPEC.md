@@ -248,6 +248,14 @@ Where anything disagreed it was this project's notes.
   one MD word"*. CLAUDE.md's summary listed eleven and omitted `TYPE`
   (4), `ANSKEY` (6), `LSTMSG` (12) and `ICLOCK` (15) -- enough to put
   every field after word 3 at the wrong offset. Corrected.
+- **STATUS bits** -- Supervisor 2.2.2.1 gives **four**: `010000` SLVBIT
+  (priority slaved, `/S`), `004000` CXTBIT (**full** machine context, so
+  clear for `/M`), `001000` RDYBIT (**the task is ready to execute**),
+  `000400` CLKBIT (timed wait). CLAUDE.md had three and glossed `001000`
+  as "only when READYQ is defined" -- that is an implementation artifact
+  of `lod100.py`, not the bit's meaning, and `000400` was missing.
+  Consistent with the recovered `FINISH`, where an absent READYQ is
+  **error 35**, not a condition.
 - **The MD word unit is consistent everywhere**: overlay entries, TCB
   entries and `FSLMLD`'s "32 BITS OF HOST PER MD WORD" all agree, which
   is what makes the host-word/MD-word distinction the thing to check
