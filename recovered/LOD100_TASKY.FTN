@@ -1,0 +1,122 @@
+C+++ TASKY
+C****** TASKY = PROCESS A TASK BLOCK = RECONSTRUCTION
+C
+C       NOT RECOVERED FPS SOURCE.  LOAD1 CALLS IT AS
+C           CALL TASKY(STR,IPTR,1,RADIX)
+C       ON OBJECT BLOCK TYPE 15 (OCTAL), WHOSE DATA RECORD THE LOD100
+C       MANUAL 3.13 DEFINES AS
+C
+C           id priority m-opt i-opt s-opt
+C
+C       m-opt 0 full machine resources / 1 minimum
+C       i-opt 0 same as default priority / 1 insert at front of queue
+C       s-opt the slave option
+C
+C       THE TABLE IT FILLS IS NOT GUESSED.  LOADMP PRINTS THE TASK MAP
+C       AS
+C            ID  PRI  PSADDR     LEN  OPT RLINK LLINK
+C       AND ITS CALLS BIND EVERY COLUMN:
+C           ID     = TSKDTA(I,1)
+C           PRI    = TSKDTA(I,2), LESS 255 WHEN IT EXCEEDS 255
+C           PSADDR = TSKDTA(I,4)
+C           LEN    = TSKDTA(I,5)
+C           OPT    = TSKDTA(I,3), BIT 0 "M", BIT 1 "I", BIT 2 "S"
+C       AND FINISH USES 6 RLINK, 7 LLINK, 8 TCB ADDRESS.
+C
+C       ENTRY 1 IS RESERVED: LOADMP'S MAP RUNS "DO 2328 I=2,TSKPTR" AND
+C       FINISH TAKES THE READY QUEUE HEADER FROM TSKDTA(1,8).  SO A NEW
+C       TASK ALWAYS LANDS AT 2 OR ABOVE.
+C
+        SUBROUTINE TASKY (STR,IPTR,IFLAG,IRADIX)
+C
+        INTEGER STR(1),IPTR,IFLAG,IRADIX
+        INTEGER SYM(8),IVAL,IOPT,I,STOI,EXTTOK
+        COMMON /LDTABS/ PRGDTA (503),PRGMAX,ENTDTA(503),ENTMAX,         LDTABS
+     *                EXTDTA(283),EXTMAX,EX1PTR,                        LDTABS
+     *                OLUN,RADIX,CLUN,MDLOW,PSLOW,                      LDTABS
+     *                PSBRK,DBDTA1(203),DB1MAX,DBDTA2(150,2),DB2MAX,    LDTABS
+     *                DB2PTR,OVDTA(16,9),OVPTR,OVMAX,LRADIX,PSMAX,      LDTABS
+     *                DBST,DBBRK,DB0PTR,DB0MAX,DBDTA0(70),              LDTABS
+     *                EXTDT1(200),                                      LDTABS
+     *                EXTMX1,ENTDT1(100),ENTMX1,ENTPT1,LMLUN,           LDTABS
+     *                PARDTA(100),PARMAX,PARPTR,FLUN,VARSIZ(3),         LDTABS
+     *                CNTMAX,PARADR,MAXPAR,OVID,OVFLG,LMID,             LDTABS
+     *                OVPG,DBPG,BUFFER(200),BUFSIZ,PAKFAC,              LDTABS
+     *                DBLUN,EKOFLG,EKOLUN,CLUNS(2),CCLUN,CUROV,         LDTABS
+     *                NOTUS1,NOTUS2,NOTUS3,LUNMAP,OFFSET,EXTHST,M65536  LDTABS
+        COMMON /LDTABS/ SFFIL(31),SOFIL(31),SLMFIL(31),PGINFO(16,2)     LDTABS
+        COMMON /LDTABS/ SCLUN(16),SCLUN2(16),CLUN2                      LDTABS
+        COMMON /LDTABS/ PPASZ,OTOFLG,OVLEVL,CALFLG,CMPFLG,RSTRCT,       LDTABS
+     *                  PSHLD,OV1FLG,MAPLUN,NAMLUN,LP2LUN,SLP2NM(16)    LDTABS
+        COMMON /LDTABS/FLMLUN,FLMFIL,LMLDSW,MXDATA,SUBCNT,              LDTABS
+     *               CODPTR,LMHDRC                                      LDTABS
+        INTEGER PRGDTA,PRGMAX,ENTDTA,ENTMAX,                            LDTABS
+     *          EXTDTA,EXTMAX,EX1PTR,                                   LDTABS
+     *          OLUN,RADIX,CLUN,MDLOW,PSLOW,                            LDTABS
+     *          PSBRK,DBDTA1,DB1MAX,DBDTA2,DB2MAX,                      LDTABS
+     *          DB2PTR,OVDTA,OVPTR,OVMAX,LRADIX,PSMAX,                  LDTABS
+     *          DBST,DBBRK,DB0PTR,DB0MAX,DBDTA0,EXTDT1,                 LDTABS
+     *          EXTMX1,ENTDT1,ENTMX1,ENTPT1,LMLUN,                      LDTABS
+     *          PARDTA,PARMAX,PARPTR,FLUN,VARSIZ,                       LDTABS
+     *          CNTMAX,PARADR,MAXPAR,OVID,OVFLG,LMID,                   LDTABS
+     *          OVPG,DBPG,BUFFER,BUFSIZ,PAKFAC,                         LDTABS
+     *          DBLUN,EKOFLG,EKOLUN,CLUNS,CCLUN,CUROV,                  LDTABS
+     *          NOTUS1,NOTUS2,NOTUS3,LUNMAP,OFFSET,EXTHST,M65536        LDTABS
+        INTEGER SFFIL,SOFIL,SLMFIL,PGINFO                               LDTABS
+        INTEGER SCLUN,SCLUN2,CLUN2                                      LDTABS
+        INTEGER PPASZ,OTOFLG,OVLEVL,CALFLG,CMPFLG,RSTRCT,PSHLD,OV1FLG   LDTABS
+        INTEGER MAPLUN,NAMLUN,LP2LUN,SLP2NM                             LDTABS
+        INTEGER FLMLUN,FLMFIL(31),LMLDSW,MXDATA,SUBCNT,                 LDTABS
+     *           CODPTR,LMHDRC(8)                                       LDTABS
+        INTEGER TSKDTA(26,8),TSKPTR,TSKMAX,TCBMNL,TCBMXL
+        COMMON /TSKCOM/ TSKDTA,TSKPTR,TSKMAX,TCBMNL,TCBMXL
+        LOGICAL TASKFL,TSKFL,ISRFL
+        COMMON /MCOMM/ TASKFL,TSKFL,ISRFL
+C
+        IF (TSKPTR+1 .GT. TSKMAX) GO TO 900
+        TSKPTR=TSKPTR+1
+        DO 10 I=1,8
+        TSKDTA(TSKPTR,I)=0
+10      CONTINUE
+C
+C       id
+C
+        IF (EXTTOK (SYM,6,STR,IPTR,IPTR,IRADIX) .EQ. 0) GO TO 910
+        TSKDTA(TSKPTR,1)=STOI (SYM,IRADIX)
+C
+C       priority.  MANUAL 2.3.7: DECIMAL 1-255, DEFAULT 100.  IT IS NOT
+C       READ IN THE LOADER RADIX -- LOD100 READ "TASK 5 /M 200" AS OCTAL
+C       ONCE AND PRODUCED 128.
+C
+        IF (EXTTOK (SYM,6,STR,IPTR,IPTR,IRADIX) .EQ. 0) GO TO 100
+        TSKDTA(TSKPTR,2)=STOI (SYM,10)
+        IF (TSKDTA(TSKPTR,2) .EQ. 0) TSKDTA(TSKPTR,2)=100
+C
+C       m-opt, i-opt, s-opt -> ONE FLAG WORD, THE BITS LOADMP TESTS
+C
+100     CONTINUE
+        IOPT=0
+        IF (EXTTOK (SYM,6,STR,IPTR,IPTR,IRADIX) .EQ. 0) GO TO 200
+        IF (STOI (SYM,IRADIX) .NE. 0) IOPT=IOR16 (IOPT,1)
+        IF (EXTTOK (SYM,6,STR,IPTR,IPTR,IRADIX) .EQ. 0) GO TO 200
+        IF (STOI (SYM,IRADIX) .NE. 0) IOPT=IOR16 (IOPT,2)
+        IF (EXTTOK (SYM,6,STR,IPTR,IPTR,IRADIX) .EQ. 0) GO TO 200
+        IF (STOI (SYM,IRADIX) .NE. 0) IOPT=IOR16 (IOPT,4)
+200     CONTINUE
+        TSKDTA(TSKPTR,3)=IOPT
+C
+C       A TASK BLOCK PUTS THE LOADER IN TASK MODE.
+C
+        TASKFL=.TRUE.
+        TSKFL=.TRUE.
+        RETURN
+C
+C       TOO MANY TASKS / BAD RECORD
+C
+900     CONTINUE
+        CALL ERRMES (36)
+        RETURN
+910     CONTINUE
+        CALL ERRMES (2)
+        RETURN
+        END
