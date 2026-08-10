@@ -81,20 +81,34 @@ code.append(halt_word)
 
 # ── S-pad values ────────────────────────────────────────────────────
 # VADD expects: SP[0]=A, SP[1]=I, SP[2]=B, SP[3]=J, SP[4]=C, SP[5]=K, SP[6]=N
-spad_vals = [0, 1, 3, 1, 6, 1, 3]
+# ── Per-routine calling convention ──────────────────────────────────
+#
+# Each routine's s-pad parameters are its own $EQU block in BAASRC.APS.
+# They are not uniform: VADD takes seven (A,I,B,J,C,K,N), VSMUL six
+# (the second operand is a scalar, not a vector), VMOV five, VCLR three.
+# "spads" is the s-pad file as the routine expects it, "vin" the input
+# vectors laid out from MD 0, and "cbase" where C starts.
 
-test_a = [1.0, 2.0, 3.0]
-test_b = [4.0, 5.0, 6.0]
-OP = {"VADD": lambda a, b: a + b,
-      # VSUB is B-A, not A-B.  BAASRC's FORMULA line says
-      #   "C(M) = B(M) - A(M)   FOR M = 0 TO N-1
-      # and the loop is "FSUB DPY,DPX" commented "B(0) - A(0)".
-      # The prose abstract ("SUBTRACTS VECTOR B FROM VECTOR A")
-      # and one store comment disagree; the formula wins.
-      "VSUB": lambda a, b: b - a,
-      "VMUL": lambda a, b: a * b}[ROUTINE]
-OPSYM = {"VADD": "+", "VSUB": "reverse-", "VMUL": "*"}[ROUTINE]
-test_c = [OP(a, b) for a, b in zip(test_a, test_b)]
+A3 = [1.0, 2.0, 3.0]
+B3 = [4.0, 5.0, 6.0]
+
+ROUTINES = {
+    #          spads                    vin        cbase  expected
+    "VADD":  ([0, 1, 3, 1, 6, 1, 3],   A3 + B3,    6, [a + b for a, b in zip(A3, B3)]),
+    "VSUB":  ([0, 1, 3, 1, 6, 1, 3],   A3 + B3,    6, [b - a for a, b in zip(A3, B3)]),
+    "VMUL":  ([0, 1, 3, 1, 6, 1, 3],   A3 + B3,    6, [a * b for a, b in zip(A3, B3)]),
+    # VSMUL: A,I,B,C,K,N -- B is the ADDRESS of a scalar, here MD 3.
+    "VSMUL": ([0, 1, 3, 4, 1, 3],      A3 + [2.0], 4, [a * 2.0 for a in A3]),
+    # VMOV: A,I,C,K,N
+    "VMOV":  ([0, 1, 3, 1, 3],         A3,         3, list (A3)),
+    # VCLR: C,K,N -- no input at all
+    "VCLR":  ([0, 1, 3],               [],         0, [0.0, 0.0, 0.0]),
+    }
+
+if ROUTINE not in ROUTINES:
+    raise SystemExit ("no calling convention recorded for %s -- add one to "
+                      "ROUTINES from its $EQU block in BAASRC.APS" % ROUTINE)
+spad_vals, vec_in, CBASE, test_c = ROUTINES[ROUTINE]
 
 HOST_DATA = 0o600
 HOST_RESULT = 0o620
@@ -105,7 +119,7 @@ out = []
 def emit(s): out.append(s)
 
 emit(f"; HSR {ROUTINE} test — {len(hsr_words)} production instructions from BAAHSR.MAC")
-emit(f"; A={test_a} {OPSYM} B={test_b} = C={test_c}")
+emit(f"; in={vec_in} -> C={test_c} at MD {CBASE}")
 emit("set cpu 32K")
 emit("set fps enabled")
 emit("set fpsdma enabled")
@@ -133,10 +147,10 @@ pz_const("fn_dep_spd", FN_DEP | 1)     # REGSEL_SPD
 pz_const("fn_dep_spfn", FN_DEP | 5)    # REGSEL_SPFN
 pz_const("dma_ctl_h2a", 0o300)
 pz_const("dma_ctl_a2h", 0o340)
-pz_const("wc_in", 12)
-pz_const("wc_out", 6)
+pz_const("wc_in", max (2 * len (vec_in), 1))
+pz_const("wc_out", 2 * len (test_c))
 pz_const("apma_zero", 0)
-pz_const("apma_six", 6)
+pz_const("apma_c", CBASE)
 pz_const("host_in", HOST_DATA)
 pz_const("host_out", HOST_RESULT)
 pz_const("entry", 0)
@@ -158,7 +172,7 @@ emit("")
 # Input/output data
 emit(f"; Float data at {HOST_DATA:03o}")
 addr = HOST_DATA
-for v in test_a + test_b:
+for v in vec_in:
     hi, lo = ieee32(v)
     emit(f"deposit {addr:03o} {hi:06o}")
     addr += 1
@@ -170,8 +184,15 @@ for i in range(6):
 
 # Pre-load SRS with return address → HALT at PS[20]
 emit("")
-emit("; SRS[0] = 20 (HALT), SRA = 1 (one return address)")
-emit("deposit fps SRS[0] 000024")  # 20 decimal = 24 octal
+# The routine's RETURN pops SRS, so the return address must be the
+# index of the HALT appended after the code -- len(hsr_words), which is
+# per-routine.  Hardcoding VADD's 20 sent VMOV (16 instructions) past
+# its HALT into zeroed program store, where it ran the routine a SECOND
+# time with the s-pads left over from the first: C had advanced from 3
+# to 5, so the re-run stored at md[5..7] and overwrote C(2).  VADD only
+# ever looked right because 20 happened to be its own length.
+emit(f"; SRS[0] = {len(hsr_words)} (the appended HALT), SRA = 1")
+emit(f"deposit fps SRS[0] {len(hsr_words):06o}")
 emit("deposit fps SRA 1")
 
 # ── Nova program ────────────────────────────────────────────────────
@@ -232,7 +253,7 @@ inst(dg_skp(SKPDN, DEV_FPS))
 inst(dg_jmp(1, 0xFF))
 
 # Phase 5: DMA AP→Host
-inst(dg_lda(0, 0, pz["apma_six"]))
+inst(dg_lda(0, 0, pz["apma_c"]))
 inst(dg_dob(0, PULSE_C, DEV_FPS))
 inst(dg_lda(0, 0, pz["host_out"]))
 inst(dg_dob(0, PULSE_S, DEV_FPS))
