@@ -111,6 +111,57 @@ That also fixes the `OVDTA` column meanings, which no manual states:
 | 7 | pointer used by `OVLY` to release program data |
 | 8, 9 | masked to 8 bits by `OVLY` |
 
+## What FINISH settles
+
+**A missing READYQ is an ERROR, not a silent skip.**
+
+    ID=SRCST(DBDTA1,1,-1,RDYQUE,6)      look for the header
+    IF (ID.EQ.0) GO TO 90010            -> CALL ERRMES(35)
+    C RDYQUE NOT DEFINED
+
+CLAUDE.md records a dispute over the STATUS bit `001000` being set "only
+when READYQ is defined", with `lod100.py` right and the FORTRAN wrong.
+The real loader does not treat an absent READYQ as a case to handle at
+all — in task mode with tasks present it is a hard error, message 35.
+
+**TSKDTA's columns**, which no manual gives:
+
+| column | meaning |
+|---|---|
+| 1 | task id (used to name the `.MPnnn` overlay map) |
+| 3 | flags — bit 0 tested by `LOADMP` |
+| 4, 5 | map listing values, 6 digits at columns 15 and 23 |
+| 6 | **RLINK** pointer — index of the next task |
+| 7 | **LLINK** pointer — index of the previous task |
+| 8 | **TCB address** |
+
+and the ready queue is emitted as, for each task,
+
+    CALL WRTLM(0,0,4,TSKDTA(I,8),0,1,0,0,0,0.0,0.0)   header at the TCB
+    CALL WRTLM(1,0,TSKDTA(J,8),0,TSKDTA(K,8),...)     RLINK, LLINK
+
+so the links hold the **TCB addresses** of the neighbours, not indices —
+a doubly linked list, as the manual says, but through addresses.
+
+**The host interface routine is not a stub.** CLAUDE.md records "HASI
+generation is stubbed in both tools". FINISH writes it directly, and this
+is the template:
+
+          SUBROUTINE MTSnn(PSSIZ)
+          INTEGER CODE,PSSIZ
+          COMMON /CODEnn/ CODE(mmmmmm)
+          CALL MTSGO (PSSIZ,nn,CODE,mmmmmm)
+          RETURN
+          END
+
+with `nn` the load module id and `mmmmmm` MXDATA — its own comment calls
+it "the FPS100 interface routine ... how the user loads his load module
+and starts the supervisor running. ITS LIKE A HASI."
+
+The parameter passing area is a symbol `.PPA.` inserted into `DBDTA1`,
+sized `PPASZ = PGINFO(DBPG,1) - DBBRK`, and the information block is
+written only when an LM file is open (`SLMFIL(1).NE.0`).
+
 ## Why this matters
 
 With these written, LOD100 can be built from **40 modules of genuine FPS
