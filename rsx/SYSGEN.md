@@ -69,16 +69,19 @@ preceding CR-LF distinguishes prose from output:
 Arming speculative rules ahead of the dialogue is still worth it -- `XDT`
 landed for free -- but short fragments are how the shift comes back.
 
-**`autosize` silently overrides the drive type.**  `set hk2 rk06` still
-autoconfigured as an RK07, because SimH sized the drive from the existing
-container file.  `set hkN noautosize` must come *before* the type:
+**`autosize` silently overrides the drive type** when a container already
+exists: `set hk2 rk06` still autoconfigured as an RK07 because SimH sized
+the drive from the file.  The obvious fix -- `set hkN noautosize` -- is a
+TRAP, and a worse one: with it, `att -n` creates a 210-BLOCK STUB instead
+of a full drive, so anything later written to that disk is silently lost.
+See "SimH HK container traps" below.  Create each container fresh, in the
+same session that uses it, with the type set and autosize left alone:
 
     set hk enabled
-    set hk0 noautosize ; set hk1 noautosize ; set hk2 noautosize
-    set hk0 rk07       ; set hk1 rk07       ; set hk2 rk06
+    set hk0 rk07 ; set hk1 rk07 ; set hk2 rk06
     att -n hk0 usagi0.dsk ...
 
-With that, RSX's own autoconfigure reports the target exactly:
+RSX's own autoconfigure then reports the target exactly:
 `DMA` at 177440 vector 210, units 0 and 1 RK07, unit 2 RK06.
 
 ## SYSGEN writes to the distribution disks
@@ -193,3 +196,60 @@ SYSGEN writes `SYSSAVED.CMD`, the saved answer file.  From then on the
 whole dialogue can be replayed from it (question 7, "Use an input saved
 answer file?"), which removes the console race entirely.  Getting one
 complete generation is therefore worth the iteration cost.
+
+## Installing the FPS software onto the target RK07
+
+`fps_install.ini` does it in ONE simulator session, which is not a style
+choice -- see the SimH container traps below.  Result, from RSX's own
+directory listing:
+
+    Total of 12735./12735. blocks in 182. files
+
+All 182 files of the 1981 distribution, on `DM0:USAGI0`.
+
+The sequence is `INS $PIP`, `INS $INI`, `ALL DM0:`,
+`INI DM0:USAGI0/BAD=[NOAUTO]`, `MOU DM0:USAGI0`, `UFD DM0:[200,200]`,
+then mount each transfer volume and `PIP DM0:[200,200]/NV=DLn:[200,200]*.*`.
+
+**RSX initialises the RK07; ods1make does not.**  RSX places the index
+file at the volume midpoint on large disks -- an RSX-initialised RK07 has
+`H.IBLB=26895` (= 53790/2) and `H.FMAX=3308`, where ods1make writes
+`H.IBLB=2`.  So the target disk is formatted by `INI` and the files are
+carried in on RL02-geometry volumes, which ods1make builds correctly and
+which RSX mounts and lists.
+
+**`/BAD=[NOAUTO]`** is required.  An RK07 carries a factory bad-sector
+file in its last track and `INI` reads it; a SimH container has none, so
+plain `INI` fails with "Manufacturer's bad sector file corrupt".  The
+keyword is NOAUTO (not OVR) and the brackets are part of the syntax --
+both are in the kit's own `INITIAL.MAC` switch table.
+
+**Split the package by its ON-VOLUME size, not by file size.**  ODS-1
+stores text as variable-length records with a 2-byte length per line, so
+files GROW: the tape's 182 files are 12,736 blocks on a volume against
+about 11,700 bytes-on-disk.  Size the split with `textrecs()`.
+
+### SimH HK container traps, all of which cost a run here
+
+- **`set hkN noautosize` makes `att -n` create a 210-BLOCK STUB** instead
+  of a 53,791-block RK07, whatever order it is issued in.  `INI` then
+  "succeeds" while writing nothing past block 209 and the volume will not
+  mount ("IE.NSF - no such file").  Do not use it; give each unit its type
+  and let autosize alone.
+- **A correctly sized RK07 container cannot be RE-ATTACHED.**  SimH
+  reports the device capacity in blocks but measures the container in
+  words, so a 27.5 MB image is rejected as 256x too large:
+  "The disk container is larger than simulated device (13MW > 53KW)".
+  A container SimH itself created comes back as "incompatible with the HK
+  device".  Hence: create with `att -n` and do all the work in that one
+  session.
+- Because of the two above, any experiment that re-attached an RK07 was
+  testing a broken drive, and conclusions drawn from those runs are void.
+
+### SimH expect: it is a LITERAL match
+
+Without `-r`, `.` is NOT a wildcard.  `expect "INS .PIP"` never matches
+`INS $PIP`, and `expect "PIP DM0:.200,200./NV=DL2"` never matches its own
+echo.  Use a plain distinctive substring (`NV=DL2`).  Also note `after=`
+is capped near 2.1e9; `4000000000` is rejected outright with
+`%SIM-ERROR: Invalid After Value`, and the rule then never arms.
