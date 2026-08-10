@@ -21,7 +21,7 @@ RS3:    .FCTR   LOD100/LB:EFLUSH:PUTHDR:PUT32:OVCLOS:OVVIS
 ; (INSTAL.TXT 9.14) likewise ends its root factor with LIB100/LB.  Without
 ; it TKB reports "1 UNDEFINED SYMBOLS SEGMENT LOAD" and the call lands on
 ; address 0 -- an odd address trap the moment a file is opened.
-LIBR:   .FCTR   LIB100/LB-LB:[1,1]SYSLIB/LB
+LIBR:   .FCTR   LB:[1,1]LIB100/LB-LB:[1,1]SYSLIB/LB
 ; INFILE is named explicitly here, which is how FPS's own descriptors do
 ; it -- ASM100's root lists LIB100/LB:DUTIL:ICMP16:... by name and DBG100
 ; carries a whole factor "INFIL: .FCTR LB:LIB100/LB:INFILE".  Naming the
