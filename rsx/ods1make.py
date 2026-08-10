@@ -111,6 +111,11 @@ Still unexplained. Build task images on the system pack meanwhile.
 import sys, os, re, struct
 
 R50 = " ABCDEFGHIJKLMNOPQRSTUVWXYZ$.?0123456789"
+
+# Extensions written VERBATIM as fixed 512-byte records rather than through
+# textrecs().  These are not line-oriented, and record-wrapping them makes
+# LBR report "Invalid format" and TKB "Module ... not in library".
+BINARY_EXTS = {"OLB", "OBJ", "TSK", "STB", "SYS", "SML", "MLB", "ULB"}
 BLK = 512
 
 
@@ -294,16 +299,29 @@ class Volume:
                 base = m.group(1)
             name, _, ext_s = base.partition('.')
             data = open(path, 'rb').read()
-            recs, longest = self.textrecs(data)
+            # BINARY files must NOT go through textrecs(). Object libraries,
+            # object files and task images are not line-oriented; wrapping
+            # them in [2-byte length][data] records corrupts them, and RSX
+            # then reports "LBR -- *FATAL*-Invalid format, input file x.OBJ"
+            # or "TKB -- *FATAL*-Module FROOT not in library". Write them
+            # verbatim as fixed 512-byte records instead.
+            if ext_s.upper() in BINARY_EXTS:
+                recs = data + b'\0' * (-len(data) % BLK)
+                rtyp, ratt, longest = 1, 0, BLK      # fixed-length, 512
+            else:
+                recs, longest = self.textrecs(data)
+                rtyp, ratt = 2, 2                    # variable, implied CC
             nblk = (len(recs) + BLK - 1) // BLK
             lbn = self.alloc(max(1, nblk))
             self.put(lbn, recs)
             ufat = bytearray(32)
-            ufat[0] = 2                                   # RTYP variable
-            ufat[1] = 2                                   # RATT implied CC
+            ufat[0] = rtyp
+            ufat[1] = ratt
             struct.pack_into('<H', ufat, 2, longest)      # RSIZ
             struct.pack_into('<H', ufat, 6, max(1, nblk))  # HIBK low word
             struct.pack_into('<H', ufat, 10, max(1, nblk))  # EFBK low word
+            # For the padded binary case recs is a whole number of blocks, so
+            # FFBY comes out 0 -- which is what "last block is full" means.
             ffby = len(recs) % BLK
             struct.pack_into('<H', ufat, 12, ffby)        # FFBY
             fn = self.next_fnum

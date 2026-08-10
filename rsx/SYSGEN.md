@@ -253,3 +253,49 @@ Without `-r`, `.` is NOT a wildcard.  `expect "INS .PIP"` never matches
 echo.  Use a plain distinctive substring (`NV=DL2`).  Also note `after=`
 is capped near 2.1e9; `4000000000` is rejected outright with
 `%SIM-ERROR: Invalid After Value`, and the rule then never arms.
+
+## Installing FORTRAN IV on the generated system
+
+The V4.0 kit ships no compiler, so a freshly generated system cannot build
+FPS software -- the whole toolchain was validated on the V3.1 pack for
+that reason.  `fortran_install.cmd` fixes that, and the result compiles:
+
+    >INS $FOR
+    >FOR HELLO,HELLO=HELLO
+    HELLO
+
+producing `HELLO.OBJ` and `HELLO.LST`.  `FOR.TSK` comes out at 252 blocks
+from the kit's own `FOR11M.CMD`.
+
+**Mount the DEC kit volume; do NOT convert its files host-side.**  RSX
+object files and libraries are RECORD-structured, not raw block images.
+Extracting them with `ods1make.py -x` and rebuilding a volume from the
+result destroys the format, and RSX says so exactly:
+
+    TKB -- *FATAL*-Module FROOT  not in library      (records wrapped as text)
+    TKB -- *FATAL*-File FOR.OLB;1 has illegal format (written as raw blocks)
+    LBR -- *FATAL*-Invalid format, input file FOROTS.OBJ;1
+
+The kit image is an RK05 (4800 blocks) and attaches happily to an RL02
+drive -- SimH allows a container SMALLER than the device -- so mount it
+and `PIP` from it.  Its files are in `[11,41]` and `[11,42]`.
+
+Note `ods1make.py` now writes `.OLB/.OBJ/.TSK/.STB/.SYS` verbatim as fixed
+512-byte records rather than through `textrecs()`, which is right for
+carrying a PRE-BUILT binary in.  It still cannot round-trip one out and
+back, because the extractor decodes records to lines; both halves would
+have to preserve record structure for that.
+
+## SimH: an RK07 container cannot be RE-ATTACHED
+
+Worth knowing before planning any persistent RK07 image.  A container SimH
+itself created with `att -n` comes back as
+
+    %SIM-ERROR: HK0: RK07 container created by the PDP-11 simulator is
+                incompatible with the HK device on the PDP-11 simulator
+
+and its own suggested `ATTACH HK0 -C new old` conversion fails the same
+way.  The container also ends up 107,581 blocks for a 53,790-block drive.
+So an RK07 built by running SimH is a SINGLE-SESSION artifact: create it
+with `att -n` and do all the work in that one run.  Any experiment that
+re-attached one was testing a broken drive.
