@@ -247,3 +247,48 @@ it and the 11/44 supports it, but the V3.1 task builder cannot emit it.
 LNK100 has no such limit -- it takes `CODE(4,2400)` and still builds with
 **no** overlay descriptor at 116 blocks and 29024 words, which is what
 `LNK10.CMD` implies.
+
+## LOD100 on the real machine (August 2026)
+
+Built under its own overlay descriptor (`$FOR2` -- no `/-VA`, unlike
+ASM100 and LNK100) and run on the flat `SYMLIB`+`DGNLIB` job:
+
+    >INS LOD100.TSK/TASK=...LOD
+    >LOD
+    LOD100  REL. 0.01 , RECONSTRUCTION
+    *
+    @LODIN.CMD
+      282 INSTRUCTIONS, HIGH=   431
+      2 UNDEFINED SYMBOLS
+    END LOD100
+
+**2,322 of 2,323 words identical to `lod100.py`.**  The single difference
+is word 1 of the first block header:
+
+    word 1   LOD100.TSK = 20000 (octal, = 8192)   lod100.py = 1160
+
+Word 0 is the block type and both write 1.  Word 1 is the count field;
+`lod100.py` writes the load module's word count (1160), the FORTRAN
+writes 8192, which is the default MMAX -- the main data memory page size
+(Loader manual 2.3.17).  Which is correct is NOT settled here; it is one
+word, in a header, and both readings are defensible from the text.
+
+**Two traps, both already recorded elsewhere in this repo and both walked
+into again:**
+
+- `@LODIN` fails with `NO SUCH FILE` because FORTRAN's `ASSIGN` supplies
+  a default extension of **`.DAT`**.  Type `@LODIN.CMD`.
+- `OUTPUT` takes **two** filenames -- `OUTPUT </size> hasifile lmfile-a`.
+  With one, LOD100 says so plainly: "OUTPUT REQUIRES A HASI FILE AND A
+  LOAD MODULE FILE".
+
+**`LMID` diverges between the two implementations.**  The FORTRAN accepts
+a NAME (`LMID DGNLOD`); `lod100.py` requires an octal NUMBER and dies with
+`invalid literal for int() with base 8`.  Comparing them with different
+LMIDs makes four words differ instead of one -- match the LMID before
+concluding anything.
+
+**LNK100 and LOD100 agree independently.**  Both report `HIGH= 431` for
+the same input, from separately reconstructed sources, and the undefined
+count differs by exactly one because LOD100 also loads `SYMLIB` and
+resolves one of the symbols LNK100 cannot.
