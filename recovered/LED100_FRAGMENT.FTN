@@ -1,0 +1,347 @@
+O
+C       BY MAKING THE NEW LIBRARY DIRECTLY ACCESSABLE OR CONTAIN
+C       FIXED LENGTH RECORDS.  THIS LAST ITEM ALLOWS THE LOADER TO
+C       QUICKLY SKIP RECORDS IN THE LIBRARY WHILE SEARCHING FOR NEEDED
+C       ROUTINES.
+C
+C       VARIABLES:
+C
+C       ILUN   = THE INPUT LOGICAL UNIT
+C       OLUN   = THE OUTPUT LOGICAL UNIT
+C       TLUN   = LOGICAL UNIT OF A TEMPORARY FILE
+C       RADIX  = THE RADIX THE AP OBJECT FILE WAS WRITTEN WITH
+C
+        INTEGER RADIX,IFILE(36),ILUN,LUNX
+        INTEGEN THE FILES
+C       THE OUTPUT FILE IS OPENED WITH THE '+64' OPTION IN INFILE
+C       TO OPEN A FILE THAT IS EITHER FIXED RECORD LENGTH OR DIRECTLY
+C       ACCESSIBLE.
+C
+50      WRITE (ITTO,100)
+100     FORMAT (' INPUT FILE NAME')
+        ID=RDLIN (IFILE,-1,35)
+        IF (INFILE (1,IFILE,ILUN) .EQ. 0) GOTO 500
+C
+C       BAD FILE NAME
+C
+        CALL ERRMES (3)
+        GOTO 50
+C
+500     WRITE (ITTO,520)
+520     FORMAT (' OUTPUT FILE NAME')
+        ID=RDLIN (OFILE,-1,35)
+        LUNX=3 + 64
+        IF (INFILE (LUNX,OFILE,OLUN) .EQ. 0) GOTO 1000
+C
+C       BAD FILE NAME
+C
+        CALL ERRMES (3)
+        GOTO 500
+C
+C       ASSIGN A TEMPORARY FILE
+C
+1000    ID=INFILE (39,TFILE,TLUN)
+C
+C       CALL CPYSBR TO COPY THE LIBRARY ASSIGNED TO ILUN TO OLUN
+C
+        CALL CPYSBR (ILUN,OLUN,TLUN,RADIX)
+C
+C       CLOSE INPUT, OUTPUT, AND TEMP FILES AND THEN WE'RE DONE
+C
+        ID=INFILE (4,IFILE,ILUN)
+        ID=INFILE (4,OFILE,OLUN)
+        ID=INFILE (5,TFILE,TLUN)
+        CALL EXIT
+        END
+C+++ CPYSBR
+C****** CPYSBR = COPY SUB'S INSERTING INDEX = REL.  1.00 , 09/01/79
+C    ******* CROCK INITIALIZER FILE REV.  1.07 , 09/27/79 ********
+C    *
+C    *    THIS VERSION OF APLED WAS PRODUCED BY CROCK
+C    *    ON TUE, DEC 04 1979 FOR THE PDP11 COMPUTER AT 18:12:01
+C    *
+C    *            CROCK VALUES FOR THE PDP11 COMPUTER
+C    *
+C    *  CHARACTERS PER WORD      =  1
+C    *  CHARACTER SET            =  ASCII
+C    *  CHARACTER STORAGE MODE   =  STRING
+C    *  FORMAT                   =  1 BLANK(S)
+C    *  ENDTBL SYMBOL            =  $END$
+C    *
+C    *************************************************************
+C
+        SUBROUTINE CPYSBR (ILUN,OLUN,TLUN,RADIX)
+C
+        INTEGER ILUN,OLUN,TLUN,RADIX
+C
+C       THIS ROUTINE READS AN AP LIBRARY AND INSERTS BEFORE EACH
+C       ROUTINE INDEX BLOCKS OF THE FORM:
+C
+C       14  ENTRYCOUNT  SKIPCOUNT
+C       TITLE ENTRY1 ENTRY2 ENTRY3 ... ENTRY6
+C
+C       ENTRYCOUNT IS THE NUMBER OF ENTRY SYMBOLS ON THE LINE FOLLOWING.
+C       SKIPCOUNT IS THE NUMBER OF RECORDS IN THE NEXT ROUTINE OR ZERO
+C       IF ANOTHER INDEX BLOCK FOLLOWS IMMEDIATELY.  ENTRY1 THROUGH
+C       ENTRY6 ARE ENTRY SYMBOLS FOR THE ROUTINE THAT FOLLOWS THE INDEX
+C       BLOCK.  TITLE IS THE TITLE OF THE ROUTINE.  ONLY 6 ENTRY SYMBOLS
+C       ARE CONTAINED IN ONE INDEX BLOCK THUS IT IS POSSIBLE FOR MORE
+C       THAN ONE INDEX BLOCK TO BE CREATED FOR A GIVEN ROUTINE.
+C
+C       CALL:
+C
+C       ILUN   = THE LUN USED TO READ THE INPUT LIBRARY
+C       OLUN   = THE LUN USED TO WRITE THE OUTPUT LIBRARY
+C       TLUN   = A SCRATCH FILE LUN
+C       RADIX  = THE RADIX IN WHICH THE OBJECT FILE WAS WRITTEN
+C
+        INTEGER ENTCNT,STR(81),IPTR,SYM(7),IFILE(36),I
+        INTEGER OFILE(36),ID,IV,SKPCNT,SENTS(81),TFILE(20)
+        INTEGER BLKID,STITLE(10)
+        INTEGER RDLIN,INFILE,RDREC,STOI,EXTTOK,EXTSS
+C
+        COMMON /LBED/ LUNMAP,ITTO
+        INTEGER LUNMAP,ITTO
+C
+C                                                                       STARTPRE
+      INTEGER SUBHDR(24),SFM(3)
+C STRNG SUBHDR " 14 NNN NNNNNN ***INDEX"
+      DATA SUBHDR(2)/'  '/,SUBHDR(3)/'1 '/,SUBHDR(4)/'4 '/
+      DATA SUBHDR(5)/'  '/,SUBHDR(6)/'N '/,SUBHDR(7)/'N '/
+      DATA SUBHDR(8)/'N '/,SUBHDR(9)/'  '/,SUBHDR(10)/'N '/
+      DATA SUBHDR(11)/'N '/,SUBHDR(12)/'N '/,SUBHDR(13)/'N '/
+      DATA SUBHDR(14)/'N '/,SUBHDR(15)/'N '/,SUBHDR(16)/'  '/
+      DATA SUBHDR(17)/'* '/,SUBHDR(18)/'* '/,SUBHDR(19)/'* '/
+      DATA SUBHDR(20)/'I '/,SUBHDR(21)/'N '/,SUBHDR(22)/'D '/
+      DRDS READ WILL DEPEND ON HOW THE '+64' OPTION
+C                WAS IMPLEMENTED IN INFILE.  IF THIS WAS DONE USING
+C                FIXED RECORD LENGTHS, THEN THE NUMBER OF WORDS READ
+C                WILL BE THAT LENGTH.
+C
+C       RETURNS:
+C
+C       BUFFER = CONTAINS THE RECORD READ.
+C
+        INTEGER LENX,LUNX
+C
+        LENX=LEN
+        IF (LEN.EQ.-1) LENX=81
+        LUNX=LUN+7
+        READ(LUNX)LENX
+        READ(LUNX)(BUFFER(I),I=1,LENX)
+        RETURN
+        END
+C+++    TYPC
+C****** TYPC = TYPE OF CHARACTER = REL.  1.00 , 09/01/79
+C    ******* CROCK INITIALIZER FILE REV.  1.07 , 09/27/79 ********
+C    *
+C    *    THIS VERSION OF APLED WAS PRODUCED BY CROCK
+C    *    ON WED, DEC 05 1979 FOR THE PDP11 COMPUTER AT 08:30:45
+C    *
+C    *            CROCK VALUES FOR THE PDP11 COMPUTER
+C    *
+C    *  CHARACTERS PER WORD      =  1
+C    *  CHARACTER SET            =  ASCII
+C    *  CHARACTER STORAGE MODE   =  STRING
+C    *  FORMAT                   =  1 BLANK(S)
+C    *  ENDTBL SYMBOL            =  $END$
+C    *
+C    *************************************************************
+C
+        INTEGER FUNCTION TYPC(CHR,RADIX)
+        INTEGER CHR,RADIX
+C
+C       RETURNS:
+C         -2  IF THE CHARACTER IS A DIGIT IN 'RADIX'
+C         -1  IF THE CHARACTER IS ALPHA (A-Z) OR DIGIT (0-9)
+C        ELSE  THE CHARACTER VALUE IF NON-ALPHANUMERIC
+C
+C       NOTE: BLANK IS RETURNED FOR A TAB
+C
+C       IF A CHARACTER IS BOTH A LETTER AND A DIGIT, NUMERIC (-2) WILL BE
+C               RETURNED
+C
+        INTEGER L0,L0M1,L9,LA,LTAB,LBLANK,LZ,LAM11
+C
+C       DEFINED CONSTANTS USED:
+        DATA   L0, L9,  LA, LZ,  LBLANK, LTAB,L0M1,LAM11/
+     1     8240,8249,8257, 8282, 8224, 8283,8239,8230/
+C
+C       NOTE:  L0<L9  AND  LA<LZ
+C
+C  THIS ASSUMES CHARACTERS 0 THROUGH 9 AND A THROUGH Z ARE CONTIGUOUS
+C  BLOCKS OF ASCENDING VALUES. AND THAT L9<LA.
+C  HOWEVER, LA DOES NOT HAVE TO BE L9+1
+C
+C
+C-------SEE IF A DIGIT
+C
+C    RADIX <=10, LOOK ONLY FOR  0 THROUGH RADIX-1
+C    RADIX  >10, LOOK N,NAMLUN,LP2LUN,SLP2NM(16)    LDTABS
+        COMMON /LDTABS/FLMLUN,FLMFIL,LMLDSW,MXDATA,SUBCNT,              LDTABS
+     *               CODPTR,LMHDRC                                      LDTABS
+        INTEGER PRGDTA,PRGMAX,ENTDTA,ENTMAX,                            LDTABS
+     *          EXTDTA,EXTMAX,EX1PTR,                                   LDTABS
+     *          OLUN,RADIX,CLUN,MDLOW,PSLOW,                            LDTABS
+     *          PSBRK,DBDTA1,DB1MAX,DBDTA2,DB2MAX,                      LDTABS
+     *          DB2PTR,OVDTA,OVPTR,OVMAX,LRADIX,PSMAX,                  LDTABS
+     *          DBST,DBBRK,DB0PTR,DB0MAX,DBDTA0,EXTDT1,                 LDTABS
+     *          EXTMX1,ENTDT1,ENTMX1,ENTPT1,LMLUN,                      LDTABS
+     *          PARDTA,PARMAX,PARPTR,FLUN,VARSIZ,                       LDTABS
+     *          CNTMAX,PARADR,MAXPAR,OVID,OVFLG,LMID,                   LDTABS
+     *          OVPG,DBPG,BUFFER,BUFSIZ,PAKFAC,                         LDTABS
+     *          DBLUN,EKOFLG,EKOLUN,CLUNS,CCLUN,CUROV,                  LDTABS
+     *          NOTUS1,NOTUS2,NOTUS3,LUNMAP,OFFSET,EXTHST,M65536        LDTABS
+        INTEGER SFFIL,SOFIL,SLMFIL,PGINFO                               LDTABS
+        INTEGER SCLUN,SCLUN2,CLUN2                                      LDTABS
+        INTEGER PPASZ,OTOFLG,OVLEVL,CALFLG,CMPFLG,RSTRCT,PSHLD,OV1FLG   LDTABS
+        INTEGER MAPLUN,NAMLUN,LP2LUN,SLP2NM                             LDTABS
+        INTEGER FLMLUN,FLMFIL(31),LMLDSW,MXDATA,SUBCNT,                 LDTABS
+     *           CODPTR,LMHDRC(8)                                       LDTABS
+C                                                                       LDTABS
+C
+        INTEGER I,CNT,ID,SYM(7),I1,I2
+C
+        INTEGER EXTTOK,STOI,RDREC
+C
+        IF (IDENT .EQ. 6 .OR. IDENT .EQ. 7) RETURN
+        IF (IDENT .NE. 1 .AND. IDENT .NE. 3) GOTO 30
+        CNT=1
+        GOTO 40
+C
+C       GET RECORD COUNT
+C
+30      ID=EXTTOK (SYM,6,STR,IPTR,IPTR,RADIX)
+        CNT=STOI (SYM,RADIX)
+              LDTABS
+     *           CODPTR,LMHDRC(8)                                       LDTABS
+C                                                                       LDTABS
+C
+        INTEGER I,CNT,ID,SYM(7),I1,I2
+C
+        INTEGER EXTTOK,STOI,RDREC
+C
+        IF (IDENT .EQ. 6 .OR. IDENT .EQ. 7) RETURN
+        IF (IDENT .NE. 1 .AND. IDENT .NE. 3) GOTO 30
+        CNT=1
+        GOTO 40
+C
+C       GET RECORD COUNT
+C
+30      ID=EXTTOK (SYM,6,STR,IPTR,IPTR,RADIX)
+        CNT=STOI (SYM,RADIX)
+              LDTABS
+     *           CODPTR,LMHDRC(8)                                       LDTABS
+C                                                                       LDTABS
+C
+        INTEGER I,CNT,ID,SYM(7),I1,I2
+C
+        INTEGER EXTTOK,STOI,RDREC
+C
+        IF (IDENT .EQ. 6 .OR. IDENT .EQ. 7) RETURN
+        IF (IDENT .NE. 1 .AND. IDENT .NE. 3) GOTO 30
+        CNT=1
+        GOTO 40
+C
+C       GET RECORD COUNT
+C
+30      ID=EXTTOK (SYM,6,STR,IPTR,IPTR,RADIX)
+        CNT=STOI (SYM,RADIX)
+              LDTABS
+     *           CODPTR,LMHDRC(8)                                       LDTABS
+C                                                                       LDTABS
+C
+        INTEGER I,CNT,ID,SYM(7),I1,I2
+C
+        INTEGER EXTTOK,STOI,RDREC
+C
+        IF (IDENT .EQ. 6 .OR. IDENT .EQ. 7) RETURN
+        IF (IDENT .NE. 1 .AND. IDENT .NE. 3) GOTO 30
+        CNT=1
+        GOTO 40
+C
+C       GET RECORD COUNT
+C
+30      ID=EXTTOK (SYM,6,STR,IPTR,IPTR,RADIX)
+        CNT=STOI (SYM,RADIX)
+              LDTABS
+     *           CODPTR,LMHDRC(8)                                       LDTABS
+C                                                                       LDTABS
+C
+        INTEGER I,CNT,ID,SYM(7),I1,I2
+C
+        INTEGER EXTTOK,STOI,RDREC
+C
+        IF (IDENT .EQ. 6 .OR. IDENT .EQ. 7) RETURN
+        IF (IDENT .NE. 1 .AND. IDENT .NE. 3) GOTO 30
+        CNT=1
+        GOTO 40
+C
+C       GET RECORD COUNT
+C
+30      ID=EXTTOK (SYM,6,STR,IPTR,IPTR,RADIX)
+        CNT=STOI (SYM,RADIX)
+              LDTABS
+     *           CODPTR,LMHDRC(8)                                       LDTABS
+C                                                                       LDTABS
+C
+        INTEGER I,CNT,ID,SYM(7),I1,I2
+C
+        INTEGER EXTTOK,STOI,RDREC
+C
+        IF (IDENT .EQ. 6 .OR. IDENT .EQ. 7) RETURN
+        IF (IDENT .NE. 1 .AND. IDENT .NE. 3) GOTO 30
+        CNT=1
+        GOTO 40
+C
+C       GET RECORD COUNT
+C
+30      ID=EXTTOK (SYM,6,STR,IPTR,IPTR,RADIX)
+        CNT=STOI (SYM,RADIX)
+              LDTABS
+     *           CODPTR,LMHDRC(8)                                       LDTABS
+C                                                                       LDTABS
+C
+        INTEGER I,CNT,ID,SYM(7),I1,I2
+C
+        INTEGER EXTTOK,STOI,RDREC
+C
+        IF (IDENT .EQ. 6 .OR. IDENT .EQ. 7) RETURN
+        IF (IDENT .NE. 1 .AND. IDENT .NE. 3) GOTO 30
+        CNT=1
+        GOTO 40
+C
+C       GET RECORD COUNT
+C
+30      ID=EXTTOK (SYM,6,STR,IPTR,IPTR,RADIX)
+        CNT=STOI (SYM,RADIX)
+40      DO 100 I=1,CNT
+        IF (RDREC (OLUN,STR,IPTR)+1) 90020,90000,50
+C
+C       IF THIS IS A PARAMETER BLOCK (IDENT=10) WE MUST SKIP DETAIL
+C       RECORDS ALSO.
+C
+50      IF (IDENT .NE. 10) GOTO 100
+        ID=EXTTOK (SYM,6,STR,IPTR,IPTR,RADIX)
+        ID=EXTTOK (SYM,6,STR,IPTR,IPTR,RADIX)
+        ID=EXTTOK (SYM,6,STR,IPTR,IPTR,RADIX)
+        I1=STOI (SYM,RADIX)
+        IF (I1 .EQ. 0) GOTO 100
+        DO 90 I2=1,I1
+        IF (RDREC (OLUN,STR,IPTR)+1) 90020,90000,90
+90      CONTINUE
+100     CONTINUE
+        RETURN
+C
+C       ERROR MESSAGES
+C
+C       READ ERROR
+C
+90000   CALL ERRMES (1)
+        RETURN
+C
+C       UNEXPECTED EOF
+C
+90020   CALL ERRMES (4)
+        RETURN
+        END
