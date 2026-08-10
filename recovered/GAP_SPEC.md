@@ -70,33 +70,37 @@ Note §4.2.3's caveat, which an implementation must honour: *"there may be
 multiple occurrences of the information block header. Only the last one
 is meaningful."*
 
-## The overlay table entry is 16 words in task mode, not 8
+## The overlay table entry: 8 MD words = 16 host words
 
-`ENDLNK` builds each entry into `BUFFER` and strides by 16
-(`IF (J+16 .LE. BUFSIZ)`), filling `J` through `J+15`:
+**Correction.** An earlier note here claimed the entry is "16 words in
+task mode, not 8", contradicting Loader table 2-1 and Supervisor table
+2-2. That was a **unit error**, and cross-reading the Supervisor manual
+settles it.
 
-    J+0   (OVDTA(I,6) & 15) * 8      segment number * 8
-    J+1   OVDTA(I,1)                 MD address
-    J+2   (OVDTA(I,6) & 15)          segment number
-    J+3   OVDTA(I,3)                 length in PS words
-    J+4   0
-    J+5   OVDTA(I,2)                 PS address
-    J+6   0
-    J+7   OVDTA(I,4) >> 1            partition count
-    J+8   0
-    J+9   TSKDTA(TSKPTR,1)           task id
-    J+10  0
-    J+11  1 for the first entry, else 0
-    J+12..J+15  0
+Supervisor 2.2.3.2: *"Each entry consists of eight main data words"*,
+with a note that each MD word has **EXP / HM / LM** portions. An MD word
+is 32 bits -- `FSLMLD`'s convention is "32 BITS OF HOST PER MD WORD" --
+so on a 16-bit host **one MD word is two host words**.
 
-and the total length is **halved when not in task mode**:
+`ENDLNK` writes sixteen host words, which is **eight MD words**, and they
+land exactly on Table 2-2:
 
-    IVAL(3)=OVPTR*OVMESZ
-    IF (.NOT.TASKFL) IVAL(3)=IVAL(3)/2
+| MD word | Table 2-2 | ENDLNK host words |
+|---|---|---|
+| 1 | overlay segment number | `J+0 = (col6&15)*8`, `J+1 = col1` |
+| 2 | MD address | `J+2 = (col6&15)`, `J+3 = col3` |
+| 3 | PS address | `J+4 = 0`, `J+5 = col2` |
+| 4 | length in PS words | `J+6 = 0`, `J+7 = col4>>1` |
+| 5 | task id | `J+8 = 0`, `J+9 = TSKDTA(TSKPTR,1)` |
+| 6 | resident bits | `J+10 = 0`, `J+11 = 1 for the first` |
+| 7 | first PS partition | `J+12 = 0`, `J+13 = 0` |
+| 8 | partition count | `J+14 = 0`, `J+15 = 0` |
 
-So the eight-word entry recorded in CLAUDE.md — from Loader table 2-1 and
-Supervisor table 2-2 — is the **non-task** form; task mode uses 16.
-`OVMESZ` itself is set in one of the missing modules.
+`IVAL(3)=OVPTR*OVMESZ` with `/2` when not in task mode is a host-word to
+MD-word conversion, not a size difference between modes.
+
+**The two manuals and the code agree.** The lesson is the mirror of the
+one already on file: check the units before correcting a manual.
 
 That also pins the `OVDTA` columns, which no manual gives. **Derived from
 the writes, not from the emit order** — reading `ENDLNK` alone gave the
