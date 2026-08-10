@@ -280,3 +280,66 @@ With these written, LOD100 can be built from **40 modules of genuine FPS
 source** plus 11 written ones, against the LIB100 that already exists —
 and FPS's own §9.14 overlay descriptor becomes usable nearly unmodified,
 removing the last adaptation from the recovered `LOD10.CMD`.
+
+## The hybrid builds
+
+    FOR LODHYB   48 program units, 320 KB   ZERO diagnostics
+    LBR LODHYB   library built clean
+    TKB @LODHYB  LODHYB.TSK, 95,744 bytes
+
+under **FPS's own §9.14 overlay descriptor**, changed only by dropping
+modules we do not have: `APLDBD`, `WRTDAT`, `APPRIO`, `APMDIO` (called by
+nothing, deliberately unwritten), `WRTLIN` (LIB100 supplies ours), `TYPC`
+(the one in this tape file is **APLED's**, the library editor's
+same-named utility — which corrects the recovered count from 41 to 40),
+and `SRCN`.
+
+**TKB wrote the task image despite one undefined symbol.** `*DIAG*` is
+not fatal; always grep the build log for `UNDEFINED`.
+
+## SRCN: fully specified, though its body is lost
+
+The one undefined symbol. Unlike the four above it **is** called —
+`CALL SRCN (PRGDAT(4),PRGDAT(8),IDXFCL,HASIMD,LOCPTR)` — and its banner
+survives: `SRCN = ADD EXECUTABLES TO THE HASI = REL. 1.01 , 12/10/79`.
+So it is the **HASI generator**. 70 declaration lines survive; the body
+does not. Three sources specify it completely:
+
+- **signature** from the caller above
+- **purpose** from its own banner
+- **output** from Loader Figure 4-3, which prints the entire generated
+  HASI subroutine:
+
+        SUBROUTINE ADCSFT
+       * (P 1)
+        INTEGER P 1
+        COMMON /APLDCM/ IPAV(33),NU2,IDLM,NU1,IPPAAD,IPPAND,
+       * IOVS(33),LMT(10,3),LMTE
+        COMMON /COMA  / C2001(1)
+        IF (IDLM.NE.1) CALL L 101
+        IPAV(1)=1
+        IPA=IPPAAD
+        IPAV(2)=IPA
+        IPA=IPA+1*1
+        IPAV(3)=IPA
+        CALL APPUT (P1,IPAV(2),IPAV(3)-IPAV(2),1)
+        CALL APRUN (16,1,1,0,13)
+        CALL APGET (C2001,2,1,2)
+        CALL APWD
+        CALL APEXC
+        RETURN
+        END
+
+Every element ties to something already established here: `CALL L 101`
+is the host-resident load module subroutine `WRTBR` emits; `IPPAAD` is
+the parameter passing area whose `.PPA.` symbol `FINISH` inserts;
+`APPUT`/`APRUN`/`APGET`/`APWD`/`APEXC` are IAPEX; `IDLM` guards against
+loading the module twice. A `BLOCK DATA` zeroing `APLDCM` follows.
+
+**Two kinds**: ADC (a `$SUBR` entry — parameters and commons passed
+automatically) and UDC (a `$ENTRY` entry — no parameter passing, faster,
+but the caller places the data and passes MD addresses).
+
+CLAUDE.md lists "HASI generation is stubbed in both tools" under what
+remains. It is not stubbed for want of a specification — the
+specification was in the manual all along.
