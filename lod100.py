@@ -832,6 +832,15 @@ class Session:
                 # accepted where LOD100 would reject it.
                 self.linked = True
             elif cmd == 'EXIT':
+                # [M 2.3.25] EXIT closes files and returns to the operating
+                # system; it does NOT link.  LINK is what writes the load
+                # module [M 2.3.23], and both documented sequences end
+                # "LINK" then "EXIT" (2.4 single-level, 2.5 multi-level).
+                # The recovered mainline used to link here too, so a job
+                # with an explicit LINK wrote the module twice.
+                if not self.linked:
+                    print("lod100: warning -- no LINK command; the real "
+                          "LOD100 would write no load module", file=sys.stderr)
                 break
             else:
                 raise ValueError("unknown LOD100 command: %s" % cmd)
