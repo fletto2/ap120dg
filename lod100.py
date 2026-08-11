@@ -296,11 +296,16 @@ MD_WORDS_PER_INSTR = 2   # a 64-bit instruction spans two 38-bit MD words
 # (4 MD words) in general and 16 (8 MD words) when building tasks.
 OVT_ENTRY_WORDS = 8          # [M table 2-1] -- task mode
 OVT_ENTRY_WORDS_FLAT = 4     # without tasks; see build_overlay_table
-TCB_WORDS = 150              # [M table 2-2], through the maximum save area
+# TCB lengths from SYSDEF.DAT, the supervisor's own definition file, NOT
+# from Loader table 2-2.  SYSDEF ends the chain with "MINTCB = SRS+15." and
+# "MAXTCB = FLAGS+3", which evaluate to 62 and 147, so the lengths are 63 and
+# 148; KERNEL.S reads MINTCB+1 as the start of the maximum save area.  Table
+# 2-2 says 64 and 150 -- it lists "27-31 DPX(0) - DPX(3)", five word numbers
+# for four registers, and runs one high from there, two by the end.
+TCB_WORDS = 148              # through the maximum save area
 PSPMAX = 50                  # PS partition table size; the mainline sets it,
                              # and FINISH emits "4, 50, <break>" to zero it
-TCB_MIN_WORDS = 64           # [M table 2-2], through the minimum save area
-                             # only; the /M option asks for this form
+TCB_MIN_WORDS = 63           # through the minimum save area only; /M
 
 
 class OverlaySegment:
