@@ -1,0 +1,149 @@
+      SUBROUTINE L101
+      INTEGER CODE(   288)
+      DATA CODE(     1),CODE(     2),CODE(     3),CODE(     4)/
+     *      0,    128,     16,      0/
+      DATA CODE(     5),CODE(     6),CODE(     7),CODE(     8)/
+     *      0,      0,      0,      0/
+      DATA CODE(     9),CODE(    10),CODE(    11),CODE(    12)/
+     *    572,      0,      0,      0/
+      DATA CODE(    13),CODE(    14),CODE(    15),CODE(    16)/
+     *    636,      0,      0,      0/
+      DATA CODE(    17),CODE(    18),CODE(    19),CODE(    20)/
+     *    956,      0,   1024,      0/
+      DATA CODE(    21),CODE(    22),CODE(    23),CODE(    24)/
+     *      0,      0,  19460,      0/
+      DATA CODE(    25),CODE(    26),CODE(    27),CODE(    28)/
+     *    940,      0,   1792,      0/
+      DATA CODE(    29),CODE(    30),CODE(    31),CODE(    32)/
+     *      3, -31232,   1024,   2297/
+      DATA CODE(    33),CODE(    34),CODE(    35),CODE(    36)/
+     *    560,      0,      0,      0/
+      DATA CODE(    37),CODE(    38),CODE(    39),CODE(    40)/
+     *      0,      0,   3584,      0/
+      DATA CODE(    41),CODE(    42),CODE(    43),CODE(    44)/
+     *   4116,     18,      0,      0/
+      DATA CODE(    45),CODE(    46),CODE(    47),CODE(    48)/
+     *    624,      0,      0,      0/
+      DATA CODE(    49),CODE(    50),CODE(    51),CODE(    52)/
+     *    564,      0,      0,     48/
+      DATA CODE(    53),CODE(    54),CODE(    55),CODE(    56)/
+     *    628,     32,   7168, -32720/
+      DATA CODE(    57),CODE(    58),CODE(    59),CODE(    60)/
+     *    956,      0,   1024,      1/
+      DATA CODE(    61),CODE(    62),CODE(    63),CODE(    64)/
+     *      0,      0,  18948,      0/
+      DATA CODE(    65),CODE(    66),CODE(    67),CODE(    68)/
+     *      0,      0,  18949,      0/
+      DATA CODE(    69),CODE(    70),CODE(    71),CODE(    72)/
+     *  17268,      0,   2080,    240/
+      DATA CODE(    73),CODE(    74),CODE(    75),CODE(    76)/
+     *      0,      0,   5124,      2/
+      DATA CODE(    77),CODE(    78),CODE(    79),CODE(    80)/
+     *    628,     32,   2080,    240/
+      DATA CODE(    81),CODE(    82),CODE(    83),CODE(    84)/
+     *      0,      0,      0,      0/
+      DATA CODE(    85),CODE(    86),CODE(    87),CODE(    88)/
+     *  17268,      0,      0,     48/
+      DATA CODE(    89),CODE(    90),CODE(    91),CODE(    92)/
+     *    628,     32,      0,     48/
+      DATA CODE(    93),CODE(    94),CODE(    95),CODE(    96)/
+     *  17268,      0,      0,     48/
+      DATA CODE(    97),CODE(    98),CODE(    99),CODE(   100)/
+     *    952,      0,   2560,      0/
+      DATA CODE(   101),CODE(   102),CODE(   103),CODE(   104)/
+     *  13304,      0,      0,      0/
+      DATA CODE(   105),CODE(   106),CODE(   107),CODE(   108)/
+     *  17268,    402,   1792,    240/
+      DATA CODE(   109),CODE(   110),CODE(   111),CODE(   112)/
+     *    572,      0,      0,      0/
+      DATA CODE(   113),CODE(   114),CODE(   115),CODE(   116)/
+     *  17376,      0,   1856,    208/
+      DATA CODE(   117),CODE(   118),CODE(   119),CODE(   120)/
+     *   8944,     32,      0,      0/
+      DATA CODE(   121),CODE(   122),CODE(   123),CODE(   124)/
+     *    536,    402,      0,      0/
+      DATA CODE(   125),CODE(   126),CODE(   127),CODE(   128)/
+     *    600,      0,      0,      0/
+      DATA CODE(   129),CODE(   130),CODE(   131),CODE(   132)/
+     *    956,    402,   1024,   4096/
+      DATA CODE(   133),CODE(   134),CODE(   135),CODE(   136)/
+     *  18428,      0,      0,      0/
+      DATA CODE(   137),CODE(   138),CODE(   139),CODE(   140)/
+     *      0,    128,     48,      0/
+      DATA CODE(   141),CODE(   142),CODE(   143),CODE(   144)/
+     *      0,      0,      0,      0/
+      DATA CODE(   145),CODE(   146),CODE(   147),CODE(   148)/
+     *  17404,      0,      0,      3/
+      DATA CODE(   149),CODE(   150),CODE(   151),CODE(   152)/
+     *      3, -29184,   1024,      5/
+      DATA CODE(   153),CODE(   154),CODE(   155),CODE(   156)/
+     *      0,      0,  19972,      0/
+      DATA CODE(   157),CODE(   158),CODE(   159),CODE(   160)/
+     *      0,      0,   5124,      1/
+      DATA CODE(   161),CODE(   162),CODE(   163),CODE(   164)/
+     *  17407, -16384,   2080,      3/
+      DATA CODE(   165),CODE(   166),CODE(   167),CODE(   168)/
+     *    552,      0,      0,      0/
+      DATA CODE(   169),CODE(   170),CODE(   171),CODE(   172)/
+     *  17404,      0,      0,      3/
+      DATA CODE(   173),CODE(   174),CODE(   175),CODE(   176)/
+     *    948,      0,   1024,      1/
+      DATA CODE(   177),CODE(   178),CODE(   179),CODE(   180)/
+     *    952,      0,   3584,      0/
+      DATA CODE(   181),CODE(   182),CODE(   183),CODE(   184)/
+     *  13236,      0,      0,      0/
+      DATA CODE(   185),CODE(   186),CODE(   187),CODE(   188)/
+     *  17407, -15950,   1792,      3/
+      DATA CODE(   189),CODE(   190),CODE(   191),CODE(   192)/
+     *    616,      0,      0,      0/
+      DATA CODE(   193),CODE(   194),CODE(   195),CODE(   196)/
+     *    956,      0,   1024,      0/
+      DATA CODE(   197),CODE(   198),CODE(   199),CODE(   200)/
+     *    948,      0,   1024,   2049/
+      DATA CODE(   201),CODE(   202),CODE(   203),CODE(   204)/
+     *  13300,      0,      0,      0/
+      DATA CODE(   205),CODE(   206),CODE(   207),CODE(   208)/
+     *    956,    402,   1024,      1/
+      DATA CODE(   209),CODE(   210),CODE(   211),CODE(   212)/
+     *    948,      0,   1024,      2/
+      DATA CODE(   213),CODE(   214),CODE(   215),CODE(   216)/
+     *   9204,      0,      0,      0/
+      DATA CODE(   217),CODE(   218),CODE(   219),CODE(   220)/
+     *  18212,      0,      0,      0/
+      DATA CODE(   221),CODE(   222),CODE(   223),CODE(   224)/
+     *   8740,      0,      0,      0/
+      DATA CODE(   225),CODE(   226),CODE(   227),CODE(   228)/
+     *  17244,      0,      0,      0/
+      DATA CODE(   229),CODE(   230),CODE(   231),CODE(   232)/
+     *    732,      0,      0,      0/
+      DATA CODE(   233),CODE(   234),CODE(   235),CODE(   236)/
+     *  29276,      0,      0,      0/
+      DATA CODE(   237),CODE(   238),CODE(   239),CODE(   240)/
+     *  18172,      0,      0,      0/
+      DATA CODE(   241),CODE(   242),CODE(   243),CODE(   244)/
+     *   9916,      0,      0,      0/
+      DATA CODE(   245),CODE(   246),CODE(   247),CODE(   248)/
+     *   9660,      0,      0,      0/
+      DATA CODE(   249),CODE(   250),CODE(   251),CODE(   252)/
+     *  18428,      0,      0,      0/
+      DATA CODE(   253),CODE(   254),CODE(   255),CODE(   256)/
+     *   9852,      0,      0,      0/
+      DATA CODE(   257),CODE(   258),CODE(   259),CODE(   260)/
+     *  18428,      0,      0,      0/
+      DATA CODE(   261),CODE(   262),CODE(   263),CODE(   264)/
+     *  10108,      0,      0,      0/
+      DATA CODE(   265),CODE(   266),CODE(   267),CODE(   268)/
+     *  18428,      0,      0,      0/
+      DATA CODE(   269),CODE(   270),CODE(   271),CODE(   272)/
+     *   8700,    224,      0,      3/
+      DATA CODE(   273),CODE(   274),CODE(   275),CODE(   276)/
+     *      2,      1,    320,      1/
+      DATA CODE(   277),CODE(   278),CODE(   279),CODE(   280)/
+     *      0,      0,      0,      0/
+      DATA CODE(   281),CODE(   282),CODE(   283),CODE(   284)/
+     *      3,      0,      0,      0/
+      DATA CODE(   285),CODE(   286),CODE(   287),CODE(   288)/
+     *      0,      0,      0,      0/
+      CALL FSLMLD(     1,CODE)
+      RETURN
+      END

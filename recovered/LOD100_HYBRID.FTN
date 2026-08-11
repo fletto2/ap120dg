@@ -472,7 +472,19 @@ C       LM -- LMID
 1013    CONTINUE
         GO TO 100
 C       PP -- PPA
-1014    CONTINUE
+C
+C       [M 2.3.19] "This command defines the SIZE of the parameter
+C       passing area ... If this command is not specified, all main data
+C       memory which remains after the LINK command is specified is set
+C       aside for this use."  So it sets PPASZ, and ENDLNK's guard
+C           IF (PPASZ .EQ. -1) PPASZ=ISUB16 (PGINFO(DBPG,1),DBBRK)
+C       leaves a value set here alone while defaulting to the rest of
+C       main data when none was given.  THE HANDLER WAS A NO-OP, so a
+C       PPA command was silently ignored and every module reported the
+C       default size.  Mainline-owned, like OVFLG, LUNMAP and ISRLEN.
+C
+1014    IF (EXTTOK (SYM,6,STR,IPTR,IPTR,IRADIX) .NE. -2) GO TO 100
+        PPASZ=STOI (SYM,IRADIX)
         GO TO 100
 C       INI -- INIT
 1017    CALL INIT (1,0)

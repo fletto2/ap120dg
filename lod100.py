@@ -1323,15 +1323,22 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
                     continue
                 lm.add_code_ps(mod_words(linker, base, start, count),
                                addr=base + loc)
-        # The PPA fields are an ADDRESS and a SIZE, and with no PPA command
-        ppa_addr = ppa or (mdoff + md_used)
+        # PPA IS A SIZE, NOT AN ADDRESS.  [M 2.3.19]: "This command defines
+        # the SIZE of the parameter passing area ... If this command is not
+        # specified, all main data memory which remains after the LINK
+        # command is specified is set aside for this use."  ENDLNK agrees --
+        #     IF (PPASZ .EQ. -1) PPASZ=ISUB16 (PGINFO(DBPG,1),DBBRK)
+        # -- PPASZ is the SIZE and defaults to the rest of main data.  The
+        # ADDRESS is always the data break.  This used the command's value
+        # as the address, which moved the PPA instead of resizing it.
+        ppa_addr = mdoff + md_used
         # PPASZ IS COMPUTED ONCE AND STICKS.  ENDLNK guards it --
         #     IF (PPASZ .EQ. -1) PPASZ=ISUB16 (PGINFO(DBPG,1),DBBRK)
         # -- so a second LINK reports the size worked out at the FIRST, not
         # one derived from its own break.
         ppa_size = getattr(lm, 'ppa_size', None)
         if ppa_size is None:
-            ppa_size = (MD_LIMIT - ppa_addr) & 0xFFFF
+            ppa_size = ppa if ppa else (MD_LIMIT - ppa_addr) & 0xFFFF
             lm.ppa_size = ppa_size
         lm.add_info(ppa_addr=ppa_addr, ppa_end=ppa_size)
         lm.end()
@@ -1493,7 +1500,7 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
     # recovered LOD100 writes 93 and -95 for the two-segment job (segment
     # images at MD 1 and 55, overlay table at 85, eight MD words, break 93;
     # 65534-93 = 65441, i.e. -95 as a signed 16-bit word).
-    ppa_addr = ppa or md
+    ppa_addr = md                      # PPA is a SIZE; see the flat path
     # PPASZ IS COMPUTED ONCE AND STICKS.  ENDLNK guards it --
     #     IF (PPASZ .EQ. -1) PPASZ=ISUB16 (PGINFO(DBPG,1),DBBRK)
     # -- so a second LINK reports the size worked out at the FIRST, not one
@@ -1502,7 +1509,7 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
     # its own break is 942.
     ppa_size = getattr(lm, 'ppa_size', None)
     if ppa_size is None:
-        ppa_size = (MD_LIMIT - ppa_addr) & 0xFFFF
+        ppa_size = ppa if ppa else (MD_LIMIT - ppa_addr) & 0xFFFF
         lm.ppa_size = ppa_size
     # IN TASK MODE THE INFO RECORD'S ovlen AND ovaddr ARE ZERO.  LINKS has
     #     IF (OVFLG .EQ. 0) GOTO 6650
