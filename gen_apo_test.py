@@ -35,14 +35,31 @@ SRC = os.path.join (os.path.dirname (os.path.abspath (__file__)),
 
 SYMS = {}
 
+LIBS = ("[327,010]BAALIB.APO", "[327,010]UTLLIB.APO",
+        "[327,010]APFLIB.APO", "[327,010]SYMLIB.APO")
+
 def link_routine (routine):
-    """Link the .APO bundle and return (code, entry address)."""
-    mods = []
-    for f in ("[327,010]VADD.APO", "[327,010]SYMLIB.APO"):
-        mods.extend (parse_apo (os.path.join (SRC, f)))
-    ln = Linker (origin=0)
-    ln.add_modules (mods)
-    ln.link ()
+    """Link the routine's closure and return (code, entry address).
+
+    VADD has a ready-made bundle in VADD.APO -- the only one FPS shipped --
+    and that is the vehicle the original test used.  Every OTHER routine has
+    to be pulled out of the real libraries the way LOD100 does it: FORCE the
+    name, then LIB each library and let selective loading drag in the
+    closure.  That exercises far more of the linker than one bundle can, and
+    it is the same widening that found the multiplier defects on the HSR
+    path -- testing one routine proves one routine.
+    """
+    if routine == "VADD":
+        mods = []
+        for f in ("[327,010]VADD.APO", "[327,010]SYMLIB.APO"):
+            mods.extend (parse_apo (os.path.join (SRC, f)))
+        ln = Linker (origin=0)
+        ln.add_modules (mods)
+        ln.link ()
+    else:
+        from lod100 import _load
+        paths = [os.path.join (SRC, f) for f in LIBS]
+        ln = _load (paths, 0, force={routine}, libs=paths)
     for w in ln.warnings:
         print ("  link warning:", w, file=sys.stderr)
     addr = ln.entry_points.get (routine)
