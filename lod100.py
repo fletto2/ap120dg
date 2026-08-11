@@ -535,68 +535,25 @@ def build_overlay_table(segments, partition_table_addr, task_mode=False,
     return words
 
 
-def build_tcb(task_id, ovl_ptr, ovl_count, priority=100, minimal=False,
-              front=False, slaved=False, ready_queue=False,
-              ps_addr=0, md_addr=0, term_addr=0, tcb_addr=0):
-    """A task communication block, initialised per [M 2.9] table 2-2."""
-    tcb = [0] * TCB_WORDS
-    tcb[2] = priority                     # 3  RPRI
-    tcb[4] = TCB_WORDS                    # 5  LENGTH
-    tcb[6] = task_id                      # 7  ID
-    tcb[7] = ovl_ptr                      # 8  OVLPTR
-    tcb[8] = ovl_count                    # 9  OVLCNT
-    tcb[9] = priority                     # 10 DPRI
-    status = 0
-    if not minimal:
-        status |= 0o004000                # full machine resources
-    if slaved:
-        status |= 0o010000
-    if ready_queue:
-        status |= 0o001000
-    tcb[10] = status                      # 11 STATUS
-    tcb[15] = md_addr                     # 16 TADDR
-    # "RCLOCK and LCLOCK are set to the address of RCLOCK" [M 2.9] -- both
-    # point at word 13 of this very TCB, so the clock list starts empty.
-    tcb[12] = tcb_addr + 12               # 13 RCLOCK
-    tcb[13] = tcb_addr + 12               # 14 LCLOCK
-    tcb[42] = 0                           # 43 APSTAT2: FP exception disabled
-    tcb[47] = 0o55260                     # 48 APSTAT3
-    tcb[48] = term_addr                   # 49 SRS(0) termination routine
-    tcb[49] = ps_addr                     # 50 SRS(1) task entry
-    return tcb
-
-
-def link_ready_queue(tcbs, tcb_addrs):
-    """RLINK/LLINK chain, highest priority first, /I tasks at the front. [M 2.10]"""
-    order = sorted(range(len(tcbs)),
-                   key=lambda i: (not tcbs[i][1].get('front'),
-                                  -tcbs[i][1].get('priority', 100)))
-    for pos, idx in enumerate(order):
-        nxt = order[(pos + 1) % len(order)]
-        prv = order[(pos - 1) % len(order)]
-        tcbs[idx][0][0] = tcb_addrs[nxt]      # RLINK
-        tcbs[idx][0][1] = tcb_addrs[prv]      # LLINK
-    return order
-
-
-# ── HASI generation ─────────────────────────────────────────────────
-
-def parse_fpb(pb_data):
-    """Decode a formal parameter block into (type, dest, ndim) tuples.
-
-    [M 3.11] record = type dest size, followed by one (p-a, p-b) sub-record
-    per dimension.  lnk100 flattens the whole block into a word list, so walk
-    it with that structure.
-    """
-    params, i = [], 0
-    while i + 2 < len(pb_data) + 1 and i + 3 <= len(pb_data):
-        ptype, dest, size = pb_data[i], pb_data[i + 1], pb_data[i + 2]
-        i += 3
-        i += 2 * size                       # skip dimension sub-records
-        if ptype not in (1, 2):
-            break                           # not a well-formed record; stop
-        params.append((ptype, dest, size))
-    return params
+# THE LOADER WRITES ONLY RLINK AND LLINK INTO A TCB.
+#
+# [M 2.9] table 2-2 lists all sixteen fields, and an earlier version of this
+# file built the whole 148-word block from it -- ovlptr, ovlcnt, dpri, status,
+# taddr, the save areas.  None of it was ever emitted, and FPS's own FINISH
+# says why: per task it writes one 4-host-word data block at the TCB address,
+#
+#     CALL WRTLM(0,0,4,TSKDTA(I,8),0,1,...)      header, 4 host words
+#     CALL WRTLM(1,0,TSKDTA(J,8),0,TSKDTA(K,8),...)   RLINK then LLINK
+#
+# and nothing else.  Table 2-2 documents the TCB's LAYOUT, not the loader's
+# output; the remaining fields are the supervisor's to fill.  The loader's
+# only other TCB duty is to RESERVE the space, which is what TCB_WORDS and
+# TCB_MIN_WORDS above are for.
+#
+# KERNEL.S's INSERT explains why the links are the two that matter: it
+# refuses to queue a TCB whose RLINK does not point at itself
+# ("IF NEW DOESN'T POINT TO SELF (UNLINKED) THEN ERROR"), so the link words
+# are the one part of a TCB that must be correct before the supervisor runs.
 
 
 def write_hasi(linker, filename, lmid=1, mode='ADC', entries=None):
@@ -1164,14 +1121,47 @@ def finish_tail(lm, data_blocks, brk):
         lm.add_code_image_words([brk, 1], addr=entry + 6)
     if getattr(lm, 'ovt_entries', None):
         lm.add_data_block([(VALTYP_TRIPLE, PSPMAX, brk, 0)])
-    ring = [db_addr_of(getattr(lm, 'data_blocks', []), 'READYQ')]
-    ring += list(getattr(lm, 'task_tcbs', []))
-    ring = [r for r in ring if r is not None]
-    if len(ring) > 1:
-        for k, addr in enumerate(ring):
-            nxt = ring[(k + 1) % len(ring)]
-            prv = ring[(k - 1) % len(ring)]
-            lm.add_code_image_words([nxt, prv], addr=addr)
+    # TWO ORDERS ARE IN PLAY HERE AND THEY ARE NOT THE SAME ONE.
+    #
+    # FINISH emits the blocks in TABLE order -- "DO 400 I=1,TSKPTR" walks
+    # TSKDTA as declared -- while the LINKS come from TSKLNK's sort, which it
+    # leaves behind in columns 6 and 7 as neighbour INDICES.  So the ring is
+    # priority-ordered but the records appear in declaration order.  Sorting
+    # the records themselves put the two task blocks the wrong way round
+    # against the 11/44 while every link word still matched, which is exactly
+    # what an over-applied fix looks like.
+    #
+    # TSKLNK's key is the priority, wrapped once above 255, plus 256 for /I --
+    # so an /I task outranks every ordinary one whatever its own priority --
+    # sorted descending, ties keeping table order ("IF (PI .GE. PJ) GO TO 210"
+    # does not swap).  [M 2.10] states the same ordering independently: RLINK
+    # is "the next lower priority task", LLINK "the next higher", and /I tasks
+    # go "ahead of the highest priority task, regardless of their own
+    # priorities".
+    tasks = list(getattr(lm, 'task_tcbs', []))
+    head = db_addr_of(getattr(lm, 'data_blocks', []), 'READYQ')
+    if head is None or not tasks:
+        return
+
+    def _key(k):
+        _addr, pri, front = tasks[k]
+        if pri > 255:
+            pri -= 255
+        return pri + (256 if front else 0)
+
+    # Entry 0 is the queue header, as TSKDTA row 1 is; the sorted tasks
+    # follow it round the ring.
+    order = [0] + [1 + k for k in
+                   sorted(range(len(tasks)), key=lambda k: -_key(k))]
+    addrs = [head] + [t[0] for t in tasks]
+    nxt = {}
+    prv = {}
+    for n, slot in enumerate(order):
+        nxt[slot] = order[(n + 1) % len(order)]
+        prv[slot] = order[(n - 1) % len(order)]
+    for slot, addr in enumerate(addrs):
+        lm.add_code_image_words([addrs[nxt[slot]], addrs[prv[slot]]],
+                                addr=addr)
 
 
 def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
@@ -1382,26 +1372,6 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
     part_bounds = compute_partitions(segments) if sess.tasks else []
     part_addr = md
 
-    tcb_blocks = []
-    for tid, opts in sess.tasks:
-        owned = [s for s in segments if s.task_id == tid]
-        first = owned[0] if owned else None
-        tcb = build_tcb(
-            tid,
-            ovl_ptr=ovt_addr + ovmesz * segments.index(first) if first else 0,
-            ovl_count=len(owned),
-            priority=opts.get('priority', 100),
-            minimal=opts.get('minimal', False),
-            front=opts.get('front', False),
-            slaved=opts.get('slaved', False),
-            ready_queue=sess.readyq,
-            ps_addr=first.ps_addr if first else 0,
-            md_addr=first.md_addr if first else 0,
-            tcb_addr=tcb_addrs[tid])
-        tcb_blocks.append((tcb, opts))
-    if sess.readyq and tcb_blocks:
-        link_ready_queue(tcb_blocks, [tcb_addrs[t] for t, _ in sess.tasks])
-
     # Emit: each segment image into MD, then the tables.
     for seg in segments:
         # ONE MD BLOCK PER ***CODE BLOCK, at its own address -- the same rule
@@ -1470,7 +1440,9 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
             lm.ovt_entries.append(ovt_addr + n * ovmesz)
         for tid, _o in sess.tasks:
             if tcb_addrs.get(tid) is not None:
-                lm.task_tcbs.append(tcb_addrs[tid])
+                lm.task_tcbs.append((tcb_addrs[tid],
+                                     _o.get('priority', 100),
+                                     bool(_o.get('front', False))))
     brk = ppa_addr
     # NO END BLOCK IN TASK MODE.  FINISH guards it -- "IF (.NOT.TASKFL)
     # CALL WRTLM (0,3,...)" -- so a task job's module simply stops after the

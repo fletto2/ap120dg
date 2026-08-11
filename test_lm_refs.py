@@ -42,6 +42,15 @@ JOBS = [
     ("tk2.cmd", "K2.LM", "TASK1.LM",   "task job, single LINK"),
     ("tl.cmd",  "TL.LM", "TASK2.LM",   "task job, two LINKs"),
     ("t2.cmd",  "P2.LM", "TWOTASK.LM", "two tasks, three LINKs"),
+    # DECLARED LOW PRIORITY FIRST, WITH /I ON THE SECOND.  Every other job
+    # here declares its tasks in descending priority, so the ready queue came
+    # out right whether or not anything sorted it, and both the ring order and
+    # the switch parsing were unverified.  This one separates them: it caught
+    # lod100.py emitting the TCB records in priority order (FINISH emits in
+    # TABLE order and only the LINKS follow TSKLNK's sort) and the hybrid
+    # reading TASK switches positionally, which made "/I" set the /M bit and
+    # gave an /I task a 63-word TCB instead of 148.
+    ("pq.cmd",  "PQ.LM", "PRIORDER.LM", "priority order, /I"),
 ]
 
 
