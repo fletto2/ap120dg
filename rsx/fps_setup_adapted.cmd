@@ -92,7 +92,17 @@ INS $EDI/INC=40000/TASK=...EDI
 .; which is what made it look like a privilege difference.
 ASN DM0:=LB:
 .IFNLOA MT:  LOA MT:
-ASN DM0:=SY:   .; adapted: work disk is the RK07
+.; ADAPTED: the tape has 'ASN DL1:=SY:' -- DL1: was the site's WORK
+.; disk -- so SY: must follow the work disk, which here is DM1:.
+.; DM0: is the SYSTEM pack and is what LB: follows, above.
+.;
+.; THE COMMENT MUST BE ON ITS OWN LINE.  A trailing '.;' is NOT
+.; stripped from a command line: 'ASN DM0:=SY:   .; ...' gave
+.; 'ASN -- Syntax error', so the assignment never took and SY: kept
+.; whatever it already held.  The install had been relying on that
+.; by accident, and with SY: left on the system pack every
+.; unqualified 'FOR ASM100=ASM100' would resolve on the wrong device.
+ASN DM1:=SY:
 SET /UIC=[100,100]
 ;
 ; *** THE LAST NUMBER IN THE RESPONSE HERE SHOULD BE AT LEAST 400.
