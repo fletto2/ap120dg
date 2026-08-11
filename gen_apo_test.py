@@ -58,7 +58,16 @@ def link_routine (routine):
         ln.link ()
     else:
         from lod100 import _load
-        paths = [os.path.join (SRC, f) for f in LIBS]
+        # FPS_LIBS overrides the library set, so the same execution test can
+        # be run against the INSTALLED APLIB.LIB -- the library FPS's own
+        # APL100.CMD builds -- instead of the tape sources.  That is the only
+        # way to show the install produces working microcode rather than
+        # merely a plausible-looking library.
+        env = os.environ.get ("FPS_LIBS")
+        if env:
+            paths = env.split (os.pathsep)
+        else:
+            paths = [os.path.join (SRC, f) for f in LIBS]
         ln = _load (paths, 0, force={routine}, libs=paths)
     for w in ln.warnings:
         print ("  link warning:", w, file=sys.stderr)
