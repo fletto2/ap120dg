@@ -65,7 +65,7 @@ C       REACH IT THROUGH VTTY, WHICH IS "DATA VTTY/-1/".
 C
         LOGICAL*1 BUF(132)
         INTEGER I,L,C,IAND16,LU
-        INTEGER FDOPEN(20)
+        INTEGER FDOPEN(20),IOPX,IFAST
         COMMON /FDOPNC/ FDOPEN
 C
 C       THE UNIT IS A FILE NUMBER, NOT A FORTRAN UNIT -- SEE INFILE.
@@ -203,7 +203,7 @@ C       "IF (INFILE(VR,SF,SFNO).NE.0) GO TO 1000".
 C
         LOGICAL*1 NAME(64)
         INTEGER I,L,C,IAND16,LU
-        INTEGER FDOPEN(20)
+        INTEGER FDOPEN(20),IOPX,IFAST
         COMMON /FDOPNC/ FDOPEN
 C
         INFILE = 0
@@ -219,6 +219,26 @@ C       NON-STANDARD STATEMENT ORDERING and leaves LU unset.)
 C
         IF (LUN .LT. 0) GO TO 9900
 C
+C       +64 IS A MODIFIER ON THE OPERATION, NOT AN OPERATION.  The
+C       recovered LOAD opens its object file with "INFILE (65,SOFIL,
+C       OLUN)" -- 1 + 64 -- and the LED100 fragment states the
+C       convention outright:
+C
+C         "THE OUTPUT FILE IS OPENED WITH THE '+64' OPTION IN INFILE
+C          TO OPEN A FILE THAT IS EITHER FIXED RECORD LENGTH OR
+C          DIRECTLY ACCESSIBLE."
+C
+C       Tested for exact equality, 65 matches no operation and falls
+C       through to the error return, which surfaces as "NO SUCH FILE".
+C       Strip the bit and remember it.
+C
+        IOPX=IOP
+        IFAST=0
+        IF (IOPX .LT. 64) GO TO 205
+        IFAST=1
+        IOPX=IOPX-64
+205     CONTINUE
+C
 C       A CLOSE OF A UNIT THAT WAS NEVER OPENED MUST BE HARMLESS.  The
 C       recovered OUTPUT and FINISH close unconditionally -- FINISH ends
 C       with six INFILE(4,...) calls whatever was actually opened -- and
@@ -227,12 +247,12 @@ C       LOGICAL UNIT NUMBER", which ERR= does not catch.  So track what
 C       is open.
 C
         IF (LU .LT. 1 .OR. LU .GT. 20) GO TO 9900
-        IF (IOP .NE. 4 .AND. IOP .NE. 5) GO TO 210
+        IF (IOPX .NE. 4 .AND. IOPX .NE. 5) GO TO 210
         IF (FDOPEN(LU) .EQ. 0) GO TO 9900
 210     CONTINUE
-        IF (IOP .EQ. 4) GO TO 400
-        IF (IOP .EQ. 5) GO TO 500
-        IF (IOP .EQ. 6) GO TO 600
+        IF (IOPX .EQ. 4) GO TO 400
+        IF (IOPX .EQ. 5) GO TO 500
+        IF (IOPX .EQ. 6) GO TO 600
 C
 C------ OPEN.  UNPACK THE FILE NAME FROM STRING FORM AND ATTACH IT TO
 C       THE UNIT WITH ASSIGN, THE IDIOM APEEL.FTN USES.
@@ -245,10 +265,10 @@ C
           NAME(I) = C
 110     CONTINUE
         CALL ASSIGN (LU,NAME,L)
-        IF (IOP .EQ. 1) GO TO 120
-        IF (IOP .EQ. 2) GO TO 130
-        IF (IOP .EQ. 3) GO TO 140
-        IF (IOP .EQ. 7) GO TO 140
+        IF (IOPX .EQ. 1) GO TO 120
+        IF (IOPX .EQ. 2) GO TO 130
+        IF (IOPX .EQ. 3) GO TO 140
+        IF (IOPX .EQ. 7) GO TO 140
         GO TO 900
 120     FDOPEN(LU)=1
         OPEN (UNIT=LU,TYPE='OLD',ACCESS='SEQUENTIAL',ERR=900)
