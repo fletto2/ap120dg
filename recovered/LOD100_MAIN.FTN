@@ -143,6 +143,38 @@ C
         TSKMAX=26
         OVPMAX=50
         PSPMAX=50
+C       MEMORY LAYOUT AND RADIX -- also the mainline's, also unset by
+C       INIT.  FINISH's "IADDC (PGINFO(DBPG,1),INEG16(DBBRK),J)" raises
+C       loader error 26 when PGINFO is zero.
+C
+C         PAKFAC  host words per AP word.  FSLMLD takes PS as
+C                 (CNT*PAKFAC)/4 and MD as (CNT*PAKFAC)/2 with CNT in
+C                 host words, so a 16-bit host gives 1.
+C         RADIX   .APO objects are octal -- manual 3.1, "numbers
+C                 written as octal characters".
+C         PSMAX   highest PS address, the PMAX command's value
+C                 (manual 2.3.18); program store is 4K.
+C         PGINFO(page,1) is the top of that MD page -- FINISH sizes the
+C                 parameter passing area as PGINFO(DBPG,1)-DBBRK -- and
+C                 MMAX's limit is 65534 (manual 2.3.17).
+C
+        PAKFAC=1
+        RADIX=8
+        LRADIX=8
+        IRADIX=8
+        PSMAX=4095
+        MDLOW=0
+        PSLOW=0
+        PSBRK=0
+        DBBRK=0
+        DBPG=1
+C       65534 IS NOT A VALID INTEGER*2 LITERAL -- "VALUE OF CONSTANT NOT
+C       IN RANGE".  The recovered code does unsigned 16-bit arithmetic
+C       through IADD16/IADDC/INEG16, where 65534 is the bit pattern -2.
+        PGINFO(1,1)=-2
+        PGINFO(1,2)=0
+        MXDATA=20000
+        LMLDSW=0
         CALL INIT (0,0)
 C
 C       COMMAND INPUT.  INIT OPENS THE SCRATCH FILE -- ITS
