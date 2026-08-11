@@ -280,6 +280,8 @@ MD_WORDS_PER_INSTR = 2   # a 64-bit instruction spans two 38-bit MD words
 OVT_ENTRY_WORDS = 8          # [M table 2-1] -- task mode
 OVT_ENTRY_WORDS_FLAT = 4     # without tasks; see build_overlay_table
 TCB_WORDS = 150              # [M table 2-2], through the maximum save area
+TCB_MIN_WORDS = 64           # [M table 2-2], through the minimum save area
+                             # only; the /M option asks for this form
 
 
 class OverlaySegment:
@@ -1159,7 +1161,18 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     # task load module the recovered LOD100 wrote bears that out: the
     # supervisor's blocks occupy main data from the break upward and the
     # task's segment images start after them, at 694.
+    # TCBs FIRST.  TASKY allocates a task's TCB when the TASK command is
+    # processed -- [M 2.9] "for each task the user defines, LOD100 creates a
+    # task communication block, a common block named TCBnnn" -- and in every
+    # documented sequence TASK precedes the segment's LOADs, so the TCB sits
+    # below the data blocks.  The recovered LOD100 bears it out: allocating
+    # it moved the whole module up by exactly 150 words, segment images from
+    # MD 694 to 844, and put the task's queue links at MD 1.
     md = mdoff
+    tcb_addrs = {}
+    for tid, opts in sess.tasks:
+        tcb_addrs[tid] = md
+        md += TCB_MIN_WORDS if opts.get('minimal') else TCB_WORDS
     data_blocks = []                 # (name, addr, length)
     seen_db = {}
     dbib_mods = []
@@ -1195,10 +1208,7 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     part_addr = md
     md += len(part_bounds)
 
-    tcb_addrs, tcb_blocks = {}, []
-    for tid, opts in sess.tasks:
-        tcb_addrs[tid] = md
-        md += TCB_WORDS
+    tcb_blocks = []
     for tid, opts in sess.tasks:
         owned = [s for s in segments if s.task_id == tid]
         first = owned[0] if owned else None
