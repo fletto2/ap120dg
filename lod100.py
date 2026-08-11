@@ -191,8 +191,27 @@ class LoadModule:
         which is where the supervisor's overlay loader looks for the map."""
         self.words.extend([2, ppa_addr, ppa_end, self.lmid, ovlen, ovaddr, 0, 0])
 
-    def end(self, terminating=True):
-        """Logical end; the terminating variant must be the last record [M 4.2.4]."""
+    def end(self, terminating=False):
+        """Logical end block.
+
+        [M 4.2.4] documents two end blocks, logical `3 0` and terminating
+        `3 1`, the latter "the last record in the module" -- but Figure
+        4-1's SAMPLE HOST-RESIDENT MODULE ends
+
+            DATA CODE( 77),CODE( 78),CODE( 79),CODE( 80)/  3, 0, 0, 0/
+            DATA CODE( 81),CODE( 82),CODE( 83),CODE( 84)/  0, 0, 0, 0/
+            CALL FSLMLD ( 1,CODE)
+
+        with the LOGICAL end as its last record and no terminating one,
+        which is also what the recovered LOD100 emits: ENDLNK's
+        `IF (.NOT.TASKFL) CALL WRTLM (0,3,0,0,...)` and nothing after it.
+        So the terminating block belongs to the binary /D module, not to
+        the host-resident default, and it is off unless asked for.
+
+        The same figure confirms the info record's shape -- `2, 3, -5, 1`
+        is type, PPA ADDRESS, PPA SIZE (negative, i.e. a large unsigned
+        count of the remaining main data), LMID.
+        """
         if self._ended:
             return
         self._header(3, 0)
