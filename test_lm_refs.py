@@ -70,6 +70,10 @@ JOBS = [
     # been run.  "MDOFF 100 / PPA 500" is octal, so the info record must
     # read ppa_addr=64 and ppa_size=320.
     ("py.cmd",  "PY.LM", "PPAMD.LM",   "MDOFF + PPA"),
+    # LMID with a NON-DEFAULT id.  Every other job says "LMID 1", which is
+    # the default -- so a no-op handler produced the right answer and the
+    # gap survived.  "LMID 7" is what a no-op cannot fake.
+    ("pz.cmd",  "PZ.LM", "LMIDPPA.LM", "LMID 7 + MDOFF + PPA"),
 ]
 
 

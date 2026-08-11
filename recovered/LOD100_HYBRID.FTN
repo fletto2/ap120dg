@@ -469,7 +469,7 @@ C       N -- NOLOAD
 1012    CALL NOLOAD
         GO TO 100
 C       LM -- LMID
-1013    CONTINUE
+1013    CALL LMIDY
         GO TO 100
 C       PP -- PPA
 C
@@ -525,7 +525,7 @@ C       PS -- PSOFF
 1021    CALL PSOFF
         GO TO 100
 C       PM -- PMAX
-1022    CONTINUE
+1022    CALL PMAXY
         GO TO 100
 C       MM -- MMAX
 1023    CALL MMAX
@@ -5088,6 +5088,135 @@ C
         IF (EXTTOK (SYM,6,STR,IPTR,IPTR,IRADIX) .NE. -2) GOTO 90060
         IV=STOI (SYM,IRADIX)
         PPASZ=IV
+        GOTO 500
+90060   CALL ERRMES(12)
+500     RETURN
+        END
+C+++ LMIDY
+C****** LMIDY = LMID COMMAND = RECONSTRUCTION
+C
+C       NOT RECOVERED FPS SOURCE.  [M 2.3.4] "This command specifies the
+C       load module identification number of the current task ... If this
+C       command is not specified, a load module identification number of
+C       1 is assumed."  The handler was a NO-OP, which passed unnoticed
+C       because every reference job says "LMID 1" -- the default.
+C
+C       A SUBROUTINE, NOT INLINE: the same EXTTOK call at a mainline
+C       label returns 0.  See PPAY.
+C
+        SUBROUTINE LMIDY
+C
+        INTEGER EXTTOK,STOI
+        INTEGER IV
+        COMMON /MCOMM/ ILUN,STR(81),IPTR,SYM(8),INDX,                   MAINCOM
+     *   IFLG,IV1,OVSKIP,IV2,TREFLG,                                    MAINCOM
+     *   I,II,J,JJ,ID,OVMESZ,SFILE1(16),                                MAINCOM
+     *   OVEPT,SYM2(8),LFFLG,                                           MAINCOM
+     *   LIBFLG,COUNT,IRADIX,SFILE(31),IPTLUN,                          MAINCOM
+     *   BAKPTR,LRPTR,LNKCNT,ITTO,TOVID,TOVPG,                          MAINCOM
+     *   RSTPTR,LNKFLG,OVBKSZ,OVPSLW,OVBKAD                             MAINCOM
+        INTEGER ILUN,STR,IPTR,SYM,INDX                                  MAINCOM
+        INTEGER IFLG,IV1,OVSKIP,IV2,TREFLG                              MAINCOM
+        INTEGER I,II,J,JJ,ID,OVMESZ,SFILE1                              MAINCOM
+        INTEGER OVEPT,SYM2,LFFLG                                        MAINCOM
+        INTEGER LIBFLG,COUNT,IRADIX,SFILE,IPTLUN                        MAINCOM
+        INTEGER BAKPTR,LRPTR,LNKCNT,ITTO,TOVID,TOVPG                    MAINCOM
+        INTEGER RSTPTR,LNKFLG,OVBKSZ,OVPSLW,OVBKAD                      MAINCOM
+        COMMON /LDTABS/ PRGDTA (503),PRGMAX,ENTDTA(503),ENTMAX,         LDTABS
+     *                EXTDTA(283),EXTMAX,EX1PTR,                        LDTABS
+     *                OLUN,RADIX,CLUN,MDLOW,PSLOW,                      LDTABS
+     *                PSBRK,DBDTA1(203),DB1MAX,DBDTA2(150,2),DB2MAX,    LDTABS
+     *                DB2PTR,OVDTA(16,9),OVPTR,OVMAX,LRADIX,PSMAX,      LDTABS
+     *                DBST,DBBRK,DB0PTR,DB0MAX,DBDTA0(70),              LDTABS
+     *                EXTDT1(200),                                      LDTABS
+     *                EXTMX1,ENTDT1(100),ENTMX1,ENTPT1,LMLUN,           LDTABS
+     *                PARDTA(100),PARMAX,PARPTR,FLUN,VARSIZ(3),         LDTABS
+     *                CNTMAX,PARADR,MAXPAR,OVID,OVFLG,LMID,             LDTABS
+     *                OVPG,DBPG,BUFFER(200),BUFSIZ,PAKFAC,              LDTABS
+     *                DBLUN,EKOFLG,EKOLUN,CLUNS(2),CCLUN,CUROV,         LDTABS
+     *                NOTUS1,NOTUS2,NOTUS3,LUNMAP,OFFSET,EXTHST,M65536  LDTABS
+        COMMON /LDTABS/ SFFIL(31),SOFIL(31),SLMFIL(31),PGINFO(16,2)     LDTABS
+        COMMON /LDTABS/ SCLUN(16),SCLUN2(16),CLUN2                      LDTABS
+        COMMON /LDTABS/ PPASZ,OTOFLG,OVLEVL,CALFLG,CMPFLG,RSTRCT,       LDTABS
+     *                  PSHLD,OV1FLG,MAPLUN,NAMLUN,LP2LUN,SLP2NM(16)    LDTABS
+        INTEGER PRGDTA,PRGMAX,ENTDTA,ENTMAX,EXTDTA,EXTMAX,EX1PTR        LDTABS
+        INTEGER OLUN,RADIX,CLUN,MDLOW,PSLOW,PSBRK,DBDTA1,DB1MAX         LDTABS
+        INTEGER DBDTA2,DB2MAX,DB2PTR,OVDTA,OVPTR,OVMAX,LRADIX,PSMAX     LDTABS
+        INTEGER DBST,DBBRK,DB0PTR,DB0MAX,DBDTA0,EXTDT1,EXTMX1           LDTABS
+        INTEGER ENTDT1,ENTMX1,ENTPT1,LMLUN,PARDTA,PARMAX,PARPTR         LDTABS
+        INTEGER FLUN,VARSIZ,CNTMAX,PARADR,MAXPAR,OVID,OVFLG,LMID        LDTABS
+        INTEGER OVPG,DBPG,BUFFER,BUFSIZ,PAKFAC,DBLUN,EKOFLG,EKOLUN      LDTABS
+        INTEGER CLUNS,CCLUN,CUROV,NOTUS1,NOTUS2,NOTUS3,LUNMAP           LDTABS
+        INTEGER OFFSET,EXTHST,M65536,SFFIL,SOFIL,SLMFIL,PGINFO          LDTABS
+        INTEGER SCLUN,SCLUN2,CLUN2                                      LDTABS
+        INTEGER PPASZ,OTOFLG,OVLEVL,CALFLG,CMPFLG,RSTRCT,PSHLD,OV1FLG   LDTABS
+        INTEGER MAPLUN,NAMLUN,LP2LUN,SLP2NM                             LDTABS
+C
+        IF (EXTTOK (SYM,6,STR,IPTR,IPTR,IRADIX) .NE. -2) GOTO 90060
+        IV=STOI (SYM,IRADIX)
+        LMID=IV
+        GOTO 500
+90060   CALL ERRMES(12)
+500     RETURN
+        END
+C+++ PMAXY
+C****** PMAXY = PMAX COMMAND = RECONSTRUCTION
+C
+C       NOT RECOVERED FPS SOURCE.  [M 2.3.18] PMAX sets the program
+C       source memory limit; loading past it is warning 27, "PS MEMORY
+C       OVERFLOW".  The handler was a NO-OP.
+C
+        SUBROUTINE PMAXY
+C
+        INTEGER EXTTOK,STOI
+        INTEGER IV
+        COMMON /MCOMM/ ILUN,STR(81),IPTR,SYM(8),INDX,                   MAINCOM
+     *   IFLG,IV1,OVSKIP,IV2,TREFLG,                                    MAINCOM
+     *   I,II,J,JJ,ID,OVMESZ,SFILE1(16),                                MAINCOM
+     *   OVEPT,SYM2(8),LFFLG,                                           MAINCOM
+     *   LIBFLG,COUNT,IRADIX,SFILE(31),IPTLUN,                          MAINCOM
+     *   BAKPTR,LRPTR,LNKCNT,ITTO,TOVID,TOVPG,                          MAINCOM
+     *   RSTPTR,LNKFLG,OVBKSZ,OVPSLW,OVBKAD                             MAINCOM
+        INTEGER ILUN,STR,IPTR,SYM,INDX                                  MAINCOM
+        INTEGER IFLG,IV1,OVSKIP,IV2,TREFLG                              MAINCOM
+        INTEGER I,II,J,JJ,ID,OVMESZ,SFILE1                              MAINCOM
+        INTEGER OVEPT,SYM2,LFFLG                                        MAINCOM
+        INTEGER LIBFLG,COUNT,IRADIX,SFILE,IPTLUN                        MAINCOM
+        INTEGER BAKPTR,LRPTR,LNKCNT,ITTO,TOVID,TOVPG                    MAINCOM
+        INTEGER RSTPTR,LNKFLG,OVBKSZ,OVPSLW,OVBKAD                      MAINCOM
+        COMMON /LDTABS/ PRGDTA (503),PRGMAX,ENTDTA(503),ENTMAX,         LDTABS
+     *                EXTDTA(283),EXTMAX,EX1PTR,                        LDTABS
+     *                OLUN,RADIX,CLUN,MDLOW,PSLOW,                      LDTABS
+     *                PSBRK,DBDTA1(203),DB1MAX,DBDTA2(150,2),DB2MAX,    LDTABS
+     *                DB2PTR,OVDTA(16,9),OVPTR,OVMAX,LRADIX,PSMAX,      LDTABS
+     *                DBST,DBBRK,DB0PTR,DB0MAX,DBDTA0(70),              LDTABS
+     *                EXTDT1(200),                                      LDTABS
+     *                EXTMX1,ENTDT1(100),ENTMX1,ENTPT1,LMLUN,           LDTABS
+     *                PARDTA(100),PARMAX,PARPTR,FLUN,VARSIZ(3),         LDTABS
+     *                CNTMAX,PARADR,MAXPAR,OVID,OVFLG,LMID,             LDTABS
+     *                OVPG,DBPG,BUFFER(200),BUFSIZ,PAKFAC,              LDTABS
+     *                DBLUN,EKOFLG,EKOLUN,CLUNS(2),CCLUN,CUROV,         LDTABS
+     *                NOTUS1,NOTUS2,NOTUS3,LUNMAP,OFFSET,EXTHST,M65536  LDTABS
+        COMMON /LDTABS/ SFFIL(31),SOFIL(31),SLMFIL(31),PGINFO(16,2)     LDTABS
+        COMMON /LDTABS/ SCLUN(16),SCLUN2(16),CLUN2                      LDTABS
+        COMMON /LDTABS/ PPASZ,OTOFLG,OVLEVL,CALFLG,CMPFLG,RSTRCT,       LDTABS
+     *                  PSHLD,OV1FLG,MAPLUN,NAMLUN,LP2LUN,SLP2NM(16)    LDTABS
+        INTEGER PRGDTA,PRGMAX,ENTDTA,ENTMAX,EXTDTA,EXTMAX,EX1PTR        LDTABS
+        INTEGER OLUN,RADIX,CLUN,MDLOW,PSLOW,PSBRK,DBDTA1,DB1MAX         LDTABS
+        INTEGER DBDTA2,DB2MAX,DB2PTR,OVDTA,OVPTR,OVMAX,LRADIX,PSMAX     LDTABS
+        INTEGER DBST,DBBRK,DB0PTR,DB0MAX,DBDTA0,EXTDT1,EXTMX1           LDTABS
+        INTEGER ENTDT1,ENTMX1,ENTPT1,LMLUN,PARDTA,PARMAX,PARPTR         LDTABS
+        INTEGER FLUN,VARSIZ,CNTMAX,PARADR,MAXPAR,OVID,OVFLG,LMID        LDTABS
+        INTEGER OVPG,DBPG,BUFFER,BUFSIZ,PAKFAC,DBLUN,EKOFLG,EKOLUN      LDTABS
+        INTEGER CLUNS,CCLUN,CUROV,NOTUS1,NOTUS2,NOTUS3,LUNMAP           LDTABS
+        INTEGER OFFSET,EXTHST,M65536,SFFIL,SOFIL,SLMFIL,PGINFO          LDTABS
+        INTEGER SCLUN,SCLUN2,CLUN2                                      LDTABS
+        INTEGER PPASZ,OTOFLG,OVLEVL,CALFLG,CMPFLG,RSTRCT,PSHLD,OV1FLG   LDTABS
+        INTEGER MAPLUN,NAMLUN,LP2LUN,SLP2NM                             LDTABS
+C
+        IF (EXTTOK (SYM,6,STR,IPTR,IPTR,IRADIX) .NE. -2) GOTO 90060
+        IV=STOI (SYM,IRADIX)
+        PSMAX=IV
         GOTO 500
 90060   CALL ERRMES(12)
 500     RETURN
