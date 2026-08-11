@@ -343,3 +343,47 @@ but the caller places the data and passes MD addresses).
 CLAUDE.md lists "HASI generation is stubbed in both tools" under what
 remains. It is not stubbed for want of a specification — the
 specification was in the manual all along.
+
+## Running it: where the hybrid stands
+
+The hybrid builds, links, installs and runs.  It prints the manual's
+startup dialogue, reads and matches commands, dispatches them into the
+recovered handlers, opens its output files and opens object modules.
+
+**Everything the lost mainline owned had to be rediscovered**, and each
+item was found the same way -- grep the 40 recovered modules for an
+assignment and find none:
+
+| state | how it was derived |
+|---|---|
+| file numbers (10) | `LOD100.CMD`'s `UNITS=17` = 10 + FDUTIL's +7 mapping |
+| `OLUN` | 154 uses, zero assignments |
+| table limits | the declared dimensions in the recovered commons |
+| memory layout | `PAKFAC` from FSLMLD, `RADIX` from manual 3.1, `PGINFO` from FINISH's use |
+| `IPTR` past the command word | handlers parse from `IPTR`; leaving it at 1 made LOAD open a file called LOAD |
+| `LOAD`'s `FLAG=1` | `IF (FLAG .EQ. 0) GOTO 1150` skips both the name extraction and the open |
+
+**Six FDUTIL contract defects** were exposed, none of which this
+project's own callers could reach:
+
+1. `RDLIN`'s `MAXLEN` -- `-1` means a full line, not a length of -1
+2. `INFILE`'s negative file number -- a close-everything sentinel
+3. `INFILE` closing a unit that was never opened must be harmless
+4. `INFILE`'s `+64` -- a modifier meaning fixed-length records, not an
+   operation code
+5. `RDLIN` must return **-1** at end of file, per `RDREC`'s contract
+6. `ITTO`/`ILUN`: negative means the terminal to FDUTIL, but a raw
+   FORTRAN `WRITE` to a negative unit is fatal
+
+**Open**: `LOAD` reports `ERROR 2`, BAD RECORD, on shipped `SYMLIB.APO`
+and `DGNLIB.APO`. The input is not at fault -- the file on the volume is
+byte-identical to the shipped one. The failure is at LOAD1 label 4020:
+
+    4000    IF (RDREC (OLUN,STR,IPTR)+1) 90060,90000,4020
+    4020    IF (EXTTOK (SYM,6,STR,1,ID,10) .NE. -1) GOTO 90020
+
+`EXTTOK` must return -1 for an identifier (-2 is numeric, per `DTAREL`).
+`EXTTOK` is genuine IUTIL code, so the remaining question is how `RDLIN`
+packs `STR` for it. **The next step is instrumentation, not more static
+reading** -- print `STR(1)` and the first few words after `RDREC`, and
+compare against what `EXTTOK` expects.
