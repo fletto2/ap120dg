@@ -139,8 +139,15 @@ C
 45      CONTINUE
 50      RDLIN = 0
         RETURN
+C       END OF FILE IS -1, NOT 1.  The recovered RDREC is
+C           RDREC = RDLIN (STR,LUN,80)
+C           IF (RDREC .EQ. 8285 .OR. STR(3) .EQ. 8285) RDREC = -2
+C           IF (RDREC .NE.-1 .AND. RDREC.NE.-2 ) RDREC=0
+C       so any value that is not -1 or -2 is normalised to 0, SUCCESS.
+C       Returning 1 made end of file look like a good read of an empty
+C       record, and the block parser then reported BAD RECORD.
 90      STR(1) = 0
-        RDLIN = 1
+        RDLIN = -1
         RETURN
         END
 C
