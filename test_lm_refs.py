@@ -65,6 +65,11 @@ JOBS = [
     # the flat path.  It is the only reference with both data blocks and
     # code on the flat path.
     ("l1.cmd",  "L1.LM", "LIBLOAD.LM", "LIB then LOAD, duplicate file"),
+    # MDOFF AND PPA, the first job to exercise either.  PPA was a no-op in
+    # the mainline until PPAY was written; MDOFF is FPS's own and had never
+    # been run.  "MDOFF 100 / PPA 500" is octal, so the info record must
+    # read ppa_addr=64 and ppa_size=320.
+    ("py.cmd",  "PY.LM", "PPAMD.LM",   "MDOFF + PPA"),
 ]
 
 
