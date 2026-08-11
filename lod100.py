@@ -492,9 +492,12 @@ def build_overlay_table(segments, partition_table_addr, task_mode=False,
         words.extend([
             s.task_id,                               # 5 task id
             1 if i == 0 else 0,                      # 6 resident (root only)
-            partition_table_addr + s.first_partition - 1 if s.first_partition
-            else partition_table_addr,               # 7 first partition entry
-            s.n_partitions,                          # 8 partitions required
+            # 7 and 8 are ZERO.  The manual names them the first partition
+            # entry and the partition count, but that describes the table the
+            # SUPERVISOR maintains -- LINKS writes "BUFFER(J+12)=0 ...
+            # BUFFER(J+15)=0" and leaves both for it to fill in.
+            0,                                       # 7 first partition entry
+            0,                                       # 8 partitions required
         ])
     return words
 
@@ -790,8 +793,15 @@ class Session:
                         # subject to the RADIX command -- self.number() would
                         # read 200 as octal and yield 128.
                         opts['priority'] = int(a.lstrip('/'))
-                # TASK designates the modules that FOLLOW it [M 2.3.7], so it
-                # must not retag the segment already selected.
+                # [M 2.3.7] TASK "designates the next object module and the
+                # object modules which follow it to be loaded as a supervisor
+                # task".  When it comes AFTER an OVERLAY those modules go into
+                # the segment already current, so that segment belongs to the
+                # task -- the recovered LOD100's overlay table entry for a
+                # "OV 1 / TASK 5" job carries task id 5.  pending_task still
+                # covers the other order, TASK before OV.
+                if self.current is not None:
+                    self.current.task_id = tid
                 self.pending_task = (tid, opts)
                 self.tasks.append((tid, opts))
             elif cmd == 'PRI':
@@ -1152,15 +1162,24 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     md = mdoff
     data_blocks = []                 # (name, addr, length)
     seen_db = {}
+    dbib_mods = []
     for seg in segments:
         for mod in seg.linker.modules:
-            for name, dbmod, length, local, items in mod.dbdb:
+            addrs = {}
+            for n, (name, dbmod, length, local, items) in enumerate(mod.dbdb, 1):
                 key = "%s.%s" % (mod.name.strip(), name) if local else name
-                if key in seen_db or length <= 0:
+                if length <= 0:
+                    continue
+                if key in seen_db:
+                    addrs[n] = seen_db[key][0]
                     continue
                 seen_db[key] = (md, length)
                 data_blocks.append((key, md, length))
+                addrs[n] = md
                 md += length
+            if addrs and mod.dbib:
+                dbib_mods.append((mod, addrs))
+    emit_dbib(lm, dbib_mods, None)
     for seg in segments:
         seg.md_addr = md
         md += seg.length * MD_WORDS_PER_INSTR
@@ -1201,7 +1220,22 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
 
     # Emit: each segment image into MD, then the tables.
     for seg in segments:
-        lm.add_code_image(seg.linker.linked_code, addr=seg.md_addr)
+        # ONE MD BLOCK PER ***CODE BLOCK, at its own address -- the same rule
+        # the PS path follows, and the recovered LOD100 does it here too: the
+        # task module holds 40 host words at MD 694, 32 at 714 and 108 at 730,
+        # which is VCLR, SPUFLT and RESLVE separately, not one image of 180.
+        # A PS instruction occupies TWO MD words, so a module at PS offset k
+        # from the segment origin sits at seg.md_addr + 2k.
+        for mod in seg.linker.modules:
+            if not mod.code:
+                continue
+            base = mod.base_addr
+            for start, count, loc in mod.code_blocks:
+                if count <= 0:
+                    continue
+                off = (base + loc - seg.ps_addr) * MD_WORDS_PER_INSTR
+                lm.add_code_image(mod_words(seg.linker, base, start, count),
+                                  addr=seg.md_addr + off)
     lm.add_code_md(build_overlay_table(segments, part_addr,
                                        task_mode=bool(sess.tasks)),
                    addr=ovt_addr)
