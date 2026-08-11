@@ -271,6 +271,14 @@ C
         IF (IOPX .EQ. 7) GO TO 140
         GO TO 900
 120     FDOPEN(LU)=1
+C       +64 ASKS FOR FIXED LENGTH RECORDS.  LOAD's own comment: "THE 65
+C       PARAMETER IN THE NEXT CALL IS REALLY 1+64.  THE 64 MEANING
+C       SOMETHING SPECIAL TO INFILE (OPEN FILE WITH FIXED LENGTH
+C       RECORDS)".
+C       FORTRAN IV V2.2 HAS NO RECORDTYPE= -- it is a FORTRAN-77
+C       extension, and using it makes FOR plant a runtime trap that
+C       surfaces as "COMPILER DETECTED ERROR".  The flag is recorded in
+C       IFAST for a reader; the OPEN is the ordinary one.
         OPEN (UNIT=LU,TYPE='OLD',ACCESS='SEQUENTIAL',ERR=900)
         RETURN
 130     FDOPEN(LU)=1

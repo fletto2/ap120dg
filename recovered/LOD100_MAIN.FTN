@@ -250,8 +250,11 @@ C
      *         1099,1020,1021,1022,1023,1024,1025,1099,1099,
      *         1028,1029,1099,1031,1032,1033,1034), CMD
 C
-C       LO -- LOAD
-1001    CALL LOAD (0,STR,IPTR,LIBFLG,LFFLG)
+C       LO -- LOAD.  FLAG=1 means "the file name is on this command
+C       line": LOAD's own code is "IF (FLAG .EQ. 0) GOTO 1150", which
+C       skips extracting SOFIL and opening it.  Passing 0 left OLUN
+C       unopened and LOAD1 then read a closed unit.
+1001    CALL LOAD (1,STR,IPTR,LIBFLG,LFFLG)
         GO TO 100
 C       MAP
 1002    CALL LOADMP
