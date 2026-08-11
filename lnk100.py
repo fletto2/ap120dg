@@ -334,13 +334,24 @@ def parse_apo(filename, stop_at_leb=True):
 # ── Linker ──────────────────────────────────────────────────────────
 
 class Linker:
-    def __init__(self, origin=0):
+    def __init__(self, origin=0, inherited=None):
         self.origin = origin    # first PS address to allocate (overlay base)
         self.modules = []
         self.symbol_table = {}  # name → (module_index, offset, abs_addr)
         self.linked_code = []   # final list of 64-bit words
         self.entry_points = {}  # name → absolute PS address
         self.warnings = []
+        # Symbols an ANCESTOR segment defines.  An overlay segment is
+        # co-resident with its whole branch back to the root -- Loader 1.7.1:
+        # "An overlay segment can be dependent on and call overlay segments
+        # in the same branch", and "in order for a routine in an overlay to
+        # be executed, all overlays in the branch from that point to the root
+        # must be present in program source memory", the root itself always
+        # being resident.  So a child may reference what its ancestors define
+        # (and only a sibling branch is out of bounds).  Consulted only when
+        # the segment does not define the name itself, so a local definition
+        # still wins and the duplicate-symbol warnings are unaffected.
+        self.inherited = dict(inherited or {})
 
     def add_modules(self, modules):
         """Add parsed modules to the linker."""
@@ -406,11 +417,13 @@ class Linker:
                             f"Module {mod.name}: bad EXT index {rarg}")
                         continue
                     ext_name = mod.externs[rarg - 1]  # 1-based
-                    if ext_name not in self.symbol_table:
+                    if ext_name in self.symbol_table:
+                        target_addr = self.symbol_table[ext_name][2]
+                    elif ext_name in self.inherited:
+                        target_addr = self.inherited[ext_name]
+                    else:
                         unresolved.append((mod.name, ext_name))
                         continue
-
-                    _, _, target_addr = self.symbol_table[ext_name]
 
                     # Apply relocation: patch the code word
                     # The relocation typically patches an address field in the
@@ -454,6 +467,17 @@ class Linker:
                     else:
                         value = target_addr & 0xFFFF
 
+                    # THE FIXUP IS ADDITIVE, not a replacement.  FPS's own
+                    # recovered LINKUP ends every relocation path with
+                    #     CODE(4)=IADD16 (CODE(4),VAL)
+                    # so whatever the assembler left in the VALUE field is an
+                    # ADDEND on the symbol.  Almost every shipped relocation
+                    # has an addend of zero, where adding and replacing are
+                    # indistinguishable -- which is why this survived until a
+                    # job pulled in APFLIB's DIVIDE, whose first instruction
+                    # holds 2 and references !DIV, and must resolve to 4098.
+                    value = (value + (old_word & 0xFFFF)) & 0xFFFF
+
                     new_word = (old_word & ~0xFFFF) | value
                     mod.code[word_idx] = new_word
 
@@ -475,6 +499,8 @@ class Linker:
             return self.entry_points[name]
         if name in self.symbol_table:
             return self.symbol_table[name][2]
+        if name in self.inherited:
+            return self.inherited[name]
         return None
 
     def print_map(self, f=sys.stderr):

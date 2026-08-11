@@ -274,6 +274,7 @@ class OverlaySegment:
         self.parent = parent
         self.children = []
         self.inputs = []         # object modules loaded into this segment
+        self.libs = []           # of those, the ones a LIB command brought in
         self.linker = None
         self.ps_addr = 0
         self.md_addr = 0
@@ -520,6 +521,20 @@ def linker_module_for(linker, name):
 
 # ── Load map ────────────────────────────────────────────────────────
 
+def _write_warnings(linker, out, segments):
+    """An overlaid job is reported against the ROOT segment's linker, so a
+    child's unresolved references would otherwise never be shown and the job
+    would look clean while shipping a reference patched to zero."""
+    warnings = list(linker.warnings)
+    for s in segments or []:
+        if s.linker is not None and s.linker is not linker:
+            warnings += ["segment %d: %s" % (s.num, w) for w in s.linker.warnings]
+    if warnings:
+        out.write("\nWARNINGS\n")
+        for w in warnings:
+            out.write("  %s\n" % w)
+
+
 def write_map(linker, lm, out, psoff=0, mdoff=0, segments=None):
     out.write("FPS-100 LOAD MAP -- load module %d\n" % lm.lmid)
     out.write("PS offset %d   MD offset %d\n\n" % (psoff, mdoff))
@@ -537,6 +552,7 @@ def write_map(linker, lm, out, psoff=0, mdoff=0, segments=None):
                 out.write("  %-10s %8d %7d\n"
                           % (mod.name[:10], mod.base_addr, len(mod.code)))
         out.write("\n")
+        _write_warnings(linker, out, segments)
         return
     out.write("MODULE      PS BASE   WORDS  ENTRIES\n")
     for mod in linker.modules:
@@ -554,10 +570,7 @@ def write_map(linker, lm, out, psoff=0, mdoff=0, segments=None):
         out.write("  %-8s %8d\n" % (name, addr))
     out.write("\n%d instructions, %d load module words\n"
               % (len(linker.linked_code), len(lm.words)))
-    if linker.warnings:
-        out.write("\nWARNINGS\n")
-        for w in linker.warnings:
-            out.write("  %s\n" % w)
+    _write_warnings(linker, out, segments)
 
 
 # ── LOD100 command language ─────────────────────────────────────────
@@ -741,6 +754,12 @@ class Session:
                 target = self.current.inputs if self.current is not None \
                     else (self.libs if cmd == 'LIB' else self.inputs)
                 target.extend(args)
+                # LIB gets as many passes as it needs, LOAD exactly one
+                # [M 2.3.11/2.3.12], and that distinction has to survive
+                # inside an OVERLAY too -- a segment's inputs alone cannot
+                # say which command brought them in.
+                if cmd == 'LIB' and self.current is not None:
+                    self.current.libs.extend(args)
             elif cmd == 'NOLOAD':
                 self.noload.update(a.upper() for a in args)
             elif cmd == 'FORCE':
@@ -778,7 +797,7 @@ def _names(mod):
     return n
 
 
-def _load(paths, origin, noload=(), force=(), libs=()):
+def _load(paths, origin, noload=(), force=(), libs=(), inherited=None):
     """Link the modules a real LOD100 would load, in its order.
 
     A module that did NOT come from a library is loaded unconditionally.
@@ -803,8 +822,11 @@ def _load(paths, origin, noload=(), force=(), libs=()):
     force = {n.upper() for n in force}
     libset = {str(p) for p in libs}
 
-    linker = Linker(origin=origin)
-    defined, taken = set(), []
+    inherited = dict(inherited or {})
+    linker = Linker(origin=origin, inherited=inherited)
+    # A name an ancestor segment already defines is satisfied, so a library
+    # member must not be pulled into the child a second time.
+    defined, taken = {n.upper() for n in inherited}, []
     # FORCE is not a separate concept: it FABRICATES AN EXTERNAL
     # REFERENCE.  LOD100's FORCE clears the no-load bit on any matching
     # ENTDTA entry and then does
@@ -915,12 +937,37 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     # Pass 1: link each segment at a provisional origin so its length is
     # known, then re-link once the tree layout is settled.  Lengths do not
     # depend on the origin, so one relink is enough.
+    def _ancestor_symbols(seg):
+        """Every symbol defined by seg's ancestor chain, nearest first.
+
+        [M 1.7.1] a segment is co-resident with its whole branch back to
+        the root, so it may reference what those segments define -- and
+        only those; a sibling branch shares the same program store and
+        must stay invisible.
+        """
+        syms, chain = {}, []
+        p = seg.parent
+        while p is not None:
+            chain.append(p)
+            p = p.parent
+        for anc in reversed(chain):          # root first, nearest wins
+            if getattr(anc, 'linker', None) is None:
+                continue
+            for name, (_i, _o, addr) in anc.linker.symbol_table.items():
+                syms[name] = addr
+            syms.update(anc.linker.entry_points)
+        return syms
+
     for seg in segments:
-        seg.linker = _load(seg.inputs or inputs, 0, noload)
+        seg.linker = _load(seg.inputs or inputs, 0, noload,
+                           force=sess.force, libs=seg.libs,
+                           inherited=_ancestor_symbols(seg))
         seg.length = len(seg.linker.linked_code)
     allocate_overlays(sess.roots, psoff)
     for seg in segments:
-        seg.linker = _load(seg.inputs or inputs, seg.ps_addr, noload)
+        seg.linker = _load(seg.inputs or inputs, seg.ps_addr, noload,
+                           force=sess.force, libs=seg.libs,
+                           inherited=_ancestor_symbols(seg))
         seg.length = len(seg.linker.linked_code)
 
     # Lay out main data: segment images, then the overlay table, then the
