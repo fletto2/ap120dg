@@ -21,7 +21,7 @@ C
 C       EVERY HANDLER CALLED HERE IS A RECOVERED MODULE, USED WITH ITS
 C       OWN SIGNATURE.
 C
-        INTEGER CMD,COMAND,RDLIN,IZ
+        INTEGER CMD,COMAND,RDLIN,IZ,NCH,IAND16
         COMMON /LDTABS/ PRGDTA (503),PRGMAX,ENTDTA(503),ENTMAX,         LDTABS
      *                EXTDTA(283),EXTMAX,EX1PTR,                        LDTABS
      *                OLUN,RADIX,CLUN,MDLOW,PSLOW,                      LDTABS
@@ -244,6 +244,22 @@ C       three -- which is why the list holds LO, MAP, LIN, INI, MAR.
 C       Passing -1 makes LEN -1 and nothing ever matches.
 C
         CMD=COMAND (0,STR,3)
+C
+C       STEP IPTR PAST THE COMMAND WORD.  The handlers parse their
+C       arguments from IPTR onward -- LOAD does "CALL SKPBLK (STR,IPTR)"
+C       then "EXTSS (STR,IPTR,SOFIL,30)" -- so with IPTR still at 1 they
+C       extract the command itself.  That is why LOAD tried to open a
+C       file called LOAD.  COMAND compares at most three characters but
+C       the word may be longer, so skip non-blanks, then blanks.
+C
+        IPTR=1
+        NCH=STR(1)
+1050    IF (IPTR .GT. NCH) GO TO 1070
+        IF (IAND16 (STR(IPTR+1),255) .EQ. 32) GO TO 1060
+        IPTR=IPTR+1
+        GO TO 1050
+1060    CONTINUE
+1070    CONTINUE
         IF (CMD .LT. 1 .OR. CMD .GT. 34) GO TO 800
         GO TO (1001,1002,1099,1099,1099,1006,1007,1008,1009,
      *         1099,1011,1012,1013,1014,1099,1099,1017,1018,
