@@ -1135,6 +1135,30 @@ def _load(paths, origin, noload=(), force=(), libs=(), inherited=None,
 MD_LIMIT = 65534
 
 
+def finish_tail(lm, data_blocks, brk):
+    """FINISH's output, emitted once at EXIT.
+
+        DO 300 I=1,OVPPTR
+          CALL WRTLM(0,0,4,OVPDTA(I,1)+6,0,1,...)   patch each map entry
+          CALL WRTLM(1,0,DBBRK+J-1,0,PCNT,...)
+        CALL WRTLM (0,1,1,0,0,...) / CALL WRTLM (1,4,PSPMAX,DBBRK,...)
+        DO 400 I=1,TSKPTR
+          CALL WRTLM(0,0,4,TSKDTA(I,8),0,1,...)     the ready-queue ring
+    """
+    for entry in getattr(lm, 'ovt_entries', []):
+        lm.add_code_image_words([brk, 1], addr=entry + 6)
+    if getattr(lm, 'ovt_entries', None):
+        lm.add_data_block([(VALTYP_TRIPLE, PSPMAX, brk, 0)])
+    ring = [db_addr_of(getattr(lm, 'data_blocks', []), 'READYQ')]
+    ring += list(getattr(lm, 'task_tcbs', []))
+    ring = [r for r in ring if r is not None]
+    if len(ring) > 1:
+        for k, addr in enumerate(ring):
+            nxt = ring[(k + 1) % len(ring)]
+            prv = ring[(k - 1) % len(ring)]
+            lm.add_code_image_words([nxt, prv], addr=addr)
+
+
 def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
           sess=None):
     """Produce (linker, load_module, segments), running each LINK in turn.
@@ -1159,6 +1183,7 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
         last = _build_phase(inputs, lmid, psoff, md, ppa, entry, noload,
                             ph, lm, None)
         md = lm.md_break
+    finish_tail(lm, getattr(lm, 'data_blocks', []), md)
     return last
 
 
@@ -1416,43 +1441,22 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
         lm.add_info(ppa_addr=ppa_addr, ppa_end=ppa_size,
                     ovlen=ovmesz * len(segments), ovaddr=ovt_addr)
 
-    # ---- FINISH's tail, in FINISH's order ----------------------------------
+    # ---- FINISH's tail -----------------------------------------------------
     #
-    #   DO 300 I=1,OVPPTR
-    #     CALL WRTLM(0,0,4,OVPDTA(I,1)+6,0,1,...)      patch the map entry
-    #     CALL WRTLM(1,0,DBBRK+J-1,0,PCNT,...)
-    #   CALL WRTLM (0,1,1,0,0,...)                     partition table header
-    #   CALL WRTLM (1,4,PSPMAX,DBBRK,...)              one repeat-filled record
-    #   DBBRK=DBBRK+PSPMAX
-    #   DO 400 I=1,TSKPTR
-    #     CALL WRTLM(0,0,4,TSKDTA(I,8),0,1,...)        ready queue links
-    #     CALL WRTLM(1,0,TSKDTA(J,8),0,TSKDTA(K,8),...)
-    #
-    # All of it comes AFTER the info record, which ENDLNK writes at LINK.
-    brk = ppa_addr
+    # FINISH runs ONCE, at EXIT, not per LINK.  The two-task module shows it:
+    # phase 2's info is immediately followed by phase 3's code, and the whole
+    # tail -- both map patches, the partition record and a THREE-element
+    # ready-queue ring -- appears after the last phase.  So each phase only
+    # records what the tail will need.
+    lm.ovt_entries = getattr(lm, 'ovt_entries', [])
+    lm.task_tcbs = getattr(lm, 'task_tcbs', [])
     if sess.tasks:
-        # Words 7 and 8 of each overlay entry, which LINKS left zero, are
-        # filled here with the partition pointer and count.
         for n, seg in enumerate(segments):
-            entry = ovt_addr + n * ovmesz
-            lm.add_code_image_words([brk, 1], addr=entry + 6)
-        # The PS partition table is a REPEAT-FILLED record of PSPMAX words at
-        # the data break, not a code block of zeros sized to the partitions.
-        lm.add_data_block([(VALTYP_TRIPLE, PSPMAX, brk, 0)])
-        brk += PSPMAX
-        # The ready queue is a ring: the header first, then each task's TCB,
-        # each written as two main-data words holding its neighbours.
-        # READYQ may have been allocated by an EARLIER phase -- in the
-        # supervisor sequence it always is -- so look in the module's
-        # accumulated blocks, not just this phase's.
-        ring = [db_addr_of(getattr(lm, 'data_blocks', []) + data_blocks,
-                           'READYQ')] + \
-               [tcb_addrs[t] for t, _ in sess.tasks]
-        ring = [r for r in ring if r is not None]
-        for k, addr in enumerate(ring):
-            nxt = ring[(k + 1) % len(ring)]
-            prv = ring[(k - 1) % len(ring)]
-            lm.add_code_image_words([nxt, prv], addr=addr)
+            lm.ovt_entries.append(ovt_addr + n * ovmesz)
+        for tid, _o in sess.tasks:
+            if tcb_addrs.get(tid) is not None:
+                lm.task_tcbs.append(tcb_addrs[tid])
+    brk = ppa_addr
     # NO END BLOCK IN TASK MODE.  FINISH guards it -- "IF (.NOT.TASKFL)
     # CALL WRTLM (0,3,...)" -- so a task job's module simply stops after the
     # ready queue, and the recovered LOD100's is 2,060 words with none.
