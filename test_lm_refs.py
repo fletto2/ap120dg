@@ -101,8 +101,16 @@ def ensure_inputs():
     src = os.path.join(HERE, "..", "software", "fps100sw")
     apl = os.path.join(REFS, "APLIB.APO")
     if not os.path.exists(apl):
-        libs = ["AMLLIB", "APFLIB", "BAALIB", "BABLIB", "DGNLIB",
-                "IPRLIB", "SIGLIB", "UTLLIB", "SYMLIB"]
+        # FPS'S OWN ORDER, from APL100.CMD -- not alphabetical.  APEEL is
+        # called once per library in this sequence, and selective loading
+        # takes the FIRST module that satisfies a reference, so the order
+        # is part of the library's meaning:
+        #     APE 'NO',AMLLIB / IPRLIB / TMRLIB / SIGLIB
+        #     APE 'NO',BAALIB / BABLIB / UTLLIB / APFLIB
+        #     APE 'NO',SYMLIB / APE 2,DGNLIB
+        # TMRLIB is the AP-120-TMR option and is not on the tape.
+        libs = ["AMLLIB", "IPRLIB", "SIGLIB", "BAALIB", "BABLIB",
+                "UTLLIB", "APFLIB", "SYMLIB", "DGNLIB"]
         with open(apl, "wb") as out:
             for lib in libs:
                 with open(os.path.join(src, "[327,010]%s.APO" % lib), "rb") as f:
