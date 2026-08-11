@@ -1,0 +1,9 @@
+LMID 1
+OUTPUT V2.HSR V2.LM
+FORCE VADD
+LIB ../../software/fps100sw/[327,010]BAALIB.APO
+LIB ../../software/fps100sw/[327,010]UTLLIB.APO
+LIB ../../software/fps100sw/[327,010]APFLIB.APO
+LIB ../../software/fps100sw/[327,010]SYMLIB.APO
+LINK
+EXIT

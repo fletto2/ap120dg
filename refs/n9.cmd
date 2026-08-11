@@ -1,0 +1,14 @@
+LMID 1
+OUTPUT N9.HSR N9.LM
+FORCE FGEN RESLVE CVADD VMAX SCFIFT GRAD2D VAVLIN FLUSH
+LIB ../../software/fps100sw/[327,010]AMLLIB.APO
+LIB ../../software/fps100sw/[327,010]APFLIB.APO
+LIB ../../software/fps100sw/[327,010]BAALIB.APO
+LIB ../../software/fps100sw/[327,010]BABLIB.APO
+LIB ../../software/fps100sw/[327,010]DGNLIB.APO
+LIB ../../software/fps100sw/[327,010]IPRLIB.APO
+LIB ../../software/fps100sw/[327,010]SIGLIB.APO
+LIB ../../software/fps100sw/[327,010]UTLLIB.APO
+LIB ../../software/fps100sw/[327,010]SYMLIB.APO
+LINK
+EXIT
