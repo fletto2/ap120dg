@@ -171,6 +171,23 @@ class LoadModule:
         for dt, rpt, addr, vals in recs:
             self.words.extend([dt, rpt, addr, 0] + [v & 0xFFFF for v in vals[:4]])
 
+    def add_code_image_words(self, words, addr=0, page=0):
+        """Main-data words written as a type-0 block, two host words each.
+
+        This is FINISH's "WRTLM(0,0,4,addr,0,1,...)" followed by one data
+        record: a 4-host-word block is TWO main-data words.
+        """
+        data = []
+        for w in words:
+            data.append((w >> 16) & 0xFFFF)
+            data.append(w & 0xFFFF)
+        self._header(0, len(data), addr, page, DEST_MD)
+        # FINISH writes the payload with WRTLM MODE 1, which emits REC(8) --
+        # a full EIGHT-word record whatever the header count says.  That is
+        # why these blocks sit 16 words apart in the load module even though
+        # they carry only two main-data words.
+        self.words.extend(data + [0] * (8 - len(data)))
+
     def add_data_block(self, records, page=0):
         """Data block: each record is (valtyp, repcnt, addr, value)."""
         if not records:
@@ -280,6 +297,8 @@ MD_WORDS_PER_INSTR = 2   # a 64-bit instruction spans two 38-bit MD words
 OVT_ENTRY_WORDS = 8          # [M table 2-1] -- task mode
 OVT_ENTRY_WORDS_FLAT = 4     # without tasks; see build_overlay_table
 TCB_WORDS = 150              # [M table 2-2], through the maximum save area
+PSPMAX = 50                  # PS partition table size; the mainline sets it,
+                             # and FINISH emits "4, 50, <break>" to zero it
 TCB_MIN_WORDS = 64           # [M table 2-2], through the minimum save area
                              # only; the /M option asks for this form
 
@@ -395,6 +414,13 @@ def compute_partitions(segments):
         s.first_partition = (covered[0] + 1) if covered else 0
         s.n_partitions = len(covered)
     return bounds[:-1]
+
+
+def db_addr_of(blocks, name):
+    for n, addr, length in blocks:
+        if n == name:
+            return addr
+    return None
 
 
 def emit_dbib(lm, modules, block_addr):
@@ -1204,9 +1230,11 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     # entry's task-mode fields.  Emitting it for a plain overlaid job added a
     # block the recovered LOD100 does not write and pushed the PPA past the
     # data break.
+    # The PS partition table is NOT pre-allocated here: FINISH places it at
+    # the data break after the info record and advances the break by PSPMAX
+    # itself, so reserving space now put the PPA one word too high.
     part_bounds = compute_partitions(segments) if sess.tasks else []
     part_addr = md
-    md += len(part_bounds)
 
     tcb_blocks = []
     for tid, opts in sess.tasks:
@@ -1249,10 +1277,6 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     lm.add_code_md(build_overlay_table(segments, part_addr,
                                        task_mode=bool(sess.tasks)),
                    addr=ovt_addr)
-    if part_bounds:
-        lm.add_code_md([0] * len(part_bounds), addr=part_addr)   # zeroed [M 2.8]
-    for (tcb, _), (tid, _o) in zip(tcb_blocks, sess.tasks):
-        lm.add_code_md(tcb, addr=tcb_addrs[tid])
 
     # The PPA is placed at the main-data break once everything else has been
     # allocated, and its size defaults to the rest of main data -- the same
@@ -1276,7 +1300,45 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     else:
         lm.add_info(ppa_addr=ppa_addr, ppa_end=ppa_size,
                     ovlen=ovmesz * len(segments), ovaddr=ovt_addr)
-    lm.end()
+
+    # ---- FINISH's tail, in FINISH's order ----------------------------------
+    #
+    #   DO 300 I=1,OVPPTR
+    #     CALL WRTLM(0,0,4,OVPDTA(I,1)+6,0,1,...)      patch the map entry
+    #     CALL WRTLM(1,0,DBBRK+J-1,0,PCNT,...)
+    #   CALL WRTLM (0,1,1,0,0,...)                     partition table header
+    #   CALL WRTLM (1,4,PSPMAX,DBBRK,...)              one repeat-filled record
+    #   DBBRK=DBBRK+PSPMAX
+    #   DO 400 I=1,TSKPTR
+    #     CALL WRTLM(0,0,4,TSKDTA(I,8),0,1,...)        ready queue links
+    #     CALL WRTLM(1,0,TSKDTA(J,8),0,TSKDTA(K,8),...)
+    #
+    # All of it comes AFTER the info record, which ENDLNK writes at LINK.
+    if sess.tasks:
+        brk = ppa_addr
+        # Words 7 and 8 of each overlay entry, which LINKS left zero, are
+        # filled here with the partition pointer and count.
+        for n, seg in enumerate(segments):
+            entry = ovt_addr + n * ovmesz
+            lm.add_code_image_words([brk, 1], addr=entry + 6)
+        # The PS partition table is a REPEAT-FILLED record of PSPMAX words at
+        # the data break, not a code block of zeros sized to the partitions.
+        lm.add_data_block([(VALTYP_TRIPLE, PSPMAX, brk, 0)])
+        brk += PSPMAX
+        # The ready queue is a ring: the header first, then each task's TCB,
+        # each written as two main-data words holding its neighbours.
+        ring = [db_addr_of(data_blocks, 'READYQ')] + \
+               [tcb_addrs[t] for t, _ in sess.tasks]
+        ring = [r for r in ring if r is not None]
+        for k, addr in enumerate(ring):
+            nxt = ring[(k + 1) % len(ring)]
+            prv = ring[(k - 1) % len(ring)]
+            lm.add_code_image_words([nxt, prv], addr=addr)
+    # NO END BLOCK IN TASK MODE.  FINISH guards it -- "IF (.NOT.TASKFL)
+    # CALL WRTLM (0,3,...)" -- so a task job's module simply stops after the
+    # ready queue, and the recovered LOD100's is 2,060 words with none.
+    if not sess.tasks:
+        lm.end()
 
     lm.data_blocks = data_blocks
     # Report against the root segment's linker so callers see a symbol table.
