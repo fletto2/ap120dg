@@ -542,10 +542,16 @@ def write_map(linker, lm, out, psoff=0, mdoff=0, segments=None):
     for mod in linker.modules:
         names = ",".join(sorted(set(list(mod.aentries) + list(mod.entries))))
         out.write("%-10s %8d %7d  %s\n"
-                  % (mod.name[:10], mod.base_addr + psoff, len(mod.code), names))
+                  % (mod.name[:10], mod.base_addr, len(mod.code), names))
     out.write("\nENTRY POINTS\n")
+    # NO psoff here.  The linker is constructed with origin=psoff, so every
+    # address it reports already carries it -- adding it again shifted the
+    # whole map by 16, and shifted ABSOLUTE symbols too: !ONE printed as
+    # 4113 for a symbol whose value is 4097 and which no origin may move.
+    # Same class as the linker bug where a code-less module's symbols were
+    # biased by the base address.
     for name, addr in sorted(linker.entry_points.items()):
-        out.write("  %-8s %8d\n" % (name, addr + psoff))
+        out.write("  %-8s %8d\n" % (name, addr))
     out.write("\n%d instructions, %d load module words\n"
               % (len(linker.linked_code), len(lm.words)))
     if linker.warnings:
