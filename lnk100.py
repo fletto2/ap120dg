@@ -56,6 +56,18 @@ class Module:
         self.base_addr = 0      # assigned by linker
         self.from_library = False  # appeared after a ***LSB
         self.code_blocks = []   # (start_in_code, count, loc) per ***CODE
+        # ***DBDB: named data blocks this module declares.  Each entry is
+        # (name, mod, length_in_MD_words, local).  LOAD1 label 6000 reads the
+        # header as "10 count name mod", accepts a leading "." (8238) to mean
+        # a LOCAL block named after the current routine, and sums the second
+        # field of each of the `count` "kind length" records into ILEN -- the
+        # block's total length.  The block is placed at the data break and
+        # label 3930 advances it by ILEN.
+        self.dbdb = []
+        # ***DBIB: initialisation records, kept verbatim.  LOAD1 label 7000
+        # does not interpret them either -- it copies each to the DBLUN
+        # scratch and DTALNK decodes them at LINK time.
+        self.dbib = []
 
     def __repr__(self):
         return f"Module({self.name}, {len(self.code)} words, {len(self.externs)} exts)"
@@ -169,6 +181,49 @@ def parse_apo(filename, stop_at_leb=True):
                     except ValueError:
                         pb_dims = 0
             if pb_count >= pb_items and pb_dims == 0:
+                state = 'module'
+            continue
+
+        if '***DBDB' in line:
+            fields = stripped.split()
+            dbdb_count = parse_octal(fields[1]) if len(fields) > 1 else 0
+            name = fields[2] if len(fields) > 2 else ''
+            local = name.startswith('.')
+            dbdb_mod = parse_octal(fields[3]) if len(fields) > 3 else 0
+            dbdb_len = 0
+            dbdb_items = []
+            state = 'dbdb'
+            continue
+
+        if state == 'dbdb':
+            f = stripped.split()
+            if len(f) >= 2:
+                try:
+                    kind, ln = parse_octal(f[0]), parse_octal(f[1])
+                    dbdb_items.append((kind, ln))
+                    dbdb_len += ln
+                except ValueError:
+                    pass
+            dbdb_count -= 1
+            if dbdb_count <= 0:
+                current.dbdb.append((name.lstrip('.'), dbdb_mod, dbdb_len,
+                                     local, dbdb_items))
+                state = 'module'
+            continue
+
+        if '***DBIB' in line:
+            fields = stripped.split()
+            dbib_count = parse_octal(fields[1]) if len(fields) > 1 else 0
+            state = 'dbib'
+            continue
+
+        if state == 'dbib':
+            try:
+                current.dbib.append([parse_octal(x) for x in stripped.split()])
+            except ValueError:
+                pass
+            dbib_count -= 1
+            if dbib_count <= 0:
                 state = 'module'
             continue
 
