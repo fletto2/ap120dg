@@ -1036,8 +1036,21 @@ def main():
               % (out_host, n, "" if n == 1 else "s"), file=sys.stderr)
     if args.hasi or sess.hasi_output:
         path = args.hasi or sess.hasi_output
-        wanted = ({entry: linker.get_entry_address(entry)}
-                  if entry else dict(linker.entry_points))
+        # [M 2.3.10] "LOD100 creates a HASI routine for each routine declared
+        # with this command" -- the CALL'd entries, not every entry point.
+        # LOAD1 agrees: bit 16 of the ENTDTA flags word is what sets FCLFLG
+        # and drives SRC1/SRCN, and nothing in an object module sets it.
+        if entry:
+            wanted = {entry: linker.get_entry_address(entry)}
+        else:
+            wanted = {}
+            for name in sess.callable:
+                addr = linker.get_entry_address(name)
+                if addr is None:
+                    print("lod100: CALL %s -- no such entry point" % name,
+                          file=sys.stderr)
+                    continue
+                wanted[name] = addr
         n = write_hasi(linker, path, lmid=lmid, mode=mode, entries=wanted)
         print("lod100: wrote %s (%d HASI %s routine%s)"
               % (path, n, mode, "" if n == 1 else "s"), file=sys.stderr)

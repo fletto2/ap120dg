@@ -125,26 +125,36 @@ def parse_apo(filename):
             continue
 
         if '***PB' in line or '***FPB' in line:
-            # Parameter block: first field is item count, second is nspads
+            # "12 N ***FPB": fields[0] is the block TYPE, fields[1] the count.
+            # [M 3.11] and LOAD1 label 8000 both make that count the number of
+            # PARAMETER records, not of data records — each parameter record is
+            # "type dest ndim" and is followed by ndim dimension records.  So a
+            # header of 7 can span 13 records; BAALIB's CVADD does exactly that.
             fields = stripped.split()
-            pb_items = parse_octal(fields[0]) if len(fields) > 0 else 0
-            current.pb_nspads = parse_octal(fields[1]) if len(fields) > 1 else 0
+            pb_items = parse_octal(fields[1]) if len(fields) > 1 else 0
+            current.pb_nspads = pb_items
             pb_count = 0
+            pb_dims = 0
             state = 'pb'
             continue
 
         if state == 'pb':
-            # Read PB data lines until we have pb_items worth
-            fields = stripped.split()
+            fields = [f for f in stripped.split() if not f.startswith('*')]
             for f in fields:
-                if f.startswith('*'):
-                    break
                 try:
                     current.pb_data.append(parse_octal(f))
                 except ValueError:
                     pass
-                pb_count += 1
-            if pb_count >= pb_items:
+            if pb_dims > 0:
+                pb_dims -= 1            # this was a dimension record
+            else:
+                pb_count += 1           # this was a parameter record
+                if len(fields) >= 3:
+                    try:
+                        pb_dims = parse_octal(fields[2])
+                    except ValueError:
+                        pb_dims = 0
+            if pb_count >= pb_items and pb_dims == 0:
                 state = 'module'
             continue
 
