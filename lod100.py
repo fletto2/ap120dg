@@ -275,6 +275,8 @@ class OverlaySegment:
         self.children = []
         self.inputs = []         # object modules loaded into this segment
         self.libs = []           # of those, the ones a LIB command brought in
+        self.force_at = []       # FORCE names in effect when each input was named
+        self.noload_at = []      # NOLOAD names likewise
         self.linker = None
         self.ps_addr = 0
         self.md_addr = 0
@@ -613,6 +615,15 @@ class Session:
         self.libs = []
         self.noload = set()
         self.force = set()
+        self.linked = False     # a LINK command was seen [M 2.3.23]
+        # [M 2.3.13] FORCE "does not affect libraries loaded previously", and
+        # [M 2.3.14] NOLOAD "has no effect on routines loaded prior to the
+        # entry of this command" -- both are ordered and sticky from the point
+        # they appear, not properties of the whole job.  Applying the union to
+        # every LOAD/LIB puts modules in the wrong overlay segment: a routine
+        # FORCEd after segment 1's LIB was still pulled into segment 1.
+        self.force_at = []
+        self.noload_at = []
         # overlay / task state
         self.roots = []              # OverlaySegment roots from TREE
         self.segments = {}           # overlay number → OverlaySegment
@@ -754,6 +765,11 @@ class Session:
                 target = self.current.inputs if self.current is not None \
                     else (self.libs if cmd == 'LIB' else self.inputs)
                 target.extend(args)
+                snapf, snapn = frozenset(self.force), frozenset(self.noload)
+                owner = self.current if self.current is not None else self
+                for _ in args:
+                    owner.force_at.append(snapf)
+                    owner.noload_at.append(snapn)
                 # LIB gets as many passes as it needs, LOAD exactly one
                 # [M 2.3.11/2.3.12], and that distinction has to survive
                 # inside an OVERLAY too -- a segment's inputs alone cannot
@@ -768,8 +784,20 @@ class Session:
                 self.map_output = args[0] if args else '-'
             elif cmd in ('MMAX', 'PMAX', 'INIT'):
                 pass                    # accepted, no effect on a flat load
-            elif cmd == 'LINK':
-                self.entry = args[0] if args else self.entry
+            elif cmd in ('LINK', 'LI'):
+                # [M 2.3.23] "This command causes object code to be linked,
+                # relocated, and written to the load module.  Space is also
+                # allocated for the TCB (if tasks are loaded), the overlay
+                # map, and any local data blocks..."  It takes NO argument --
+                # this was setting the entry point from args[0], which is a
+                # different command entirely.  Every documented load sequence
+                # ends with it (2.7.1, 2.7.2), and EXIT implies it, which is
+                # why jobs without it still produce a load module here and on
+                # the real machine.  "Object modules cannot be loaded after
+                # this command is entered unless task mode has been
+                # specified" -- not yet enforced; a job that does so would be
+                # accepted where LOD100 would reject it.
+                self.linked = True
             elif cmd == 'EXIT':
                 break
             else:
@@ -798,7 +826,7 @@ def _names(mod):
 
 
 def _load(paths, origin, noload=(), force=(), libs=(), inherited=None,
-          inherited_types=None):
+          inherited_types=None, force_at=None, noload_at=None):
     """Link the modules a real LOD100 would load, in its order.
 
     A module that did NOT come from a library is loaded unconditionally.
@@ -838,7 +866,7 @@ def _load(paths, origin, noload=(), force=(), libs=(), inherited=None,
     # it is not already there.  Selection then picks it up through the
     # ordinary reference test, which is why the manual can say FORCE
     # loads a routine "if and when" it is encountered.
-    wanted = set(force)
+    wanted = set() if force_at else set(force)
 
     def take(mod):
         taken.append(mod)
@@ -846,11 +874,17 @@ def _load(paths, origin, noload=(), force=(), libs=(), inherited=None,
         defined.update(_names(mod))
         wanted.update(e.upper() for e in mod.externs)
 
-    for path in paths:
+    for ipath, path in enumerate(paths):
+        # [M 2.3.13/2.3.14] FORCE and NOLOAD take effect from where they
+        # appear and do not reach back to libraries already loaded, so each
+        # input is loaded under the state in force when IT was named.
+        if force_at:
+            wanted.update(n.upper() for n in force_at[ipath])
+        skip = ({n.upper() for n in noload_at[ipath]} if noload_at else noload)
         # stop_at_leb=False: LOAD1 label 5600 reads on past a library end
         # block, which is what lets a concatenated APLIB work at all.
         mods = [m for m in parse_apo(path, stop_at_leb=False)
-                if m.name.upper() not in noload]
+                if m.name.upper() not in skip]
         pending = [m for m in mods if m.from_library]
         for mod in mods:
             if not mod.from_library:
@@ -902,7 +936,9 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     if not sess.roots:
         linker = _load(inputs, psoff, noload,
                        force=getattr(sess, 'force', ()),
-                       libs=getattr(sess, 'libs', ()))
+                       libs=getattr(sess, 'libs', ()),
+                       force_at=getattr(sess, 'force_at', None),
+                       noload_at=getattr(sess, 'noload_at', None))
         # ONE load-module code block per ***CODE block, at that block's own
         # address.  LOD100 does not concatenate: LINKUP reads a code header
         # off the scratch file and calls WRTLM for it,
@@ -965,14 +1001,18 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
         _anc = _ancestor_symbols(seg)
         seg.linker = _load(seg.inputs or inputs, 0, noload,
                            force=sess.force, libs=seg.libs,
-                           inherited=_anc[0], inherited_types=_anc[1])
+                           inherited=_anc[0], inherited_types=_anc[1],
+                           force_at=seg.force_at or None,
+                           noload_at=seg.noload_at or None)
         seg.length = len(seg.linker.linked_code)
     allocate_overlays(sess.roots, psoff)
     for seg in segments:
         _anc = _ancestor_symbols(seg)
         seg.linker = _load(seg.inputs or inputs, seg.ps_addr, noload,
                            force=sess.force, libs=seg.libs,
-                           inherited=_anc[0], inherited_types=_anc[1])
+                           inherited=_anc[0], inherited_types=_anc[1],
+                           force_at=seg.force_at or None,
+                           noload_at=seg.noload_at or None)
         seg.length = len(seg.linker.linked_code)
 
     # Lay out main data: segment images, then the overlay table, then the
