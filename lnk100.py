@@ -43,7 +43,11 @@ class Module:
     def __init__(self, name):
         self.name = name
         self.entries = {}       # name → offset within module
-        self.aentries = {}      # name → (offset, length, scope)
+        self.aentries = {}      # name → (offset, TYPE, spad); the tuple's
+                                # second field is the entry record's TYPE
+                                # column, not a length -- "CVADD 2 2 7" is
+                                # value 2, type 2, 7 s-pad parameters
+        self.entry_types = {}   # name → 0 absolute, 1/2 relocatable [M 3.12]
         self.code = []          # list of 64-bit words (int)
         self.relocs = []        # list of (word_index, type, ext_index)
         self.externs = []       # list of external symbol names
@@ -189,6 +193,7 @@ def parse_apo(filename, stop_at_leb=True):
                     length = parse_octal(fields[2])
                     scope = parse_octal(fields[3])
                     current.aentries[name] = (offset, length, scope)
+                    current.entry_types[name] = length
                 except ValueError:
                     pass
             aentry_remaining -= 1
@@ -216,6 +221,8 @@ def parse_apo(filename, stop_at_leb=True):
                 try:
                     offset = parse_octal(fields[1])
                     current.entries[name] = offset
+                    if len(fields) >= 3:
+                        current.entry_types[name] = parse_octal(fields[2])
                 except ValueError:
                     pass
             entry_remaining -= 1
@@ -334,7 +341,7 @@ def parse_apo(filename, stop_at_leb=True):
 # ── Linker ──────────────────────────────────────────────────────────
 
 class Linker:
-    def __init__(self, origin=0, inherited=None):
+    def __init__(self, origin=0, inherited=None, inherited_types=None):
         self.origin = origin    # first PS address to allocate (overlay base)
         self.modules = []
         self.symbol_table = {}  # name → (module_index, offset, abs_addr)
@@ -352,6 +359,8 @@ class Linker:
         # the segment does not define the name itself, so a local definition
         # still wins and the duplicate-symbol warnings are unaffected.
         self.inherited = dict(inherited or {})
+        self.symbol_types = {}      # name → declared entry type
+        self.inherited_types = dict(inherited_types or {})
 
     def add_modules(self, modules):
         """Add parsed modules to the linker."""
@@ -396,6 +405,7 @@ class Linker:
                             f"module {self.modules[prev[0]].name} @ {prev[2]} "
                             f"and {mod.name} @ {abs_addr}")
                 self.symbol_table[name] = (idx, offset, abs_addr)
+                self.symbol_types[name] = mod.entry_types.get(name, 0)
 
             for name, offset in mod.entries.items():
                 abs_addr = mod.base_addr + offset
@@ -406,6 +416,7 @@ class Linker:
                 self.entry_points[name] = abs_addr
                 if name not in self.symbol_table:
                     self.symbol_table[name] = (idx, offset, abs_addr)
+                self.symbol_types.setdefault(name, mod.entry_types.get(name, 0))
 
         # Phase 3: Resolve external references and apply relocations
         unresolved = []
@@ -455,13 +466,36 @@ class Linker:
                     # at PS[1] to reach SPUFLT at PS[12].  Writing the
                     # absolute address there sent the call 3 words past
                     # its target.
-                    df  = (old_word >> 63) & 1
-                    sop = (old_word >> 60) & 7
-                    sps = (old_word >> 54) & 0xF
-                    spd = (old_word >> 50) & 0xF
-                    is_pcrel_jump = (df == 0 and sop == 1 and sps == 8
-                                     and ((spd >> 1) & 3) == 1)
-                    if is_pcrel_jump:
+                    # PC-RELATIVE IS DRIVEN BY THE SYMBOL, NOT THE
+                    # INSTRUCTION.  FPS's recovered LINKUP, label 2200:
+                    #
+                    #   RELTYP=IAND16 (IVAL(2),7)
+                    #   IF (RELTYP .NE. 0 .AND. TYPEN .NE. 2)
+                    #  *    VAL=ISUB16 (VAL,LOCCUR)
+                    #
+                    # IVAL(2) is the ENTDTA flags word, whose low bits are
+                    # the entry record's declared TYPE -- 0 absolute, 1 or 2
+                    # relocatable [M 3.12].  So a reference to any
+                    # RELOCATABLE symbol is made relative to the current PS
+                    # location; an absolute one is not.  TYPEN is the
+                    # relocation type and 2 is the APFTN caller; every
+                    # relocation in the nine shipped libraries is type 5, so
+                    # that exclusion never fires here.
+                    #
+                    # This subsumes the old rule, which decoded the
+                    # instruction and applied PC-relative only to a JMP/JSR
+                    # with SPD mode 1: SPUFLT is relocatable and !ONE is
+                    # absolute, so both rules agree on the evidence the old
+                    # one was built from.  They part company on BAALIB's
+                    # VATAN, which references the relocatable ATAN from an
+                    # instruction that is not a jump -- 2 such relocations
+                    # exist in all nine libraries, against 689 jumps and 172
+                    # absolutes.  Run on the real machine, the recovered
+                    # LOD100 wrote 52 where this wrote 71, and ATAN sits at
+                    # PS 71 with the instruction at PS 19: 71-19 = 52.
+                    reltype = self.symbol_types.get(
+                        ext_name, self.inherited_types.get(ext_name, 0))
+                    if reltype != 0:
                         psa = mod.base_addr + word_idx
                         value = (target_addr - psa) & 0xFFFF
                     else:

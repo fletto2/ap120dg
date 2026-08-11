@@ -797,7 +797,8 @@ def _names(mod):
     return n
 
 
-def _load(paths, origin, noload=(), force=(), libs=(), inherited=None):
+def _load(paths, origin, noload=(), force=(), libs=(), inherited=None,
+          inherited_types=None):
     """Link the modules a real LOD100 would load, in its order.
 
     A module that did NOT come from a library is loaded unconditionally.
@@ -823,7 +824,8 @@ def _load(paths, origin, noload=(), force=(), libs=(), inherited=None):
     libset = {str(p) for p in libs}
 
     inherited = dict(inherited or {})
-    linker = Linker(origin=origin, inherited=inherited)
+    linker = Linker(origin=origin, inherited=inherited,
+                    inherited_types=inherited_types)
     # A name an ancestor segment already defines is satisfied, so a library
     # member must not be pulled into the child a second time.
     defined, taken = {n.upper() for n in inherited}, []
@@ -945,7 +947,7 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
         only those; a sibling branch shares the same program store and
         must stay invisible.
         """
-        syms, chain = {}, []
+        syms, types, chain = {}, {}, []
         p = seg.parent
         while p is not None:
             chain.append(p)
@@ -956,18 +958,21 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
             for name, (_i, _o, addr) in anc.linker.symbol_table.items():
                 syms[name] = addr
             syms.update(anc.linker.entry_points)
-        return syms
+            types.update(anc.linker.symbol_types)
+        return syms, types
 
     for seg in segments:
+        _anc = _ancestor_symbols(seg)
         seg.linker = _load(seg.inputs or inputs, 0, noload,
                            force=sess.force, libs=seg.libs,
-                           inherited=_ancestor_symbols(seg))
+                           inherited=_anc[0], inherited_types=_anc[1])
         seg.length = len(seg.linker.linked_code)
     allocate_overlays(sess.roots, psoff)
     for seg in segments:
+        _anc = _ancestor_symbols(seg)
         seg.linker = _load(seg.inputs or inputs, seg.ps_addr, noload,
                            force=sess.force, libs=seg.libs,
-                           inherited=_ancestor_symbols(seg))
+                           inherited=_anc[0], inherited_types=_anc[1])
         seg.length = len(seg.linker.linked_code)
 
     # Lay out main data: segment images, then the overlay table, then the
