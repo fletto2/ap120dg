@@ -1221,8 +1221,17 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     # 65534-93 = 65441, i.e. -95 as a signed 16-bit word).
     ppa_addr = ppa or md
     ppa_size = (MD_LIMIT - ppa_addr) & 0xFFFF
-    lm.add_info(ppa_addr=ppa_addr, ppa_end=ppa_size,
-                ovlen=ovmesz * len(segments), ovaddr=ovt_addr)
+    # IN TASK MODE THE INFO RECORD'S ovlen AND ovaddr ARE ZERO.  LINKS has
+    #     IF (OVFLG .EQ. 0) GOTO 6650
+    #     IF (TASKFL) GO TO 6650
+    # and 6650 is "IV=0 / IV2=0", so a task job reports neither -- the
+    # overlay map is reached through the TCB instead.  The task load module
+    # the recovered LOD100 wrote confirms it: "2, 792, -696, 1, 0, 0, 0, 0".
+    if sess.tasks:
+        lm.add_info(ppa_addr=ppa_addr, ppa_end=ppa_size, ovlen=0, ovaddr=0)
+    else:
+        lm.add_info(ppa_addr=ppa_addr, ppa_end=ppa_size,
+                    ovlen=ovmesz * len(segments), ovaddr=ovt_addr)
     lm.end()
 
     lm.data_blocks = data_blocks
