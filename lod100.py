@@ -1060,7 +1060,18 @@ def _load(paths, origin, noload=(), force=(), libs=(), inherited=None,
     # loads a routine "if and when" it is encountered.
     wanted = set() if force_at else set(force)
 
+    # A MODULE ALREADY LOADED IS SKIPPED.  LOAD1's TITLE handler is the
+    # duplicate guard -- PRGDTA is the table of routines already loaded --
+    #     IF (SRCST (PRGDTA,1,-1,SYM,6) .EQ. 0) GOTO 4050
+    #     CALL SKPSUB (STR,IPTR,SYM,0)
+    # -- and it is what makes LIB's second pass skip everything the first
+    # took.  Nothing here implemented it, so naming the same object twice
+    # loaded it twice: "LOAD TABLES.APO / ... / LOAD TABLES.APO" gave 3,808
+    # words against the 2,048 the recovered LOD100 writes.
+    loaded_titles = set()
+
     def take(mod):
+        loaded_titles.add(mod.name.strip().upper())
         taken.append(mod)
         linker.add_modules([mod])
         defined.update(_names(mod))
@@ -1076,7 +1087,8 @@ def _load(paths, origin, noload=(), force=(), libs=(), inherited=None,
         # stop_at_leb=False: LOAD1 label 5600 reads on past a library end
         # block, which is what lets a concatenated APLIB work at all.
         mods = [m for m in parse_apo(path, stop_at_leb=False)
-                if m.name.upper() not in skip]
+                if m.name.upper() not in skip
+                and m.name.strip().upper() not in loaded_titles]
         pending = [m for m in mods if m.from_library]
         for mod in mods:
             if not mod.from_library:
