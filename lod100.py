@@ -1285,16 +1285,6 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
         # is exactly that, "0 40 0" then "0 26 40".  Emitting one block for
         # the whole job produces a different file even when every
         # instruction in it is right.
-        for mod in linker.modules:
-            if not mod.code:
-                continue
-            base = mod.base_addr
-            for start, count, loc in mod.code_blocks:
-                if count <= 0:
-                    continue
-                lm.add_code_ps(mod_words(linker, base, start, count),
-                               addr=base + loc)
-        # The PPA fields are an ADDRESS and a SIZE, and with no PPA command
         # the size is ALL REMAINING MAIN DATA.  ENDLNK:
         #     IVAL(1)=DBBRK
         #     IF (PPASZ .EQ. -1) PPASZ=ISUB16 (PGINFO(DBPG,1),DBBRK)
@@ -1317,6 +1307,23 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
                 dbib_mods.append((mod, addrs))
         md_used = db_md - mdoff
         emit_dbib(lm, dbib_mods, None)
+        # CODE IS EMITTED AFTER THE DATA BLOCKS.  The recovered LOD100's
+        # module for "LOAD TABLES.APO / FORCE APFET / LIB DGNLIB.APO /
+        # LOAD TABLES.APO" puts all 112 data blocks first and the two code
+        # blocks last; emitting code first gives the same 114 blocks and
+        # the same total length in the wrong order.  No earlier flat
+        # reference had BOTH data blocks and code, which is why this order
+        # was never exercised.
+        for mod in linker.modules:
+            if not mod.code:
+                continue
+            base = mod.base_addr
+            for start, count, loc in mod.code_blocks:
+                if count <= 0:
+                    continue
+                lm.add_code_ps(mod_words(linker, base, start, count),
+                               addr=base + loc)
+        # The PPA fields are an ADDRESS and a SIZE, and with no PPA command
         ppa_addr = ppa or (mdoff + md_used)
         # PPASZ IS COMPUTED ONCE AND STICKS.  ENDLNK guards it --
         #     IF (PPASZ .EQ. -1) PPASZ=ISUB16 (PGINFO(DBPG,1),DBBRK)

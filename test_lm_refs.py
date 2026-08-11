@@ -58,6 +58,13 @@ JOBS = [
     # (data block) relocation -- RTCCOM's address, which is what the one
     # differing word was before type 3 was implemented.
     ("isr.cmd", "IS.LM", "ISR.LM",   "ISR, block 16 + type-3 reloc"),
+    # LIB THEN LOAD, and the same file named twice.  This job could not run
+    # at all until LIBFLG was cleared for a plain LOAD (it gave ERROR 25,
+    # NOT A LIBRARY), and once it did it found two more gaps: no
+    # duplicate-module guard, and code emitted BEFORE the data blocks in
+    # the flat path.  It is the only reference with both data blocks and
+    # code on the flat path.
+    ("l1.cmd",  "L1.LM", "LIBLOAD.LM", "LIB then LOAD, duplicate file"),
 ]
 
 
