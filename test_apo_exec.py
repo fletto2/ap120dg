@@ -32,7 +32,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 NOVA = os.path.join(HERE, "..", "simh", "BIN", "nova")
 SCRIPT = "/tmp/test_hsr.simh"
-DEFAULT = ["VADD", "VSUB", "VMUL", "VSMUL", "VMOV", "VCLR"]
+DEFAULT = ["VADD", "VSUB", "VMUL", "VSMUL", "VMOV", "VCLR",
+           "VNEG", "VSQ"]
 
 
 def ieee_from_octal(hi, lo):
@@ -53,7 +54,12 @@ def run(routine):
     finally:
         subprocess.run(["pkill", "-x", "nova"], capture_output=True)
 
-    want = [float(x) for x in re.findall(r'IEEE ([0-9.]+)', sim.stdout)]
+    # The minus sign matters: without it VNEG's expected values do not match
+    # at all, `want` comes back EMPTY, and an empty list equals an empty list
+    # -- a vacuous PASS.  A test that cannot fail is worse than no test.
+    want = [float(x) for x in re.findall(r'IEEE (-?[0-9.]+)', sim.stdout)]
+    if not want:
+            return None, "no expected values parsed from the harness output"
     # SimH COMPRESSES a run of identical words: an all-zero result prints
     # "620:\t000000" then "621: thru 625: same as above."  Reading only the
     # explicit lines reports one word where there are six, which looked like

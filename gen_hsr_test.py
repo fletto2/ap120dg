@@ -103,6 +103,11 @@ ROUTINES = {
     "VMOV":  ([0, 1, 3, 1, 3],         A3,         3, list (A3)),
     # VCLR: C,K,N -- no input at all
     "VCLR":  ([0, 1, 3],               [],         0, [0.0, 0.0, 0.0]),
+    # VNEG and VSQ take A,I,C,K,N like VMOV -- their own $EQU blocks in
+    # BAASRC.APS say so -- with "C = -A" and the FORMULA line
+    # "C(MK) = A(MI) * A(MI)".
+    "VNEG":  ([0, 1, 3, 1, 3],         A3,         3, [-a for a in A3]),
+    "VSQ":   ([0, 1, 3, 1, 3],         A3,         3, [a * a for a in A3]),
     }
 
 if ROUTINE not in ROUTINES:
