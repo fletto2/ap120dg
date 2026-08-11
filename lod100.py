@@ -1057,7 +1057,12 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     ovmesz = OVT_ENTRY_WORDS if sess.tasks else OVT_ENTRY_WORDS_FLAT
     ovt_addr = md
     md += ovmesz * len(segments)
-    part_bounds = compute_partitions(segments)
+    # The PS partition table belongs to the supervisor/task environment
+    # [M 2.8]; LINKS allocates it only under TASKFL, alongside the overlay
+    # entry's task-mode fields.  Emitting it for a plain overlaid job added a
+    # block the recovered LOD100 does not write and pushed the PPA past the
+    # data break.
+    part_bounds = compute_partitions(segments) if sess.tasks else []
     part_addr = md
     md += len(part_bounds)
 
@@ -1095,8 +1100,18 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     for (tcb, _), (tid, _o) in zip(tcb_blocks, sess.tasks):
         lm.add_code_md(tcb, addr=tcb_addrs[tid])
 
-    ppa_end = ppa + sum(s.length for s in segments) if ppa else 0
-    lm.add_info(ppa_addr=ppa, ppa_end=ppa_end,
+    # The PPA is placed at the main-data break once everything else has been
+    # allocated, and its size defaults to the rest of main data -- the same
+    # rule the flat path already follows, from ENDLNK:
+    #     IVAL(1)=DBBRK
+    #     IF (PPASZ .EQ. -1) PPASZ=ISUB16 (PGINFO(DBPG,1),DBBRK)
+    # This path left both fields at zero unless a PPA command was given.  The
+    # recovered LOD100 writes 93 and -95 for the two-segment job (segment
+    # images at MD 1 and 55, overlay table at 85, eight MD words, break 93;
+    # 65534-93 = 65441, i.e. -95 as a signed 16-bit word).
+    ppa_addr = ppa or md
+    ppa_size = (MD_LIMIT - ppa_addr) & 0xFFFF
+    lm.add_info(ppa_addr=ppa_addr, ppa_end=ppa_size,
                 ovlen=ovmesz * len(segments), ovaddr=ovt_addr)
     lm.end()
 
