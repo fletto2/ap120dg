@@ -264,7 +264,15 @@ class LoadModule:
 # interrupt service routines, and a PS partition table initialised to zero.
 
 MD_WORDS_PER_INSTR = 2   # a 64-bit instruction spans two 38-bit MD words
-OVT_ENTRY_WORDS = 8          # [M table 2-1]
+# The recovered code calls this OVMESZ, the overlay-map entry size in MD
+# words.  OVMESZ is READ twice in LINKS -- "IVAL(3)=OVPTR*OVMESZ" for the
+# info record's ovlen, and "OVPDTA(OVPPTR,1)=DBBRK+(I-1)*OVMESZ" for each
+# entry's address -- and SET NOWHERE, so like OVFLG, LUNMAP, CMPFLG and
+# PARMAX it belongs to the lost mainline.  Its value is fixed by the code
+# itself: the stride must match LINKS' J advance, which is 8 host words
+# (4 MD words) in general and 16 (8 MD words) when building tasks.
+OVT_ENTRY_WORDS = 8          # [M table 2-1] -- task mode
+OVT_ENTRY_WORDS_FLAT = 4     # without tasks; see build_overlay_table
 TCB_WORDS = 150              # [M table 2-2], through the maximum save area
 
 
@@ -381,22 +389,47 @@ def compute_partitions(segments):
     return bounds[:-1]
 
 
-def build_overlay_table(segments, partition_table_addr):
-    """One 8-word main-data entry per segment. [M table 2-1]
+def build_overlay_table(segments, partition_table_addr, task_mode=False,
+                        page=0):
+    """One main-data entry per segment. [M table 2-1]
 
-    Only the 32 bits the loader can reach (HM+LM) are written; the
-    currently-resident bit in word 6 lives in the exponent portion and is
-    maintained by the supervisor, so it is left zero.
+    The field ORDER is the manual's, and the recovered LINKS confirms it
+    word for word -- it fills BUFFER two host words per MD word, high half
+    then low:
+
+        BUFFER(J)   = (OVDTA(I,6)&15)*8   BUFFER(J+1) = OVDTA(I,1)  segment
+        BUFFER(J+2) = (OVDTA(I,6)&15)     BUFFER(J+3) = OVDTA(I,3)  MD addr
+        BUFFER(J+4) = 0                   BUFFER(J+5) = OVDTA(I,2)  PS addr
+        BUFFER(J+6) = 0                   BUFFER(J+7) = OVDTA(I,4)>>1  length
+
+    so the MD PAGE rides in the HIGH half of the first two words, as
+    page*8 and page.  OVDTA(,4) holds the length doubled, because
+    elsewhere it is used as an MD-word count and a PS instruction occupies
+    two MD words; the table wants PS words, hence the shift.
+
+    THE ENTRY IS FOUR MD WORDS UNLESS TASKS ARE BEING BUILT.  LINKS
+    advances J by 8 host words in general and by 8 TWICE under
+    "IF (.NOT.TASKFL) GO TO 6540", so task id, residency, partition
+    pointer and partition count exist only in task mode.  This wrote all
+    eight unconditionally.
+
+    Residency is not left to the supervisor either: LINKS sets
+    BUFFER(J+11)=1 when I.EQ.1, under the comment "SHOULD BE RESIDENT" --
+    the FIRST segment, i.e. the root, is marked resident.
     """
     words = []
-    for s in segments:
+    for i, s in enumerate(segments):
         words.extend([
-            s.num,                                   # 1 segment number
-            s.md_addr,                               # 2 MD address
+            ((page * 8) << 16) | (s.num & 0xFFFF),   # 1 segment number
+            (page << 16) | (s.md_addr & 0xFFFF),     # 2 MD address
             s.ps_addr,                               # 3 PS address
             s.length,                                # 4 length in PS words
-            s.task_id,                               # 5 task id / TCB address
-            0,                                       # 6 residency bits
+        ])
+        if not task_mode:
+            continue
+        words.extend([
+            s.task_id,                               # 5 task id
+            1 if i == 0 else 0,                      # 6 resident (root only)
             partition_table_addr + s.first_partition - 1 if s.first_partition
             else partition_table_addr,               # 7 first partition entry
             s.n_partitions,                          # 8 partitions required
@@ -1021,8 +1054,9 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     for seg in segments:
         seg.md_addr = md
         md += seg.length * MD_WORDS_PER_INSTR
+    ovmesz = OVT_ENTRY_WORDS if sess.tasks else OVT_ENTRY_WORDS_FLAT
     ovt_addr = md
-    md += OVT_ENTRY_WORDS * len(segments)
+    md += ovmesz * len(segments)
     part_bounds = compute_partitions(segments)
     part_addr = md
     md += len(part_bounds)
@@ -1036,7 +1070,7 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
         first = owned[0] if owned else None
         tcb = build_tcb(
             tid,
-            ovl_ptr=ovt_addr + OVT_ENTRY_WORDS * segments.index(first) if first else 0,
+            ovl_ptr=ovt_addr + ovmesz * segments.index(first) if first else 0,
             ovl_count=len(owned),
             priority=opts.get('priority', 100),
             minimal=opts.get('minimal', False),
@@ -1053,7 +1087,9 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     # Emit: each segment image into MD, then the tables.
     for seg in segments:
         lm.add_code_image(seg.linker.linked_code, addr=seg.md_addr)
-    lm.add_code_md(build_overlay_table(segments, part_addr), addr=ovt_addr)
+    lm.add_code_md(build_overlay_table(segments, part_addr,
+                                       task_mode=bool(sess.tasks)),
+                   addr=ovt_addr)
     if part_bounds:
         lm.add_code_md([0] * len(part_bounds), addr=part_addr)   # zeroed [M 2.8]
     for (tcb, _), (tid, _o) in zip(tcb_blocks, sess.tasks):
@@ -1061,7 +1097,7 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
 
     ppa_end = ppa + sum(s.length for s in segments) if ppa else 0
     lm.add_info(ppa_addr=ppa, ppa_end=ppa_end,
-                ovlen=OVT_ENTRY_WORDS * len(segments), ovaddr=ovt_addr)
+                ovlen=ovmesz * len(segments), ovaddr=ovt_addr)
     lm.end()
 
     # Report against the root segment's linker so callers see a symbol table.
