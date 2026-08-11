@@ -707,6 +707,20 @@ def write_map(linker, lm, out, psoff=0, mdoff=0, segments=None):
 
 # ── LOD100 command language ─────────────────────────────────────────
 
+class _Phase(object):
+    """One LINK's worth of a session: it answers like a Session for the
+    fields build() reads, taking the per-phase ones by value and the rest
+    from the session it came from."""
+
+    def __init__(self, sess):
+        for f in Session.PHASE_FIELDS:
+            setattr(self, f, getattr(sess, f))
+        self._sess = sess
+
+    def __getattr__(self, name):
+        return getattr(self._sess, name)
+
+
 class Session:
     """The LOD100 command set [M 2.3].
 
@@ -746,6 +760,11 @@ class Session:
         self.noload = set()
         self.force = set()
         self.linked = False     # a LINK command was seen [M 2.3.23]
+        # [M 2.7.1] a supervisor job LINKs more than once into ONE load
+        # module -- "LOAD ... LINK / MODE TASK / TREE / OV / LOAD / LINK" --
+        # so each LINK closes a PHASE.  The main-data break carries across;
+        # everything a phase collects does not.
+        self.phases = []
         # [M 2.3.13] FORCE "does not affect libraries loaded previously", and
         # [M 2.3.14] NOLOAD "has no effect on routines loaded prior to the
         # entry of this command" -- both are ordered and sticky from the point
@@ -767,6 +786,26 @@ class Session:
 
     def number(self, tok):
         return int(tok, self.radix) if self.radix != 10 else int(tok, 10)
+
+    PHASE_FIELDS = ('inputs', 'libs', 'force_at', 'noload_at',
+                    'roots', 'segments', 'current', 'tasks', 'pending_task')
+
+    def close_phase(self):
+        """Snapshot what this LINK covers, then start collecting afresh.
+
+        A phase owns the modules it loaded and the overlay/task structure it
+        declared.  Carried across: the load-module identity and output files,
+        the radix and offsets, the sticky FORCE/NOLOAD sets, and -- in
+        build() -- the main-data break.
+        """
+        if not (self.inputs or self.libs or self.roots or self.tasks):
+            return
+        ph = _Phase(self)
+        self.phases.append(ph)
+        self.inputs, self.libs = [], []
+        self.force_at, self.noload_at = [], []
+        self.roots, self.segments, self.current = [], {}, None
+        self.tasks, self.pending_task = [], None
 
     def execute(self, text):
         it = iter(text.splitlines())
@@ -935,6 +974,7 @@ class Session:
                 # specified" -- not yet enforced; a job that does so would be
                 # accepted where LOD100 would reject it.
                 self.linked = True
+                self.close_phase()
             elif cmd == 'EXIT':
                 # [M 2.3.25] EXIT closes files and returns to the operating
                 # system; it does NOT link.  LINK is what writes the load
@@ -1068,6 +1108,33 @@ MD_LIMIT = 65534
 
 def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
           sess=None):
+    """Produce (linker, load_module, segments), running each LINK in turn.
+
+    A session with more than one LINK writes several modules into ONE output
+    file, the main-data break carrying from each to the next -- that is how
+    [M 2.7.1]'s supervisor sequence puts the supervisor and its tasks in one
+    load module.  Each phase is built by _build_phase; a session with a
+    single LINK, which is every job here until now, is just the one call.
+    """
+    phases = list(getattr(sess, 'phases', []) or [])
+    if sess is not None:
+        sess.close_phase()                 # anything after the last LINK
+        phases = list(sess.phases)
+    if not phases:
+        return _build_phase(inputs, lmid, psoff, mdoff, ppa, entry, noload,
+                            sess, None, None)
+    lm = LoadModule(lmid)
+    md = mdoff
+    last = (None, lm, [])
+    for ph in phases:
+        last = _build_phase(inputs, lmid, psoff, md, ppa, entry, noload,
+                            ph, lm, None)
+        md = lm.md_break
+    return last
+
+
+def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
+                 noload=(), sess=None, lm=None, _unused=None):
     """Produce (linker, load_module, segments).
 
     Without a TREE this is a flat single-level job: all code goes straight to
@@ -1076,7 +1143,9 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     copies segments from MD into PS at run time via APOVLD [M 2.8].
     """
     sess = sess or Session()
-    lm = LoadModule(lmid)
+    # A phase appends to the caller's module when there is one, so several
+    # LINKs share a single output file.
+    lm = lm if lm is not None else LoadModule(lmid)
 
     md_used = 0
     flat_blocks = []
@@ -1127,10 +1196,18 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
         md_used = db_md - mdoff
         emit_dbib(lm, dbib_mods, None)
         ppa_addr = ppa or (mdoff + md_used)
-        ppa_size = (MD_LIMIT - ppa_addr) & 0xFFFF
+        # PPASZ IS COMPUTED ONCE AND STICKS.  ENDLNK guards it --
+        #     IF (PPASZ .EQ. -1) PPASZ=ISUB16 (PGINFO(DBPG,1),DBBRK)
+        # -- so a second LINK reports the size worked out at the FIRST, not
+        # one derived from its own break.
+        ppa_size = getattr(lm, 'ppa_size', None)
+        if ppa_size is None:
+            ppa_size = (MD_LIMIT - ppa_addr) & 0xFFFF
+            lm.ppa_size = ppa_size
         lm.add_info(ppa_addr=ppa_addr, ppa_end=ppa_size)
         lm.end()
-        lm.data_blocks = flat_blocks
+        lm.data_blocks = getattr(lm, 'data_blocks', []) + flat_blocks
+        lm.md_break = ppa_addr
         return linker, lm, []
 
     segments = walk_segments(sess.roots)
@@ -1288,7 +1365,16 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     # images at MD 1 and 55, overlay table at 85, eight MD words, break 93;
     # 65534-93 = 65441, i.e. -95 as a signed 16-bit word).
     ppa_addr = ppa or md
-    ppa_size = (MD_LIMIT - ppa_addr) & 0xFFFF
+    # PPASZ IS COMPUTED ONCE AND STICKS.  ENDLNK guards it --
+    #     IF (PPASZ .EQ. -1) PPASZ=ISUB16 (PGINFO(DBPG,1),DBBRK)
+    # -- so a second LINK reports the size worked out at the FIRST, not one
+    # derived from its own break.  The two-LINK module says so: its second
+    # info record carries -696, which is 65534-694, phase 1's break, while
+    # its own break is 942.
+    ppa_size = getattr(lm, 'ppa_size', None)
+    if ppa_size is None:
+        ppa_size = (MD_LIMIT - ppa_addr) & 0xFFFF
+        lm.ppa_size = ppa_size
     # IN TASK MODE THE INFO RECORD'S ovlen AND ovaddr ARE ZERO.  LINKS has
     #     IF (OVFLG .EQ. 0) GOTO 6650
     #     IF (TASKFL) GO TO 6650
@@ -1314,8 +1400,8 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     #     CALL WRTLM(1,0,TSKDTA(J,8),0,TSKDTA(K,8),...)
     #
     # All of it comes AFTER the info record, which ENDLNK writes at LINK.
+    brk = ppa_addr
     if sess.tasks:
-        brk = ppa_addr
         # Words 7 and 8 of each overlay entry, which LINKS left zero, are
         # filled here with the partition pointer and count.
         for n, seg in enumerate(segments):
@@ -1327,7 +1413,11 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
         brk += PSPMAX
         # The ready queue is a ring: the header first, then each task's TCB,
         # each written as two main-data words holding its neighbours.
-        ring = [db_addr_of(data_blocks, 'READYQ')] + \
+        # READYQ may have been allocated by an EARLIER phase -- in the
+        # supervisor sequence it always is -- so look in the module's
+        # accumulated blocks, not just this phase's.
+        ring = [db_addr_of(getattr(lm, 'data_blocks', []) + data_blocks,
+                           'READYQ')] + \
                [tcb_addrs[t] for t, _ in sess.tasks]
         ring = [r for r in ring if r is not None]
         for k, addr in enumerate(ring):
@@ -1340,7 +1430,8 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     if not sess.tasks:
         lm.end()
 
-    lm.data_blocks = data_blocks
+    lm.data_blocks = getattr(lm, 'data_blocks', []) + data_blocks
+    lm.md_break = brk if sess.tasks else ppa_addr
     # Report against the root segment's linker so callers see a symbol table.
     return segments[0].linker, lm, segments
 
@@ -1378,6 +1469,11 @@ def main():
 
     inputs = list(sess.inputs) + list(sess.libs) + list(args.inputs)
     seg_inputs = [f for s in walk_segments(sess.roots) for f in s.inputs]
+    # A LINK moves everything it covered into a phase, so the session's own
+    # lists are empty by now for any job that used one.
+    for _ph in sess.phases:
+        inputs += list(_ph.inputs) + list(_ph.libs)
+        seg_inputs += [f for s in walk_segments(_ph.roots) for f in s.inputs]
     if not inputs and not seg_inputs:
         p.error("no input object modules")
 
