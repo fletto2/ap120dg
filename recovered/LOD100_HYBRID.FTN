@@ -120,6 +120,16 @@ C       VALUE -- FINISH: "IF (IPTLUN .NE. -1) ID=INFILE (4,ID,IPTLUN)".
 C
         IPTLUN=-1
         EKOFLG=0
+C       OLUN IS THE OBJECT FILE UNIT.  It appears 154 times in the
+C       recovered modules and is ASSIGNED BY NONE of them -- the same
+C       pattern as the file numbers and the table limits.  RDREC reads
+C       through it, so LOAD dies in RDLIN without it.
+C
+C       Ten file numbers is what LOD100.CMD's UNITS=17 allows, so OLUN
+C       shares with EKOLUN: the echo unit is only live when EKOFLG=1,
+C       and that is off.
+C
+        OLUN=10
         EKOLUN=10
 C       THE TABLE LIMITS ARE THE MAINLINE'S TOO.  INIT DOES NOT SET
 C       THEM EITHER, AND WITH EVERY MAX AT ZERO THE CROCK TABLE PACKAGE
