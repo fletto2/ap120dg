@@ -174,14 +174,6 @@ C
         INTEGER FUNCTION INFILE (IOP,FILE,LUN)
         INTEGER IOP,FILE(9999),LUN
 C
-C       A NEGATIVE FILE NUMBER IS A SENTINEL, NOT A UNIT.  THE RECOVERED
-C       FINISH ENDS WITH "IZ1QS = INFILE (4,0,-1)" -- close, no file, no
-C       unit -- which is a close-everything call.  Taken as a real unit
-C       it maps to 6 and FCS rejects it with "INVALID LOGICAL UNIT
-C       NUMBER".  Nothing is left open by then, so returning success is
-C       the right answer.
-C
-        IF (LUN .LT. 0) GO TO 9900
 C
 C       THE ENTIRE FILE INTERFACE IN ONE ROUTINE, 77 CALL SITES.  THE
 C       OPERATION CODES ARE NAMED BY VFC100'S OWN DATA STATEMENT:
@@ -213,6 +205,15 @@ C
         INFILE = 0
         LU = LUN
         IF (LUN .GT. 0) LU = LUN + 7
+C
+C       A NEGATIVE FILE NUMBER IS A SENTINEL, NOT A UNIT.  The recovered
+C       FINISH ends with "IZ1QS = INFILE (4,0,-1)" -- close, no file, no
+C       unit -- a close-everything call.  Nothing is left open by then,
+C       so success is the right answer.  (This guard must sit HERE, in
+C       the executable section: placed among the declarations it draws
+C       NON-STANDARD STATEMENT ORDERING and leaves LU unset.)
+C
+        IF (LUN .LT. 0) GO TO 9900
         IF (IOP .EQ. 4) GO TO 400
         IF (IOP .EQ. 5) GO TO 500
         IF (IOP .EQ. 6) GO TO 600
