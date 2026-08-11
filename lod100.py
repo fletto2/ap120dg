@@ -835,6 +835,16 @@ class Session:
         self.force_at, self.noload_at = [], []
         self.roots, self.segments, self.current = [], {}, None
         self.tasks, self.pending_task = [], None
+        # FORCE is CONSUMED, not permanent.  Its whole mechanism is to
+        # insert the name into EXTDTA, the unsatisfied-external table --
+        #     6080  IF (SRCST (EXTDTA,1,-1,SYM,6) .NE. 0) GOTO 6050
+        #           ID=INSST (EXTDTA,-1,SYM,6)
+        # -- and once a load satisfies it, it is gone.  It stays in effect
+        # across the LOADs and LIBs of its own phase ([M 2.3.13]: it "does
+        # not affect libraries loaded previously"), but a later LINK does
+        # not re-force it.  Carrying the set forward made phase 3 re-load
+        # phase 2's VCLR, which the recovered LOD100 does not.
+        self.force = set()
 
     def execute(self, text):
         it = iter(text.splitlines())
