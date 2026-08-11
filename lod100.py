@@ -165,6 +165,12 @@ class LoadModule:
         self._header(0, len(data), addr, page, DEST_MD)
         self.words.extend(data)
 
+    def add_dbib_block(self, recs, page=0):
+        """One data block per ***DBIB block, values already encoded."""
+        self._header(1, len(recs), 0, page, 0)
+        for dt, rpt, addr, vals in recs:
+            self.words.extend([dt, rpt, addr, 0] + [v & 0xFFFF for v in vals[:4]])
+
     def add_data_block(self, records, page=0):
         """Data block: each record is (valtyp, repcnt, addr, value)."""
         if not records:
@@ -387,6 +393,62 @@ def compute_partitions(segments):
         s.first_partition = (covered[0] + 1) if covered else 0
         s.n_partitions = len(covered)
     return bounds[:-1]
+
+
+def emit_dbib(lm, modules, block_addr):
+    """Turn each ***DBIB block into a load-module data block, as DTALNK does.
+
+    DTALNK reads a record as
+
+        dbid  reladdr  DT  rptcnt  value... [relocation triplet]
+
+    with dbid, reladdr, DT and rptcnt in RADIX but the VALUE in DECIMAL
+    (label 8100 uses radix 10 explicitly), resolves the address as the named
+    block's base plus reladdr, and emits
+
+        CALL WRTLM (1,DT,RPTCNT,ADDR,0,VALVEC(1),...,VALVEC(4),...)
+
+    i.e. the eight-word record [DT, rptcnt, addr, 0, v1, v2, v3, v4].  DT
+    above 16 means RELOCATABLE: DT=DT-16 and DTAREL consumes the trailing
+    triplet, of which type 3 is a data-block reference whose argument is
+    another dbid -- that is how "$DATA RDYQUE(1) RDYQUE" gets the block's
+    own base as its value.
+
+    A type-1 value occupies one word, a type-4 (38-bit triple) three.
+    """
+    for mod, addrs in modules:
+        for block in mod.dbib:
+            recs = []
+            for tok in block:
+                if len(tok) < 4:
+                    continue
+                dbid = parse_octal(tok[0])
+                rel = parse_octal(tok[1])
+                dt = parse_octal(tok[2])
+                reloc = dt > 16
+                if reloc:
+                    dt -= 16
+                rpt = parse_octal(tok[3])
+                nval = 3 if dt == 4 else 1
+                vals = [int(x) for x in tok[4:4 + nval]]
+                rest = tok[4 + nval:]
+                if reloc and len(rest) >= 3:
+                    rtype, rarg = parse_octal(rest[1]), parse_octal(rest[2])
+                    if rtype == 3 and rarg in addrs:
+                        # WHICH word the relocation lands on depends on the
+                        # type.  DTALNK relocates VALVEC(1) for an integer at
+                        # label 8100 but VALVEC(3) at 8460, the tail of the
+                        # 38-bit-triple path -- and [M 4.2.2] puts bits 22-37
+                        # in vc, so the address rides in the third word.
+                        k = 2 if dt == 4 else 0
+                        vals[k] = (vals[k] + addrs[rarg]) & 0xFFFF
+                base = addrs.get(dbid)
+                if base is None:
+                    continue
+                vals += [0] * (4 - len(vals))
+                recs.append((dt, rpt, base + rel, vals))
+            if recs:
+                lm.add_dbib_block(recs)
 
 
 def build_overlay_table(segments, partition_table_addr, task_mode=False,
@@ -1014,12 +1076,18 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
         # Named data blocks are allocated at the main-data break during
         # loading, exactly as in the overlaid path below.
         db_md = mdoff + md_used
+        dbib_mods = []
         for mod in linker.modules:
-            for name, dbmod, length, local, items in mod.dbdb:
+            addrs = {}
+            for n, (name, dbmod, length, local, items) in enumerate(mod.dbdb, 1):
                 if length > 0:
                     flat_blocks.append((name, db_md, length))
+                    addrs[n] = db_md          # dbid is 1-based within the module
                     db_md += length
+            if addrs and mod.dbib:
+                dbib_mods.append((mod, addrs))
         md_used = db_md - mdoff
+        emit_dbib(lm, dbib_mods, None)
         ppa_addr = ppa or (mdoff + md_used)
         ppa_size = (MD_LIMIT - ppa_addr) & 0xFFFF
         lm.add_info(ppa_addr=ppa_addr, ppa_end=ppa_size)

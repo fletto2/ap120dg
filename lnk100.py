@@ -196,6 +196,12 @@ def parse_apo(filename, stop_at_leb=True):
             continue
 
         if state == 'dbdb':
+            if '***' in line:            # short count: resynchronise
+                current.dbdb.append((name.lstrip('.'), dbdb_mod, dbdb_len,
+                                     local, dbdb_items))
+                state = 'module'
+                i -= 1
+                continue
             f = stripped.split()
             if len(f) >= 2:
                 try:
@@ -214,16 +220,30 @@ def parse_apo(filename, stop_at_leb=True):
         if '***DBIB' in line:
             fields = stripped.split()
             dbib_count = parse_octal(fields[1]) if len(fields) > 1 else 0
+            dbib_block = []
             state = 'dbib'
             continue
 
         if state == 'dbib':
-            try:
-                current.dbib.append([parse_octal(x) for x in stripped.split()])
-            except ValueError:
-                pass
+            if '***' in line:            # short count: resynchronise
+                current.dbib.append(dbib_block)
+                state = 'module'
+                i -= 1
+                continue
+            # Grouped PER BLOCK: DTALNK writes one load-module data block per
+            # ***DBIB block -- "WRTLM (0,1,VAL,0,DBPG-1,...)" with VAL the
+            # block's own count -- so the boundaries have to survive parsing.
+            #
+            # Kept as RAW TOKENS, because the record is not all one radix:
+            # DTALNK reads dbid, relative address, type and repeat count in
+            # RADIX but the VALUE in DECIMAL -- label 8100 is
+            # "IV=EXTTOK (SYM,6,STR,IPTR,IPTR,10)" and "STOI (SYM,10)".
+            # Parsing the lot as octal throws on any value holding an 8 or a
+            # 9 (CONFIG's 16384) and silently drops the record.
+            dbib_block.append(stripped.split())
             dbib_count -= 1
             if dbib_count <= 0:
+                current.dbib.append(dbib_block)
                 state = 'module'
             continue
 
