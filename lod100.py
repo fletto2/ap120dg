@@ -566,7 +566,10 @@ class Session:
         # makes 16 the behaviour, not the exception.  A PSOFF command still
         # overrides it.
         self.psoff = 16
-        self.mdoff = 0
+        # MD 0 is reserved: LOD100's INIT sets MDLOW=1 (line 1988), beside
+        # the PSLOW=16 that reserves PS 0-15.  DBST=MDLOW and DBBRK=DBST,
+        # so the data break starts at 1.
+        self.mdoff = 1
         self.ppa = 0
         self.entry = None
         self.libs = []
@@ -828,6 +831,9 @@ def _load(paths, origin, noload=(), force=(), libs=()):
     return linker
 
 
+MD_LIMIT = 65534
+
+
 def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
           sess=None):
     """Produce (linker, load_module, segments).
@@ -840,6 +846,7 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     sess = sess or Session()
     lm = LoadModule(lmid)
 
+    md_used = 0
     if not sess.roots:
         linker = _load(inputs, psoff, noload,
                        force=getattr(sess, 'force', ()),
@@ -861,8 +868,17 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
                     continue
                 lm.add_code_ps(mod_words(linker, base, start, count),
                                addr=base + loc)
-        ppa_end = ppa + len(linker.linked_code) if ppa else 0
-        lm.add_info(ppa_addr=ppa, ppa_end=ppa_end)
+        # The PPA fields are an ADDRESS and a SIZE, and with no PPA command
+        # the size is ALL REMAINING MAIN DATA.  ENDLNK:
+        #     IVAL(1)=DBBRK
+        #     IF (PPASZ .EQ. -1) PPASZ=ISUB16 (PGINFO(DBPG,1),DBBRK)
+        #     CALL WRTLM (0,2,IVAL(1),PPASZ,LMID,...)
+        # DBBRK is the main data break, which starts at MDLOW -- and INIT
+        # sets MDLOW=1, beside its PSLOW=16, so MD 0 is reserved just as
+        # PS 0-15 is.  The MD limit is PGINFO(1,1), 65534.
+        ppa_addr = ppa or (mdoff + md_used)
+        ppa_size = (MD_LIMIT - ppa_addr) & 0xFFFF
+        lm.add_info(ppa_addr=ppa_addr, ppa_end=ppa_size)
         lm.end()
         return linker, lm, []
 
