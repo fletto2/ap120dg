@@ -517,8 +517,21 @@ class Linker:
 
         # Phase 3: Resolve external references and apply relocations
         unresolved = []
+        self.db_relocs = []
         for mod in self.modules:
             for word_idx, rtype, rarg in mod.relocs:
+                if rtype == 3:
+                    # DATA BLOCK REFERENCE.  LINKUP label 2400:
+                    #     VAL=ARG+PTRDB-1
+                    #     VAL=DBDTA0(VAL)                 module dbid -> block
+                    #     VAL=EXTVT (DBDTA1,VAL,1,IVAL,1) the block's ADDRESS
+                    #     RELTYP=0                        so NOT PC-relative
+                    # The address is a MAIN DATA address the loader assigns
+                    # when it reads the ***DBDB, so it is not known until the
+                    # blocks are allocated.  Deferred to the caller, which
+                    # applies it with the same additive rule.
+                    self.db_relocs.append((mod, word_idx, rarg))
+                    continue
                 if rtype == 5:  # External reference
                     if rarg < 1 or rarg > len(mod.externs):
                         self.warnings.append(

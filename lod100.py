@@ -765,6 +765,7 @@ class Session:
         self.force_at = []
         self.noload_at = []
         # overlay / task state
+        self.isr = False             # set when an object carries block 16
         self.roots = []              # OverlaySegment roots from TREE
         self.segments = {}           # overlay number → OverlaySegment
         self.current = None          # segment selected by OVERLAY/OV
@@ -1196,6 +1197,23 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     return last
 
 
+def _find_isr(inputs):
+    """The ISR device index of any object in `inputs`, or None.
+
+    [M 2.3.x] has no ISR command and the recovered COMAND's table has no
+    slot for one, so this is the only way an ISR reaches the loader.
+    """
+    for path in inputs or ():
+        try:
+            mods = parse_apo(path, stop_at_leb=False)
+        except (IOError, OSError):
+            continue
+        for m in mods:
+            if getattr(m, 'isr_index', None) is not None:
+                return m.isr_index
+    return None
+
+
 def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
                  noload=(), sess=None, lm=None, _unused=None):
     """Produce (linker, load_module, segments).
@@ -1209,6 +1227,25 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
     # A phase appends to the caller's module when there is one, so several
     # LINKs share a single output file.
     lm = lm if lm is not None else LoadModule(lmid)
+
+    # AN ISR BLOCK SYNTHESISES ITS OWN TREE AND OV.  There is no ISR
+    # command; the loader learns of one only from object block 16, and
+    # LOAD1 label 10000 responds by building the structure itself:
+    #
+    #     CALL RPLIS (STRTRE,3,ISRIDX,2,RADIX,8224)
+    #     CALL TREE (STRTRE,IPTR,RADIX,0,SYM)     "PRETENT THERE WAS A TREE
+    #     CALL RPLIS (STROV,1,ISRIDX,2,RADIX,8224)
+    #     IXX=-1                                  -- LOAD then calls OVLY
+    #
+    # so the ISR becomes segment ISRIDX of a one-node tree, exactly as
+    # "TREE ((n))" / "OV n" would.  ISRIDX is the I/O device number the
+    # routine services [M 3.14].
+    isr_index = _find_isr(inputs)
+    if isr_index is not None and not sess.roots:
+        sess.roots = parse_tree("((%d))" % isr_index)
+        sess.segments = {sg.num: sg for sg in walk_segments(sess.roots)}
+        sess.current = sess.segments[isr_index]
+        sess.isr = True
 
     md_used = 0
     flat_blocks = []
@@ -1358,6 +1395,23 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
                 md += length
             if addrs and mod.dbib:
                 dbib_mods.append((mod, addrs))
+            # TYPE-3 RELOCATIONS -- data block references -- resolve HERE,
+            # because the value is the block's MAIN DATA address and that is
+            # only known once the blocks are allocated.  LINKUP takes it from
+            # DBDTA1 element 1 with RELTYP=0, so it is added into the low 16
+            # bits like every other fixup and is never PC-relative.
+            for _m, widx, rarg in getattr(seg.linker, 'db_relocs', ()):
+                if _m is not mod or rarg not in addrs:
+                    continue
+                # Patch the LAID-OUT array, not mod.code: link() has already
+                # copied the module into linker.linked_code and that is what
+                # mod_words emits.
+                off = mod.base_addr - seg.linker.origin + widx
+                if off < 0 or off >= len(seg.linker.linked_code):
+                    continue
+                w = seg.linker.linked_code[off]
+                seg.linker.linked_code[off] = ((w & ~0xFFFF)
+                                               | ((w + addrs[rarg]) & 0xFFFF))
     emit_dbib(lm, dbib_mods, None)
     for seg in segments:
         seg.md_addr = md
@@ -1394,9 +1448,12 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
                 off = (base + loc - seg.ps_addr) * MD_WORDS_PER_INSTR
                 lm.add_code_image(mod_words(seg.linker, base, start, count),
                                   addr=seg.md_addr + off)
-    lm.add_code_md(build_overlay_table(segments, part_addr,
-                                       task_mode=bool(sess.tasks)),
-                   addr=ovt_addr)
+    # The overlay table is ENDLNK's, so an ISR job has none -- see the
+    # ISRFL note at the info record below.
+    if not getattr(sess, 'isr', False):
+        lm.add_code_md(build_overlay_table(segments, part_addr,
+                                           task_mode=bool(sess.tasks)),
+                       addr=ovt_addr)
 
     # The PPA is placed at the main-data break once everything else has been
     # allocated, and its size defaults to the rest of main data -- the same
@@ -1424,7 +1481,16 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
     # and 6650 is "IV=0 / IV2=0", so a task job reports neither -- the
     # overlay map is reached through the TCB instead.  The task load module
     # the recovered LOD100 wrote confirms it: "2, 792, -696, 1, 0, 0, 0, 0".
-    if sess.tasks:
+    # AN ISR JOB WRITES NEITHER THE OVERLAY MAP NOR THE INFO RECORD.
+    # LINKS calls ENDLNK only when ISRFL is clear --
+    #     IF (.NOT.ISRFL) CALL ENDLNK(1)   /   IF (.NOT.ISRFL) CALL ENDLNK(2)
+    # -- and ENDLNK is what emits the ".MPnnn"/OVMAP block and the type-2
+    # record.  The module the recovered LOD100 wrote for the tape's own
+    # RTCISR.S confirms it: 114 data blocks and two code blocks, and
+    # nothing after them.
+    if getattr(sess, 'isr', False):
+        pass
+    elif sess.tasks:
         lm.add_info(ppa_addr=ppa_addr, ppa_end=ppa_size, ovlen=0, ovaddr=0)
     else:
         lm.add_info(ppa_addr=ppa_addr, ppa_end=ppa_size,
@@ -1451,7 +1517,7 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
     # NO END BLOCK IN TASK MODE.  FINISH guards it -- "IF (.NOT.TASKFL)
     # CALL WRTLM (0,3,...)" -- so a task job's module simply stops after the
     # ready queue, and the recovered LOD100's is 2,060 words with none.
-    if not sess.tasks:
+    if not sess.tasks and not getattr(sess, 'isr', False):
         lm.end()
 
     lm.data_blocks = getattr(lm, 'data_blocks', []) + data_blocks

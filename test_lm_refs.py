@@ -51,6 +51,13 @@ JOBS = [
     # reading TASK switches positionally, which made "/I" set the /M bit and
     # gave an /I task a 63-word TCB instead of 148.
     ("pq.cmd",  "PQ.LM", "PRIORDER.LM", "priority order, /I"),
+    # THE ISR PATH.  RTCISR.S is the tape's own real-time-clock handler,
+    # "$ISR 5.", assembled by the installed ASM100; RTCISR.APO is that
+    # object.  It is the only job here that exercises object block 16, the
+    # synthesised TREE/OV, ENDLNK's suppression under ISRFL, and a type-3
+    # (data block) relocation -- RTCCOM's address, which is what the one
+    # differing word was before type 3 was implemented.
+    ("isr.cmd", "IS.LM", "ISR.LM",   "ISR, block 16 + type-3 reloc"),
 ]
 
 
