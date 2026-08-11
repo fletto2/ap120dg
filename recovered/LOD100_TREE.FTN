@@ -36,7 +36,7 @@ C
         SUBROUTINE TREE (STR,IPTR,IRADIX,LEVEL,SYM)
 C
         INTEGER STR(1),IPTR,IRADIX,LEVEL,SYM(1)
-        INTEGER LEV,ICH,IVAL,I,LAST(16),PREV(16),STOI,EXTTOK
+        INTEGER LEV,ICH,IVAL,I,IPAR,LAST(16),PREV(16),STOI,EXTTOK
         INTEGER LPAR,RPAR
         COMMON /LDTABS/ PRGDTA (503),PRGMAX,ENTDTA(503),ENTMAX,         LDTABS
      *                EXTDTA(283),EXTMAX,EX1PTR,                        LDTABS
@@ -117,7 +117,32 @@ C
         OVFLG=1
         OVDTA(OVPTR,1)=IVAL
         OVDTA(OVPTR,5)=0
-        OVDTA(OVPTR,6)=ILSH16 (LEV,4)
+C
+C       OVDTA(,6) IS (PARENT INDEX << 4) | MD PAGE -- NOT THE LEVEL.
+C       OVLY WALKS THE TREE UPWARDS WITH IT AT LABEL 3240:
+C
+C           3240 IV2=IRSH16 (OVDTA(IV2,6),4)
+C                IF (IV2 .NE. 0) GOTO 3245
+C           3245 RSTPTR=IV2
+C                INDX=IRSH16 (OVDTA(IV2,5),8)
+C                IF (INDX .EQ. 0) GOTO 3240
+C
+C       -- climb to the parent, take ITS next sibling, and keep climbing
+C       while there is none, which is preorder succession and only works
+C       if the field names the PARENT.  IV2=0 means the root was reached.
+C       The low four bits are the page: every other reader takes them as
+C       "IAND16 (OVDTA(I,6),15)".
+C
+C       STORING THE LEVEL HERE SENT THE LINK COMMAND TO A SEGMENT INDEX
+C       THAT DOES NOT EXIST AND IT REPORTED "ERROR 22, COMMAND OUT OF
+C       ORDER" FROM OVLY LABEL 3250.
+C
+C       THE PARENT IS LAST(LEV), THE LAST NODE DECLARED ONE LEVEL UP --
+C       THE SAME VALUE THE FIRST-CHILD LINK BELOW USES.
+C
+        IPAR=0
+        IF (LEV .GE. 1) IPAR=LAST(LEV)
+        OVDTA(OVPTR,6)=ILSH16 (IPAR,4)
 C
 C       LINK IT: NEXT SIBLING OF THE PREVIOUS NODE AT THIS LEVEL, OR
 C       FIRST CHILD OF THE ENCLOSING ONE.
