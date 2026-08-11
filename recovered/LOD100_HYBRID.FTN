@@ -476,15 +476,32 @@ C
 C       [M 2.3.19] "This command defines the SIZE of the parameter
 C       passing area ... If this command is not specified, all main data
 C       memory which remains after the LINK command is specified is set
-C       aside for this use."  So it sets PPASZ, and ENDLNK's guard
-C           IF (PPASZ .EQ. -1) PPASZ=ISUB16 (PGINFO(DBPG,1),DBBRK)
-C       leaves a value set here alone while defaulting to the rest of
-C       main data when none was given.  THE HANDLER WAS A NO-OP, so a
-C       PPA command was silently ignored and every module reported the
-C       default size.  Mainline-owned, like OVFLG, LUNMAP and ISRLEN.
+C       aside for this use."  So it should set PPASZ, which ENDLNK's
+C       guard "IF (PPASZ .EQ. -1)" then leaves alone.
 C
-1014    IF (EXTTOK (SYM,6,STR,IPTR,IPTR,IRADIX) .NE. -2) GO TO 100
-        PPASZ=STOI (SYM,IRADIX)
+C       THE HANDLER IS A NO-OP AND STAYS ONE FOR NOW.  Two attempts to
+C       implement it made things WORSE, and both are recorded so the
+C       third does not repeat them:
+C
+C         1. "IF (EXTTOK (SYM,6,STR,IPTR,IPTR,IRADIX) .NE. -2) GO TO 100"
+C            silently did nothing.  A tag printed
+C                >>PPA tok=     0 iptr=   8 radix=  8
+C            for the 7-character line "PPA 500", so 1014 IS reached and
+C            IRADIX IS 8, but the MAINLINE'S PRE-DISPATCH LOOP LEAVES
+C            IPTR PAST THE END OF THE LINE -- there is no argument left.
+C         2. Rescanning from IPTR=1 with two EXTTOK calls traps with
+C            "ERROR 70, INTEGER OVERFLOW" in .MAIN., twice.  Reading a
+C            non-numeric token in radix 8 is the likely cause; this file
+C            already records that a 16-bit octal field does not fit a
+C            signed INTEGER*2 and traps on naive accumulation.
+C
+C       So the pre-dispatch pointer is the thing to fix, not this
+C       handler -- and MDOFF, PSOFF and MMAX take their arguments the
+C       same way and are exercised by NO reference, so they are likely
+C       affected too.  Measure before changing: a no-op that ignores a
+C       command is better than a handler that crashes the loader.
+C
+1014    CONTINUE
         GO TO 100
 C       INI -- INIT
 1017    CALL INIT (1,0)
