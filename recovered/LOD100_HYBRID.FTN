@@ -495,11 +495,20 @@ C            non-numeric token in radix 8 is the likely cause; this file
 C            already records that a 16-bit octal field does not fit a
 C            signed INTEGER*2 and traps on naive accumulation.
 C
-C       So the pre-dispatch pointer is the thing to fix, not this
-C       handler -- and MDOFF, PSOFF and MMAX take their arguments the
-C       same way and are exercised by NO reference, so they are likely
-C       affected too.  Measure before changing: a no-op that ignores a
-C       command is better than a handler that crashes the loader.
+C         3. THE PRE-DISPATCH POINTER IS NOT THE BUG.  A trace at the
+C            dispatch printed, for this very job,
+C                >>DSP cmd= 14 iptr=  4 nch=  7 ch= 80 80 65 32 53 48 48
+C            i.e. "P P A <blank> 5 0 0" with IPTR=4 -- the loop stops
+C            exactly at the blank, exactly as it does for "LMID 1"
+C            (iptr=5, "L M I D <blank> 1").  So IPTR is positioned the
+C            way FPS's own MDOFF expects, and the fault is in how this
+C            handler calls EXTTOK, not in the pointer.
+C
+C       NOTE the same trace shows LMID (cmd=13) also dispatching to a
+C       no-op: several argument-taking mainline handlers are unimplemented
+C       and work only because their defaults happen to be right.  The set
+C       is larger than PPA.  Measure before changing: a no-op that ignores
+C       a command is better than a handler that crashes the loader.
 C
 1014    CONTINUE
         GO TO 100
