@@ -50,6 +50,8 @@ class Module:
         self.pb_nspads = 0      # number of s-pad parameters
         self.pb_data = []       # parameter block data
         self.base_addr = 0      # assigned by linker
+        self.from_library = False  # appeared after a ***LSB
+        self.code_blocks = []   # (start_in_code, count, loc) per ***CODE
 
     def __repr__(self):
         return f"Module({self.name}, {len(self.code)} words, {len(self.externs)} exts)"
@@ -72,6 +74,7 @@ def parse_apo(filename):
     modules = []
     current = None
     state = 'idle'
+    in_library = False
     ext_count = 0
     code_count = 0
     pb_count = 0
@@ -99,6 +102,13 @@ def parse_apo(filename):
 
         # Check for record markers
         if '***LSB' in line:
+            # Library start block.  Everything after it is a library
+            # member, and the Loader manual (2.3.11, and 2.3.12 for LIB)
+            # says members "are loaded only if they satisfy external
+            # references" -- for LOAD as well as LIB.  LOD100.FTN's
+            # LOAD1 enforces exactly that: its label 5500 sets LIBFLG=1
+            # on this block and every module then goes through SKPSUB.
+            in_library = True
             state = 'idle'
             continue
 
@@ -109,6 +119,7 @@ def parse_apo(filename):
         if state == 'title':
             name = stripped
             current = Module(name)
+            current.from_library = in_library
             modules.append(current)
             state = 'module'
             continue
@@ -204,8 +215,12 @@ def parse_apo(filename):
 
         if '***CODE' in line:
             fields = stripped.split()
-            # fields[0]=type(0), fields[1]=word_count, fields[2]=reloc_count
+            # fields[0]=type(0), fields[1]=word_count, fields[2]=LOC -- the
+            # load offset within the routine, NOT a relocation count.  The
+            # file says so plainly: APFET carries "0 40 0" then "0 26 40",
+            # the second block continuing where the first ended.
             code_count = parse_octal(fields[1]) if len(fields) > 1 else 0
+            code_loc = parse_octal(fields[2]) if len(fields) > 2 else 0
             # A module may hold SEVERAL ***CODE blocks -- DGNLIB's APFET has
             # two of 32 instructions each, with all its relocations in the
             # second.  The word index must therefore continue across blocks
@@ -213,6 +228,10 @@ def parse_apo(filename):
             # relocation in a later block is applied one block too early.
             code_start = len(current.code)
             word_idx = code_start
+            # Keep the block boundaries: LOD100 emits ONE load-module code
+            # block per ***CODE block (LINKUP's WRTLM per header), so a
+            # loader that concatenates them does not produce the same file.
+            current.code_blocks.append((code_start, code_count, code_loc))
             state = 'code'
             continue
 

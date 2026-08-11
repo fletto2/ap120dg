@@ -229,9 +229,20 @@ class Volume:
         out = bytearray()
         longest = 0
         text = data.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
-        for line in text.split(b'\n'):
+        lines = text.split(b'\n')
+        # A terminating newline TERMINATES the last record, it does not
+        # introduce an empty one.  split() disagrees, and the extra
+        # zero-length record it appends is visible to every reader: LOD100
+        # reads one record past ***LEB, EXTTOK finds no token in it, and the
+        # load dies with "ERROR 2, BAD RECORD" on a library that is perfectly
+        # well formed.  Every text file moved in through here carried it.
+        if lines and lines[-1] == b'':
+            lines.pop()
+        for line in lines:
             if len(line) > 255:
-                line = line[:255]
+                raise RuntimeError(
+                    "record of %d bytes exceeds the 255 this encoder writes; "
+                    "truncating it silently corrupts the file" % len(line))
             longest = max(longest, len(line))
             out += struct.pack('<H', len(line)) + line
             if len(line) & 1:

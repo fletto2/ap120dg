@@ -556,7 +556,16 @@ class Session:
         self.lmid = 1
         self.mode = 'ADC'
         self.radix = 8
-        self.psoff = 0
+        # PS 0-15 is RESERVED; a job starts at 16.  That is FPS's default,
+        # from LOD100's own INIT:
+        #     IF (CMPFLG .EQ. 0) PSLOW=16
+        #     IF (CMPFLG .NE. 0) PSLOW=0
+        # CMPFLG is read in four places and SET IN NONE of the recovered
+        # modules, so like the file numbers and the table limits it belongs
+        # to the lost mainline and is 0 unless something sets it -- which
+        # makes 16 the behaviour, not the exception.  A PSOFF command still
+        # overrides it.
+        self.psoff = 16
         self.mdoff = 0
         self.ppa = 0
         self.entry = None
@@ -722,13 +731,99 @@ class Session:
 
 # ── Driver ──────────────────────────────────────────────────────────
 
-def _load(paths, origin, noload=()):
+def mod_words(linker, base, start, count):
+    """The linked words of one ***CODE block.
+
+    `linked_code` is the whole job laid out at its final addresses, and a
+    module sits at `base_addr`, so a block that begins `start` words into
+    the module starts at `base_addr + start` in that array.
+    """
+    off = base - linker.origin + start
+    return linker.linked_code[off:off + count]
+
+
+def _names(mod):
+    """Every name this module defines: its title and all its entry points."""
+    n = {mod.name.upper()}
+    n.update(k.upper() for k in mod.entries)
+    n.update(k.upper() for k in mod.aentries)
+    return n
+
+
+def _load(paths, origin, noload=(), force=(), libs=()):
+    """Link the modules a real LOD100 would load, in its order.
+
+    A module that did NOT come from a library is loaded unconditionally.
+    A LIBRARY MEMBER is loaded only if it satisfies an outstanding
+    external reference, or was named in a FORCE command -- Loader 2.3.11
+    for LOAD, 2.3.12 for LIB, and LOD100.FTN's LOAD1 label 5500, which
+    sets LIBFLG=1 on the library start block and routes every subsequent
+    module through SKPSUB.
+
+    The two commands differ only in how many passes they get: LOAD is
+    "a one-pass load" and "a library may have to be loaded more than once
+    to ensure that all the proper externals are satisfied", while LIB
+    "causes as many load passes to occur on the library as are necessary".
+    `libs` names the paths that arrived via LIB.
+
+    Loading everything regardless -- which is what this did, and what the
+    FORTRAN reconstruction did before it was replaced by the recovered
+    LOAD1 -- makes the two implementations agree with each other and with
+    neither the manual nor FPS.
+    """
+    noload = {n.upper() for n in noload}
+    force = {n.upper() for n in force}
+    libset = {str(p) for p in libs}
+
     linker = Linker(origin=origin)
+    defined, taken = set(), []
+    # FORCE is not a separate concept: it FABRICATES AN EXTERNAL
+    # REFERENCE.  LOD100's FORCE clears the no-load bit on any matching
+    # ENTDTA entry and then does
+    #     IF (SRCST (EXTDTA,1,-1,SYM,6) .NE. 0) GOTO 6050
+    #     ID=INSST (EXTDTA,-1,SYM,6)
+    # -- insert the name into EXTDTA, the unsatisfied-external table, if
+    # it is not already there.  Selection then picks it up through the
+    # ordinary reference test, which is why the manual can say FORCE
+    # loads a routine "if and when" it is encountered.
+    wanted = set(force)
+
+    def take(mod):
+        taken.append(mod)
+        linker.add_modules([mod])
+        defined.update(_names(mod))
+        wanted.update(e.upper() for e in mod.externs)
+
     for path in paths:
-        mods = parse_apo(path)
-        if noload:
-            mods = [m for m in mods if m.name.upper() not in noload]
-        linker.add_modules(mods)
+        mods = [m for m in parse_apo(path) if m.name.upper() not in noload]
+        pending = [m for m in mods if m.from_library]
+        for mod in mods:
+            if not mod.from_library:
+                take(mod)
+        # One pass for LOAD, repeat to a fixed point for LIB.
+        while True:
+            progress = False
+            for mod in list(pending):
+                # Selection is by ENTRY POINT, not by module title, and
+                # that goes for FORCE too.  LOAD1 tests each entry name as
+                # it reads the entry records:
+                #     IF (SRCST (EXTDTA,1,-1,SYM,6) .NE. 0) LIBFG2=1
+                # EXTDTA being the unsatisfied-external table, and FORCE
+                # puts its names into ENTDTA, the ENTRY table.  DGNLIB
+                # proves it: SLFCHK is the one module whose title is not
+                # an entry (its entries are FCHK and FGRN), and it is
+                # exactly the one the hybrid does NOT load when all
+                # eleven titles are FORCEd.
+                ents = {k.upper() for k in mod.entries}
+                ents.update(k.upper() for k in mod.aentries)
+                if not (ents & (wanted - defined)):
+                    continue
+                pending.remove(mod)
+                take(mod)
+                progress = True
+            if not progress or str(path) not in libset:
+                break
+
     linker.link()
     return linker
 
@@ -746,8 +841,26 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     lm = LoadModule(lmid)
 
     if not sess.roots:
-        linker = _load(inputs, psoff, noload)
-        lm.add_code_ps(linker.linked_code, addr=psoff)
+        linker = _load(inputs, psoff, noload,
+                       force=getattr(sess, 'force', ()),
+                       libs=getattr(sess, 'libs', ()))
+        # ONE load-module code block per ***CODE block, at that block's own
+        # address.  LOD100 does not concatenate: LINKUP reads a code header
+        # off the scratch file and calls WRTLM for it,
+        #     IF (LNKLVL .EQ. 0) CALL WRTLM (0,0,RECCNT*PACK,VAL,...)
+        # so a module with two ***CODE blocks yields two -- DGNLIB's APFET
+        # is exactly that, "0 40 0" then "0 26 40".  Emitting one block for
+        # the whole job produces a different file even when every
+        # instruction in it is right.
+        for mod in linker.modules:
+            if not mod.code:
+                continue
+            base = mod.base_addr
+            for start, count, loc in mod.code_blocks:
+                if count <= 0:
+                    continue
+                lm.add_code_ps(mod_words(linker, base, start, count),
+                               addr=base + loc)
         ppa_end = ppa + len(linker.linked_code) if ppa else 0
         lm.add_info(ppa_addr=ppa, ppa_end=ppa_end)
         lm.end()

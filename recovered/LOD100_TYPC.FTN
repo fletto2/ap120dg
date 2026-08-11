@@ -1,0 +1,72 @@
+C+++ TYPC
+C****** TYPC = TYPE OF CHARACTER = RECONSTRUCTION
+C
+C       NOT RECOVERED FPS SOURCE.  LOD100's own TYPC sorts after SRCN
+C       and is in the truncated tail; only APLED's same-named routine
+C       survives, at the head of the same tape file.
+C
+C       WHY LOD100 CARRIES ONE AT ALL, WHEN IUTIL ALREADY HAS A TYPC:
+C       IUTIL's classifies A-Z as alphabetic (8257..8282) and returns
+C       the character itself for anything else.  FPS's own symbols are
+C       named !DIV, !ONE, !SQRT, !TWO ... -- SYMSRC.APS defines 66 of
+C       them, all beginning with "!" -- and EXTTOK classifies through
+C       TYPC.  With IUTIL's, EXTTOK returns 8225 ("!") instead of -1 and
+C       LOAD1 rejects the module name at label 4020:
+C
+C           IF (EXTTOK (SYM,6,STR,1,ID,10) .NE. -1) GOTO 90020
+C
+C       which is loader error 2, BAD RECORD, on every SYMLIB module.
+C       Measured, not assumed: an instrumented RDLIN/EXTTOK probe read
+C       "!DIV" correctly (LEN=4, 8225 8260 8265 8278) and EXTTOK
+C       returned 8225.
+C
+C       CONTRACT, from IUTIL's own comments:
+C           -2  numeric in the given radix
+C           -1  alphabetic
+C         8224  blank, and also returned for a tab
+C         else  the character value
+C       "IF A CHARACTER IS BOTH A LETTER AND A DIGIT, NUMERIC (-2) WILL
+C       BE RETURNED", so the digit test comes first.
+C
+        INTEGER FUNCTION TYPC (CHR,IRADIX)
+C
+        INTEGER CHR,IRADIX
+        INTEGER L0,L9,LA,LZ,LBLANK,LTAB,LBANG,LIM
+        DATA L0,L9,LA,LZ,LBLANK,LTAB,LBANG
+     *      /8240,8249,8257,8282,8224,8283,8225/
+C
+C       A TAB READS AS A BLANK.
+C
+        IF (CHR .EQ. LTAB) GO TO 300
+        IF (CHR .EQ. LBLANK) GO TO 300
+C
+C       DIGIT FIRST.  RADIX <= 10 LOOKS AT 0 THROUGH RADIX-1; ABOVE TEN
+C       IT ALSO ADMITS A THROUGH A-11+RADIX.
+C
+        IF (IRADIX .GT. 10) GO TO 100
+        LIM=L0+IRADIX-1
+        IF (CHR .GE. L0 .AND. CHR .LE. LIM) GO TO 200
+        GO TO 150
+100     CONTINUE
+        IF (CHR .GE. L0 .AND. CHR .LE. L9) GO TO 200
+        LIM=LA-11+IRADIX
+        IF (CHR .GE. LA .AND. CHR .LE. LIM) GO TO 200
+150     CONTINUE
+C
+C       ALPHABETIC -- A THROUGH Z, AND "!", WHICH IS WHAT DISTINGUISHES
+C       THIS FROM IUTIL'S.
+C
+        IF (CHR .EQ. LBANG) GO TO 250
+        IF (CHR .GE. LA .AND. CHR .LE. LZ) GO TO 250
+C
+C       ANYTHING ELSE IS ITSELF.
+C
+        TYPC=CHR
+        RETURN
+200     TYPC=-2
+        RETURN
+250     TYPC=-1
+        RETURN
+300     TYPC=LBLANK
+        RETURN
+        END
