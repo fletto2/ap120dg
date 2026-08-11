@@ -69,8 +69,18 @@ def parse_octal(s):
     return -val if neg else val
 
 
-def parse_apo(filename):
-    """Parse an APO text file, return list of Modules."""
+def parse_apo(filename, stop_at_leb=True):
+    """Parse an APO text file, return list of Modules.
+
+    stop_at_leb follows LNK100, which returns at a library end block --
+    "IF (BTYPE .EQ. 7) GO TO 800", and 800 is RETURN.  LOD100 does NOT:
+    LOAD1 label 5600 resets LIBFLG, sets LBFLG=1 and goes back to read
+    the next block, so it scans straight through a file holding several
+    LSB/LEB pairs.  That difference is the whole reason APEEL can build
+    APLIB by concatenating all nine shipped libraries -- a single file
+    the loader can loop over to a fixed point.  Callers on the loader
+    path must pass False.
+    """
     modules = []
     current = None
     state = 'idle'
@@ -221,7 +231,12 @@ def parse_apo(filename):
         # running past the end of a library.  (VADD.APO has no ***LEB
         # at all, which is exactly why it is not a usable library.)
         if '***LEB' in line:
-            break
+            if stop_at_leb:
+                break
+            in_library = False
+            current = None
+            state = 'idle'
+            continue
 
         if '***CODE' in line:
             fields = stripped.split()

@@ -823,7 +823,10 @@ def _load(paths, origin, noload=(), force=(), libs=()):
         wanted.update(e.upper() for e in mod.externs)
 
     for path in paths:
-        mods = [m for m in parse_apo(path) if m.name.upper() not in noload]
+        # stop_at_leb=False: LOAD1 label 5600 reads on past a library end
+        # block, which is what lets a concatenated APLIB work at all.
+        mods = [m for m in parse_apo(path, stop_at_leb=False)
+                if m.name.upper() not in noload]
         pending = [m for m in mods if m.from_library]
         for mod in mods:
             if not mod.from_library:
