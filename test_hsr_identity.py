@@ -80,6 +80,13 @@ def shipped_vadd():
 
 def main():
     hsr = shipped_vadd()
+    # --self-test perturbs the SHIPPED block by one bit and expects the
+    # comparison to notice.  Two of this project's three harnesses turned
+    # out to have failure modes that produced green output, so each one now
+    # has to demonstrate it can fail.
+    if "--self-test" in sys.argv:
+        hsr = list(hsr)
+        hsr[len(hsr) // 2] ^= 1
     # The linked bundle opens with the 2-word FVADD auto-call entry, which the
     # HSR block does not carry; VADD proper starts after it.
     ours = linked_vadd()[2:2 + len(hsr)]
@@ -89,9 +96,15 @@ def main():
         return 1
     bad = [i for i, (a, b) in enumerate(zip(ours, hsr)) if a != b]
     if bad:
+        if "--self-test" in sys.argv:
+            print("self-test: DETECTED the mutation")
+            return 0
         print("FAIL: %d of %d instructions differ" % (len(bad), len(hsr)))
         for i in bad[:8]:
             print("  [%2d] linked=%016x  shipped=%016x" % (i, ours[i], hsr[i]))
+        return 1
+    if "--self-test" in sys.argv:
+        print("self-test: FAILED TO DETECT A MUTATION")
         return 1
     print("PASS: linked VADD+SPUFLT is identical to the shipped BAAHSR "
           "block, %d of %d instructions" % (len(hsr), len(hsr)))

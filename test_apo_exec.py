@@ -41,6 +41,9 @@ def ieee_from_octal(hi, lo):
     return struct.unpack('>f', struct.pack('>I', (hi << 16) | lo))[0]
 
 
+SELF_TEST = "--self-test" in sys.argv
+
+
 def run(routine):
     gen = subprocess.run([sys.executable, os.path.join(HERE, "gen_apo_test.py"),
                           routine], capture_output=True, text=True)
@@ -78,11 +81,17 @@ def run(routine):
                                                               len(want))
     got = [ieee_from_octal(words[2 * i], words[2 * i + 1])
            for i in range(len(want))]
+    # --self-test perturbs the EXPECTED value and requires the comparison to
+    # notice.  Each harness here has to demonstrate it can fail: two of the
+    # three had failure modes that produced green output.
+    if SELF_TEST:
+        want = list(want)
+        want[0] += 1.0
     return (got == want), "expected %s, got %s" % (want, got)
 
 
 def main():
-    routines = sys.argv[1:] or DEFAULT
+    routines = [a for a in sys.argv[1:] if not a.startswith("-")] or DEFAULT
     bad = 0
     for r in routines:
         ok, detail = run(r)
@@ -92,6 +101,11 @@ def main():
         else:
             bad += 1
             print("FAIL  %-6s %s" % (r, detail))
+    if SELF_TEST:
+        ok = bad == len(routines)
+        print("self-test: %s" % ("DETECTED every mutation" if ok else
+                                 "FAILED TO DETECT %d" % (len(routines) - bad)))
+        return 0 if ok else 1
     print("%d of %d routines execute correctly from the shipped libraries"
           % (len(routines) - bad, len(routines)))
     return 1 if bad else 0
