@@ -1240,6 +1240,16 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
     # so the ISR becomes segment ISRIDX of a one-node tree, exactly as
     # "TREE ((n))" / "OV n" would.  ISRIDX is the I/O device number the
     # routine services [M 3.14].
+    # KNOWN DIVERGENCE, recorded rather than hidden.  LOAD1 reacts when it
+    # READS the block, so a module loaded BEFORE the ISR goes into program
+    # store flat and only what follows lands in the segment.  This scans the
+    # phase's inputs up front, so everything in the phase lands in the
+    # segment.  The two agree whenever the ISR is the first code-bearing
+    # input, which is what the tape's own arrangement gives -- the reference
+    # job loads TABLES.APO first and that is data blocks only, no code.  A
+    # job with a code module ahead of the ISR would differ, and there is no
+    # hardware reference for one.  Fixing it properly means deciding the
+    # segment structure DURING the load rather than before it.
     isr_index = _find_isr(inputs)
     if isr_index is not None and not sess.roots:
         sess.roots = parse_tree("((%d))" % isr_index)
