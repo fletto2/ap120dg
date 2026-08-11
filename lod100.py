@@ -605,6 +605,10 @@ def write_map(linker, lm, out, psoff=0, mdoff=0, segments=None):
         out.write("  %-8s %8d\n" % (name, addr))
     out.write("\n%d instructions, %d load module words\n"
               % (len(linker.linked_code), len(lm.words)))
+    if getattr(lm, 'data_blocks', None):
+        out.write("\nDATA BLOCKS\n")
+        for name, addr, length in lm.data_blocks:
+            out.write("  %-10s MD %6d  %5d words\n" % (name, addr, length))
     _write_warnings(linker, out, segments)
 
 
@@ -975,6 +979,7 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
     lm = LoadModule(lmid)
 
     md_used = 0
+    flat_blocks = []
     if not sess.roots:
         linker = _load(inputs, psoff, noload,
                        force=getattr(sess, 'force', ()),
@@ -1006,10 +1011,20 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
         # DBBRK is the main data break, which starts at MDLOW -- and INIT
         # sets MDLOW=1, beside its PSLOW=16, so MD 0 is reserved just as
         # PS 0-15 is.  The MD limit is PGINFO(1,1), 65534.
+        # Named data blocks are allocated at the main-data break during
+        # loading, exactly as in the overlaid path below.
+        db_md = mdoff + md_used
+        for mod in linker.modules:
+            for name, dbmod, length, local, items in mod.dbdb:
+                if length > 0:
+                    flat_blocks.append((name, db_md, length))
+                    db_md += length
+        md_used = db_md - mdoff
         ppa_addr = ppa or (mdoff + md_used)
         ppa_size = (MD_LIMIT - ppa_addr) & 0xFFFF
         lm.add_info(ppa_addr=ppa_addr, ppa_end=ppa_size)
         lm.end()
+        lm.data_blocks = flat_blocks
         return linker, lm, []
 
     segments = walk_segments(sess.roots)
@@ -1059,7 +1074,25 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
 
     # Lay out main data: segment images, then the overlay table, then the
     # PS partition table, then one TCB per task.
+    # NAMED DATA BLOCKS COME FIRST, at the main-data break, in load order.
+    # LOAD1 label 6000 places each at DBBRK as it reads the ***DBDB header
+    # and label 3930 advances the break by the block's length, so they are
+    # allocated during LOADING -- before any segment image is placed.  The
+    # task load module the recovered LOD100 wrote bears that out: the
+    # supervisor's blocks occupy main data from the break upward and the
+    # task's segment images start after them, at 694.
     md = mdoff
+    data_blocks = []                 # (name, addr, length)
+    seen_db = {}
+    for seg in segments:
+        for mod in seg.linker.modules:
+            for name, dbmod, length, local, items in mod.dbdb:
+                key = "%s.%s" % (mod.name.strip(), name) if local else name
+                if key in seen_db or length <= 0:
+                    continue
+                seen_db[key] = (md, length)
+                data_blocks.append((key, md, length))
+                md += length
     for seg in segments:
         seg.md_addr = md
         md += seg.length * MD_WORDS_PER_INSTR
@@ -1124,6 +1157,7 @@ def build(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None, noload=(),
                 ovlen=ovmesz * len(segments), ovaddr=ovt_addr)
     lm.end()
 
+    lm.data_blocks = data_blocks
     # Report against the root segment's linker so callers see a symbol table.
     return segments[0].linker, lm, segments
 
