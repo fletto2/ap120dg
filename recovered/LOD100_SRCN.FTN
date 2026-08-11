@@ -92,7 +92,14 @@ C
 C
 C       LOAD THE MODULE IF IT IS NOT ALREADY IN.
 C
-        WRITE (LUNX,900) LMID,LMID
+C
+C       THE LOADER ROUTINE IS NAMED L<LMID*100+N>, N BEING THE CHUNK --
+C       LMID 1 GIVES **L101**, which is what Figure 4-1's sample host
+C       resident module is called and what Figure 4-3's HASI calls.
+C       Writing the bare LMID gave "CALL L   1", a routine that does not
+C       exist.  The HASI always wants the FIRST chunk.
+C
+        WRITE (LUNX,900) LMID,LMID*100+1
 900     FORMAT (6X,'IF (IDLM.NE.',I3,') CALL L ',I3)
 C
 C       PARAMETER PASSING -- ADC ONLY.  MANUAL 4.3.
@@ -117,13 +124,28 @@ C
         WRITE (LUNX,920)
 920     FORMAT (6X,'IPA=IPPAAD')
         IF (NPAR .LE. 0) GO TO 300
-        DO 200 I=1,NPAR
-        K=I+1
+C
+C       THE ORDER IS THE MANUAL'S, FIGURE 4-3: SET IPAV(K), ADVANCE IPA
+C       BY THE PARAMETER'S SIZE, SET IPAV(K+1), AND ONLY THEN APPUT --
+C       BECAUSE THE APPUT'S LENGTH ARGUMENT IS "IPAV(K+1)-IPAV(K)" AND
+C       READS THE ELEMENT JUST WRITTEN.  EMITTING THE APPUT FIRST LEFT
+C       EVERY CALL READING AN IPAV SET ON THE FOLLOWING LINE, AND THE
+C       FIRST ONE READING AN ELEMENT NEVER SET AT ALL.
+C
+C           IPAV( 2)=IPA
+C           IPA=IPA+ 1 * 1
+C           IPAV( 3)=IPA
+C           CALL APPUT (P 1,IPAV( 2),IPAV( 3)-IPAV( 2),1)
+C
+        K=2
         WRITE (LUNX,930) K
 930     FORMAT (6X,'IPAV(',I3,')=IPA')
+        DO 200 I=1,NPAR
+        K=I+1
         ISZ=1
         WRITE (LUNX,940) ISZ
 940     FORMAT (6X,'IPA=IPA+',I5)
+        WRITE (LUNX,930) K+1
         WRITE (LUNX,950) I,K,K+1,K
 950     FORMAT (6X,'CALL APPUT (P',I3,',IPAV(',I3,'),IPAV(',I3,
      *          ')-IPAV(',I3,'),1)')
