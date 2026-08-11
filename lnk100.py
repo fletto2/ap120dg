@@ -63,6 +63,11 @@ class Module:
         # field of each of the `count` "kind length" records into ILEN -- the
         # block's total length.  The block is placed at the data break and
         # label 3930 advances it by ILEN.
+        # [M 3.14] ISR BLOCK (16): the header is "16 index ***ISR" and the
+        # index "indicates the number of the I/O device which the ISR
+        # services".  It carries no data records -- the header IS the block.
+        # None means the module is not an ISR.
+        self.isr_index = None
         self.dbdb = []
         # ***DBIB: initialisation records, kept verbatim.  LOAD1 label 7000
         # does not interpret them either -- it copies each to the DBLUN
@@ -101,6 +106,7 @@ def parse_apo(filename, stop_at_leb=True):
     current = None
     state = 'idle'
     in_library = False
+    pending_isr = None       # ***ISR precedes ***TITLE; attached at TITLE
     ext_count = 0
     code_count = 0
     pb_count = 0
@@ -146,6 +152,8 @@ def parse_apo(filename, stop_at_leb=True):
             name = stripped
             current = Module(name)
             current.from_library = in_library
+            current.isr_index = pending_isr
+            pending_isr = None
             modules.append(current)
             state = 'module'
             continue
@@ -182,6 +190,20 @@ def parse_apo(filename, stop_at_leb=True):
                         pb_dims = 0
             if pb_count >= pb_items and pb_dims == 0:
                 state = 'module'
+            continue
+
+        if '***ISR' in line:
+            # "16 index ***ISR".  A header with no records, so nothing to
+            # consume after it -- LOAD1's handler reads the index straight
+            # off the same line with EXTTOK and returns.
+            #
+            # IT PRECEDES ***TITLE, so there is no current module yet.  The
+            # tape's own RTCISR.S puts "$ISR 5." above "$TITLE RTCISR" and
+            # ASM100 emits them in that order, so the index is stashed here
+            # and attached to the module the following TITLE opens.
+            f = line.split('***')[0].split()
+            if len(f) >= 2:
+                pending_isr = int(f[1].rstrip('.'))
             continue
 
         if '***DBDB' in line:

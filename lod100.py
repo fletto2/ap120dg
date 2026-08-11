@@ -771,7 +771,12 @@ class Session:
         self.tasks = []              # (id, opts) in declaration order
         self.pending_task = None
         self.callable = {}           # entry name → wants APOVLD call
-        self.isr_segments = []       # overlay numbers declared as ISRs
+        # THERE IS NO "ISR" COMMAND.  [M 2.3.1]-[M 2.3.25] documents the
+        # whole command set and has none, and the recovered COMAND's CMNDS
+        # table has no slot for one.  An ISR reaches the loader ONLY as
+        # object block 16 -- "16 index ***ISR", [M 3.14] -- which LOAD1
+        # label 10000 handles by synthesising a TREE and an OV for it.
+        # An "ISR" command was invented here and its list never read.
         self.readyq = False
         self.bufsize = 0
 
@@ -894,8 +899,7 @@ class Session:
                             self.callable[list(self.callable)[-1]] = True
                     else:
                         self.callable[tok.upper()] = False
-            elif cmd == 'ISR':
-                self.isr_segments.extend(self.number(a) for a in args)
+
             elif cmd in ('MARK', 'PURGE'):
                 # MARK records the loader state; PURGE restores it.  With a
                 # one-pass load these only affect which externals stay
