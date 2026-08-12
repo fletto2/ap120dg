@@ -1392,7 +1392,7 @@ if (df == 0) {
                        wrong too -- it is 13.) */
                     result = FPS_VALUE(instr);
                     break;
-                default: result = fps_spad[spd]; break;           /* 12,13,15: MOV SPD */
+                default: result = fps_spad[spd]; break;           /* 12-15: MOV SPD */
                 }
             break;
         case SOP_SPEC:                                  /* SPEC mode */
@@ -1779,6 +1779,22 @@ switch (dpbs) {
         break;
     case 7: dpbs_val = fps_tmr; break;              /* TM, via TMR */
     }
+
+/* LDSPT (SOP=0, SPS=15).  SIM100 runs the s-pad ALU dispatch (13114, MOV
+   SPD) AND THEN this group, whose write OVERWRITES SP[SPDV] -- and it sits
+   AFTER the bus selects, which is why it needs dpbs_val:
+
+        31117   TA2(2)=MOD(DPBS(3),4)*32+MOD(DPBS(4)/8,32)
+        31120   CALL MWRIT(TA2,SP,SPDV,SPSIZE,2,1)
+
+   The byte layout comes from its neighbours: 31115 takes DPBS(1) and
+   subtracts 512, so DPBS(1..2) are the EXPONENT; 31116 takes two bytes
+   from DPBS(5), the mantissa's LOW 16 bits.  So the 28-bit mantissa spans
+   DPBS(3)'s low nibble and bytes 4,5,6, and the field is mantissa bits
+   25..19 -- a 7-BIT INDEX.  That is VDIV's "GET TABLE BITS": the leading
+   magnitude bits index the reciprocal table. */
+if (df == 0 && sop == SOP_NOP && sps == 15 && spd < SP_SIZE && cond != 1)
+    fps_spad[spd] = (int32)((dpbs_val >> 19) & 0x7F);
 
 /* FADD=7 I/O group: register loads from DPBS value (SIM100 line 32000).
    A1=0 selects "store into regs", A2 selects which register. */
