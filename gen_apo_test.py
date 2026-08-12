@@ -179,15 +179,14 @@ ROUTINES = {
     # Enabling it means teaching the harness to preload the data pads --
     # worth doing, since VDIV is the only path to the DIVIDER and the
     # !DIV coefficient table, neither of which any test reaches today.
-    # VDIV: 79 instructions -- the harness stages 4 page-zero constants per
-    # instruction, so at 316 words it overruns the Nova's 256-word page zero
-    # and the S-PAD PARAMETERS are lost.  The trace shows SP=[1792 32768 0 0
-    # 0 0 0], i.e. N=0, so VDIV correctly returns at once via its own
-    # "BNE .+2 / ZDONE: RETURN  RETURN WHEN N=0".  Nothing is wrong with the
-    # routine or the emulator here.  Fix by loading via ATTACH FPS (see
-    # CLAUDE.md) instead of page-zero staging.
-    # "VDIV": ([0, 1, 3, 1, 6, 1, 3], A3 + B3, 6,
-    #          [b / a for a, b in zip(A3, B3)]),
+    # VDIV RUNS AND RETURNS now that the microcode is ATTACHed rather than
+    # staged through page zero -- the first time the divider has terminated
+    # here.  The answers are still wrong: expected 4.0/2.5/2.0, got
+    # 8.0/0.0/4.77e-07.  The leading 8.0-for-4.0 is a factor of TWO, the
+    # same signature as the multiplier scaling defect already recorded.
+    # Left OUT of DEFAULT until it is right; enable it by name to work on
+    # it:  python3 test_apo_exec.py VDIV
+    "VDIV":  ([0, 1, 3, 1, 6, 1, 3],   A3 + B3,    6, [b / a for a, b in zip(A3, B3)]),
     }
 
 if ROUTINE not in ROUTINES:
@@ -240,11 +239,31 @@ pz_const("host_in", HOST_DATA)
 pz_const("host_out", HOST_RESULT)
 pz_const("entry", ENTRY)
 
-# Microcode words
-for i, word in enumerate(code):
-    for w in range(4):
-        val = (word >> (48 - w*16)) & 0xFFFF
-        pz_const(f"mc{i}_w{w}", val)
+# MICROCODE IS ATTACHED, NOT STAGED.  Page zero is 256 words, this
+# harness starts at 0o040 and spends 18 words on control constants, and
+# staging a microinstruction costs FOUR -- so only about 51 instructions
+# fit and everything past that silently overwrites the s-pad setup.  VDIV
+# is 79 instructions (316 words) and came out with SP=[.. 0 0 0 0 0],
+# i.e. N=0, so it returned immediately via its own "BNE .+2 / ZDONE:
+# RETURN  RETURN WHEN N=0".
+#
+# fps_attach calls fps_load_apo, which reads the line AFTER "***CODE" as
+# "%o %o %o %o" -> load_addr, dummy, ps_size, md_size and loads the four
+# octal words per line from there.  So write the LINKED image in that
+# form and attach it.  NOTE a shipped .APO must NOT be attached: its line
+# after ***CODE is the first code-word quad, which this loader would take
+# as the load address.
+APO_LOAD = "/tmp/fps_%s_linked.apo" % ROUTINE
+with open (APO_LOAD, "w") as fh:
+    fh.write ("     3      ***TITLE\n%s\n" % ROUTINE)
+    fh.write ("     0     %o      0      ***CODE\n" % len (code))
+    fh.write ("%6o %6o %6o %6o\n" % (0, 0, len (code), 0))
+    for word in code:
+        fh.write ("%6o %6o %6o %6o\n" % ((word >> 48) & 0xFFFF,
+                                          (word >> 32) & 0xFFFF,
+                                          (word >> 16) & 0xFFFF,
+                                          word & 0xFFFF))
+emit ("att fps %s" % APO_LOAD)
 
 # S-pad values and addresses
 for i, val in enumerate(spad_vals):
@@ -289,19 +308,7 @@ def inst(opcode):
     prog.append((pc, opcode))
     pc += 1
 
-# Phase 1: Load microcode (set TMA=0, then DEP all words)
-inst(dg_lda(0, 0, pz["zero"]))
-inst(dg_doa(0, PULSE_N, DEV_FPS))
-inst(dg_lda(0, 0, pz["fn_dep_tma"]))
-inst(dg_doa(0, PULSE_S, DEV_FPS))
-
-for i in range(len(code)):
-    for w in range(4):
-        inst(dg_lda(0, 0, pz[f"mc{i}_w{w}"]))
-        inst(dg_doa(0, PULSE_N, DEV_FPS))
-        fn = "fn_dep_ps_w3_inc" if w == 3 else f"fn_dep_ps_w{w}"
-        inst(dg_lda(0, 0, pz[fn]))
-        inst(dg_doa(0, PULSE_S, DEV_FPS))
+# Phase 1 is gone: the microcode arrives via "att fps", emitted below.
 
 # Phase 2: Load s-pad via two-step DEP
 for i in range(len(spad_vals)):
