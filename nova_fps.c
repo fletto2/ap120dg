@@ -252,6 +252,8 @@ static int32 fps_da;                    /* Device Address */
 static int32 fps_ap_status;             /* AP internal status register */
 static int32 fps_spfn;                  /* S-Pad Function output */
 static int32 fps_spd_ptr;              /* S-Pad Destination pointer (host DEP) */
+static int32 fps_ldspd;                /* LDSPD: SPD held from the DPBS bus */
+static int32 fps_spd_hold;             /* the value it was loaded with */
 
 static int32 fps_spad[SP_SIZE];         /* Scratch Pad registers */
 static int32 fps_srs[SRS_SIZE];         /* Subroutine Return Stack */
@@ -1225,6 +1227,17 @@ sop     = FPS_SOP(instr);
 sh      = FPS_SH(instr);
 sps     = FPS_SPS(instr);
 spd     = FPS_SPD(instr);
+/* LDSPD.  SIM100 label 13000:
+       IF (LDSPD.EQ.1) GO TO 13001      "keep SPD as loaded
+       SPD(2)=SPDF                      "else take it from the field
+   13001 LDSPD=0
+   -- a ONE-INSTRUCTION hold, set by the LDREG group below, which is how
+   LDSPT/LDSPE/LDSPI name an s-pad that is not in the SPD field.  VDIV's
+   "LDSPT ADR; DB=DPX" depends on it: the table index arrives on the bus. */
+if (fps_ldspd) {
+    spd = fps_spd_hold & 0xF;
+    fps_ldspd = 0;
+    }
 fadd_op = FPS_FADD(instr);
 cond    = FPS_COND(instr);
 disp    = FPS_DISP(instr);
@@ -1744,6 +1757,13 @@ switch (dpbs) {
    A1=0 selects "store into regs", A2 selects which register. */
 if (fadd_op == 7 && FPS_A1(instr) == 0) {
     switch (FPS_A2(instr)) {
+        case 1:                                                /* LDSPD */
+            /* SIM100 32101: "SPD(2)=MOD(DPBS(6),16) / LDSPD=1" -- the
+               s-pad DESTINATION comes from the low four bits of the bus
+               and is held for the next instruction. */
+            fps_spd_hold = (int32)(dpbs_val & 0xF);
+            fps_ldspd = 1;
+            break;
         case 2: fps_ma = (int32)(dpbs_val & 0xFFFF); break;    /* LDMA */
         case 3: fps_tma = (int32)(dpbs_val & 0xFFFF); break;   /* LDTMA */
         case 4: fps_dpa = (int32)(dpbs_val & 0x3F); break;     /* LDDPA */
