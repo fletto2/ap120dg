@@ -1364,7 +1364,24 @@ if (df == 0) {
                 case 9:  result = (fps_spad[spd] + 1) & 0xFFFF; break;  /* INC */
                 case 10: result = (fps_spad[spd] - 1) & 0xFFFF; break;  /* DEC */
                 case 11: result = (~fps_spad[spd]) & 0xFFFF; break;     /* COM */
-                default: result = fps_spad[spd]; break;           /* 12-15: MOV SPD */
+                case 14:                                          /* LDSPI */
+                    /* ASM100's OPSYM assigns these three DISTINCT codes:
+                           LDSPE word1 = 832 = 0x340   -> (>>6)&0xF = 13
+                           LDSPI word1 = 896 = 0x380   ->             14
+                           LDSPT word1 = 960 = 0x3C0   ->             15
+                       so SPS 14 is LDSPI and must load the VALUE field.
+                       It was being swallowed by the "12-15 MOV SPD"
+                       default below, which comes from SIM100's 13114 --
+                       correct for 12, 13 and 15, but it cannot be right
+                       for 14 or FPS's own assembler would not encode a
+                       separate mnemonic for it.  MEASURED: at PS 3 of
+                       VDIV, "LDSPI TBLADR; DB=!DIV" produced
+                       result=48128 (MOV SPD) where VALUE was 4096.
+                       (microcode.md's table says LDSPE = 12; that is
+                       wrong too -- it is 13.) */
+                    result = FPS_VALUE(instr);
+                    break;
+                default: result = fps_spad[spd]; break;           /* 12,13,15: MOV SPD */
                 }
             break;
         case SOP_SPEC:                                  /* SPEC mode */
