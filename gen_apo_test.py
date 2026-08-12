@@ -179,7 +179,7 @@ ROUTINES = {
     # Enabling it means teaching the harness to preload the data pads --
     # worth doing, since VDIV is the only path to the DIVIDER and the
     # !DIV coefficient table, neither of which any test reaches today.
-    # VDIV IS TOO BIG FOR THIS HARNESS -- see the note below.
+    # VDIV: runs but does not terminate -- see the note in CLAUDE.md.
     # "VDIV": ([0, 1, 3, 1, 6, 1, 3], A3 + B3, 6,
     #          [b / a for a, b in zip(A3, B3)]),
     }
