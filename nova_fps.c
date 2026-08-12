@@ -1623,13 +1623,58 @@ if (fadd_op != 7 && !(fadd_op == 0 && FPS_A1(instr) == 0)) {
 
     /* Compute new result into FAB1 */
     switch (fadd_op) {
-        case 0:
-            /* Single-operand group (SIM100 FPADD label 10000): MC<-A2,
-               then A1 dispatches FIX/SCALE/FLOAT.  Those conversions are
-               not implemented; pass A2 through so the pipeline still
-               advances with the right timing. */
-            fa_new = fps_a2;
+        case 0: {
+            /* Single-operand group.  SIM100 label 10000 is
+                   CALL RMOV(MB,MC,4) / EC=EB
+                   GO TO (10100,10200,10300,10400,10500,10600,10700),FADD1F
+               so the A1 field selects: 1,2 FIX rounded/truncated;
+               3,6 SCALE truncated/rounded; 4 FSM2C; 5 F2CSM; 7 FABS.
+               That matches ASM100's OPSYM rows exactly -- FSM2C 0x4000,
+               F2CSM 0x5000, FABS 0x7000 in word 2, i.e. A1 = 4/5/7.
+
+               The three sign conversions all test the mantissa's top bit
+               ("IF (MOD(MC(1)/128,2).EQ.0) GO TO 1000"), which is bit 27
+               here, and the mantissa is two's complement -- see
+               fps_double_to_38bit's "if (sign) mant = -mant".
+
+               FIX and SCALE remain unimplemented and still pass A2
+               through, as before. */
+            int32 a1_op = FPS_A1(instr);
+            int32 sm_exp = fp_get_exp (fps_a2);
+            int32 sm_raw = (int32)(fps_a2 & FP_MANT_MASK);
+            int32 sm_mant;
+            switch (a1_op) {
+                case 4:                                 /* FSM2C, SIM100 10400 */
+                    /* "IF SIGN BIT ON, TURN OFF LEFT TWO BITS AND NEGATE" --
+                       MC(1)=MOD(MC(1),64) clears TWO bits, not one. */
+                    if (sm_raw & 0x08000000) {
+                        sm_mant = -(int32)(sm_raw & 0x03FFFFFF);
+                        fa_new = fp_pack (sm_exp, sm_mant);
+                        }
+                    else fa_new = fps_a2;
+                    break;
+                case 5:                                 /* F2CSM, SIM100 10500 */
+                    /* "IF NEGATIVE, MAKE POSITIVE AND REMEMBER TO TURN ON
+                       SIGN BIT" -- negate, then set the sign bit.  VDIV
+                       wants the magnitude clean because it indexes the
+                       reciprocal table with the leading bits
+                       ("LDSPT ADR; DB=DPX  GET TABLE BITS"). */
+                    sm_mant = fp_get_mant (fps_a2);
+                    if (sm_mant < 0)
+                        fa_new = fp_pack (sm_exp, (-sm_mant) | 0x08000000);
+                    else fa_new = fps_a2;
+                    break;
+                case 7:                                 /* FABS, SIM100 10700 */
+                    sm_mant = fp_get_mant (fps_a2);
+                    if (sm_mant < 0) fa_new = fp_pack (sm_exp, -sm_mant);
+                    else fa_new = fps_a2;
+                    break;
+                default:
+                    fa_new = fps_a2;                    /* FIX / SCALE */
+                    break;
+                }
             break;
+            }
         case 1: fa_new = fps_38bit_sub (fps_a2, fps_a1); break; /* FSUBR */
         case 2: fa_new = fps_38bit_sub (fps_a1, fps_a2); break; /* FSUB */
         case 3: fa_new = fps_38bit_add (fps_a1, fps_a2); break; /* FADD */
