@@ -279,7 +279,7 @@ static t_uint64 fps_cb;                   /* Control Buffer (current instruction
 static int32 fps_trace = 0;               /* per-cycle trace to stdout */
 static int32 fps_trace_n = 0;             /* cycles remaining to trace */
 static t_uint64 tr_dpx, tr_dpy;           /* pad operands, for the trace only */
-static int32 tr_xr, tr_yr, tr_xw;
+static int32 tr_xr, tr_yr, tr_xw, tr_yw;
 
 /* AP memory (allocated dynamically, fps_ps is extern for loader) */
 t_uint64 *fps_ps;                         /* Program Store (64-bit words) */
@@ -1594,6 +1594,7 @@ t_uint64 dpx_val = fps_dpx[dpx_ridx];
 t_uint64 dpy_val = fps_dpy[dpy_ridx];
 tr_dpx = dpx_val; tr_dpy = dpy_val;
 tr_xr = dpx_ridx; tr_yr = dpy_ridx; tr_xw = dpx_widx;
+tr_yw = dpy_widx;   /* the DPY WRITE slot -- see below */
 t_uint64 md_val = fps_mdr;      /* three cycles behind SETMA */
 t_uint64 fa_new = fps_fa, fm_new = fps_fm;
 t_uint64 dpbs_val = 0;
@@ -1887,12 +1888,13 @@ if (mem_cycle) {
 
 
 if (fps_trace && fps_trace_n != 0) {
-    printf ("  FA=%.6g MD=%.6g DPXr=%.6g DPYr=%.6g MA=%o TMA=%o"
-            " xr=%d yr=%d xw=%d SP=[%d %d %d %d %d %d %d] fc=%d\n",
+    printf ("  FA=%.6g MD=%.6g DPXr=%.6g DPYr=%.6g DPYw=%.6g MA=%o TMA=%o"
+            " xr=%d yr=%d xw=%d yw=%d SP=[%d %d %d %d %d %d %d] fc=%d\n",
             fps_38bit_to_double (fps_fa),
             fps_38bit_to_double ((fps_md && fps_ma < MD_SIZE) ? fps_md[fps_ma] : 0),
             fps_38bit_to_double (tr_dpx), fps_38bit_to_double (tr_dpy),
-            fps_ma, fps_tma, tr_xr, tr_yr, tr_xw,
+            fps_38bit_to_double (fps_dpy[tr_yw & 0x1F]),
+            fps_ma, fps_tma, tr_xr, tr_yr, tr_xw, tr_yw,
             fps_spad[0], fps_spad[1], fps_spad[2], fps_spad[3],
             fps_spad[4], fps_spad[5], fps_spad[6], fps_facond);
     /* FLUSH EVERY LINE.  With stdout redirected to a FILE, printf is
