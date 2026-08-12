@@ -1757,9 +1757,15 @@ if (!use_value) {
         case ADDR_DEC:  fps_dpa = (fps_dpa - 1) & 0xFF; break;
         case ADDR_SET:  fps_dpa = fps_spad[spd] & 0xFF; break;
         }
+    /* TMA IS 16 BITS.  These two masked to 0xFFF while ADDR_SET beside
+       them used 0xFFFF -- the same 12-bit defect already recorded for the
+       TMA register itself ("0xFFF wrapped address 4097 to 1").  It bites
+       exactly where the function coefficients live: !DIV is at 4096, so
+       "INC TBLADR; SETTMA" walking the reciprocal table wrapped to 1 and
+       read the FFT table instead.  TM_SIZE is 8192. */
     switch (tma_op) {
-        case ADDR_INC:  fps_tma = (fps_tma + 1) & 0xFFF; break;
-        case ADDR_DEC:  fps_tma = (fps_tma - 1) & 0xFFF; break;
+        case ADDR_INC:  fps_tma = (fps_tma + 1) & 0xFFFF; break;
+        case ADDR_DEC:  fps_tma = (fps_tma - 1) & 0xFFFF; break;
         case ADDR_SET:  fps_tma = fps_spad[spd] & 0xFFFF; break;
         }
     }
