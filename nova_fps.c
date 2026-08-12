@@ -246,6 +246,14 @@ static int32 fps_dpa;                   /* Data Pad Address */
    DPX<MD that consumes the value.  Reading memory instantly puts the
    wrong vector element in the data pads. */
 static t_uint64 fps_mdb[3];             /* MDB1..MDB3 */
+static t_uint64 fps_tmb[2];             /* TMB1, TMB2 -- the TABLE MEMORY
+                                           read pipeline.  SIM100 declares
+                                           "TMB1(6),TMB2(6)" against main
+                                           data's three MDB stages, so the
+                                           TM port is TWO deep: a LDTMA or
+                                           SETTMA at cycle N delivers at
+                                           N+2. */
+static t_uint64 fps_tmr;                /* TMR -- what the TM sources read */
 static int32 fps_mdb_v[3];              /* valid flags, SIM100's MDBn(7) */
 static t_uint64 fps_mdr;                /* memory data register */
 static int32 fps_da;                    /* Device Address */
@@ -1194,6 +1202,9 @@ if (fps_trace && fps_trace_n != 0) {
    MDB3 -> MDR only when MDB3 holds a completed read. */
 if (fps_mdb_v[2] == 1)
     fps_mdr = fps_mdb[2];
+/* SIM100 label 12100: "CALL RMOV(TMB2,TMR,6)", taken at the top of the
+   cycle exactly as MDR <- MDB3 is. */
+fps_tmr = fps_tmb[1];
 
 /* Pipeline shift: FAB2→FA every cycle (unconditional, per SIM100 line 1338).
    This must happen before any early returns (HALT, JMP, RETURN, etc.)
@@ -1624,8 +1635,7 @@ if (fadd_op != 7 && !(fadd_op == 0 && FPS_A1(instr) == 0)) {
             case 1: fps_a1 = fps_fm; break;             /* FM (multiplier) */
             case 2: fps_a1 = dpx_val; break;            /* DPX */
             case 3: fps_a1 = dpy_val; break;            /* DPY */
-            case 4: fps_a1 = (fps_tm && fps_tma < TM_SIZE) ? /* TMR */
-                             fps_tm[fps_tma] : 0; break;
+            case 4: fps_a1 = fps_tmr; break;            /* TMR */
             default: fps_a1 = 0; break;                 /* ZERO */
             }
     /* A2 sources (SIM100 line 2102):
@@ -1735,8 +1745,7 @@ if (fm_start) {
         case 0: m1_val = fps_fm; break;                 /* FM */
         case 1: m1_val = dpx_val; break;                /* DPX */
         case 2: m1_val = dpy_val; break;                /* DPY */
-        case 3: m1_val = (fps_tm && fps_tma < TM_SIZE) ? /* TMR */
-                         fps_tm[fps_tma] : 0; break;
+        case 3: m1_val = fps_tmr; break;                /* TMR */
         }
     switch (m2_field) {
         case 0: m2_val = fps_fa; break;                 /* FA */
@@ -1768,7 +1777,7 @@ switch (dpbs) {
            We produce the normalized result directly. */
         dpbs_val = fps_double_to_38bit((double)(int16_t)(fps_spfn & 0xFFFF));
         break;
-    case 7: dpbs_val = (fps_tm && fps_tma < TM_SIZE) ? fps_tm[fps_tma] : 0; break;
+    case 7: dpbs_val = fps_tmr; break;              /* TM, via TMR */
     }
 
 /* FADD=7 I/O group: register loads from DPBS value (SIM100 line 32000).
@@ -1872,6 +1881,11 @@ if (mi_field != 0 && fps_md && fps_ma < MD_SIZE) {
 fps_mdb[2] = fps_mdb[1];  fps_mdb_v[2] = fps_mdb_v[1];
 fps_mdb[1] = fps_mdb[0];  fps_mdb_v[1] = fps_mdb_v[0];
 fps_mdb[0] = 0;           fps_mdb_v[0] = 0;
+/* The TM port pushes the same way -- SIM100's "CALL RMOV (TMB1,TMB2,6)"
+   -- and the fetch started by THIS cycle's TMA enters TMB1.  Table
+   memory is a ROM read with no valid flag: every cycle fetches. */
+fps_tmb[1] = fps_tmb[0];
+fps_tmb[0] = (fps_tm && fps_tma < TM_SIZE) ? fps_tm[fps_tma] : 0;
 /* SIM100 label 41010: a memory cycle starts on a live MA field, or on
    the FADD=7 register-load forms that touch MA. */
 mem_cycle = ((ma_op >= 1 && !use_value) ||
