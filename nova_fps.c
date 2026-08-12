@@ -1878,6 +1878,15 @@ if (fps_trace && fps_trace_n != 0) {
             fps_ma, fps_tma, tr_xr, tr_yr, tr_xw,
             fps_spad[0], fps_spad[1], fps_spad[2], fps_spad[3],
             fps_spad[4], fps_spad[5], fps_spad[6], fps_facond);
+    /* FLUSH EVERY LINE.  With stdout redirected to a FILE, printf is
+       block-buffered, so a run ended by "timeout" -- which is how any
+       non-terminating routine has to be captured -- loses the whole
+       buffer and the trace file comes back EMPTY.  That is not a
+       harmless inconvenience: an absent line then cannot be told apart
+       from a code path that never ran, and this file records one
+       conclusion ("ADDR_SET is never reached") that rested on exactly
+       that inference. */
+    fflush (stdout);
     if (fps_trace_n > 0)
         fps_trace_n--;
     }
