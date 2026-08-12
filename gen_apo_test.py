@@ -179,7 +179,13 @@ ROUTINES = {
     # Enabling it means teaching the harness to preload the data pads --
     # worth doing, since VDIV is the only path to the DIVIDER and the
     # !DIV coefficient table, neither of which any test reaches today.
-    # VDIV: still does not terminate -- see CLAUDE.md.
+    # VDIV: 79 instructions -- the harness stages 4 page-zero constants per
+    # instruction, so at 316 words it overruns the Nova's 256-word page zero
+    # and the S-PAD PARAMETERS are lost.  The trace shows SP=[1792 32768 0 0
+    # 0 0 0], i.e. N=0, so VDIV correctly returns at once via its own
+    # "BNE .+2 / ZDONE: RETURN  RETURN WHEN N=0".  Nothing is wrong with the
+    # routine or the emulator here.  Fix by loading via ATTACH FPS (see
+    # CLAUDE.md) instead of page-zero staging.
     # "VDIV": ([0, 1, 3, 1, 6, 1, 3], A3 + B3, 6,
     #          [b / a for a, b in zip(A3, B3)]),
     }
