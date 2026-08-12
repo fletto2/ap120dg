@@ -1739,7 +1739,14 @@ if (fadd_op != 7 && !(fadd_op == 0 && FPS_A1(instr) == 0)) {
    Both were wrong here -- M1 was shifted by one (1=FM, 2=DPX, 3=DPY)
    and M2 was wrong outright (1=FM, 2=DPX, 3=TM), so VMUL's
    "FMUL DPX,MD" multiplied the wrong operands and returned zeros. */
-if (fm_start) {
+/* SIM100 label 34000: "IF(FMF.NE.1.OR.IVAL.EQ.1) GO TO 35000" -- the
+   multiplier runs, AND ITS PIPELINE PUSHES, only when the FM field is
+   EXACTLY 1.  This tested non-zero, so FM=2 and FM=3 caused a spurious
+   multiply and push.  VMUL never showed it because it only ever uses
+   FM=1; VDIV's chained (2*MI)(1-A+A**2-A**3) does not, and its results
+   came out of step -- element 1 stored via DPBS, elements 2 and 3 via a
+   stale FM. */
+if (fm_start == 1) {
     t_uint64 m1_val = 0, m2_val = 0;
     switch (m1_field) {
         case 0: m1_val = fps_fm; break;                 /* FM */
