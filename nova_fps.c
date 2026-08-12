@@ -1334,10 +1334,11 @@ switch (cond) {
     case 9:  branch = (fps_facond_br != 2); break;          /* BFGE */
     case 10: branch = ((fps_facond_br & 1) == 0); break;    /* BFNE */
     case 11: branch = (fps_facond_br == 0); break;          /* BFGT */
-    case COND_BEQ:  branch = (fps_spcond == 0); break;   /* s-pad EQ */
-    case COND_BNE:  branch = (fps_spcond != 0); break;   /* s-pad NE */
-    case COND_BGE:  branch = (fps_spcond >= 0); break;   /* s-pad GE */
-    case COND_BGT:  branch = (fps_spcond > 0);  break;   /* s-pad GT */
+    /* Read the BIT CODE: bit1 negative, bit2 zero (SIM100 13880). */
+    case COND_BEQ:  branch = ((fps_spcond & 4) != 0); break;  /* zero */
+    case COND_BNE:  branch = ((fps_spcond & 4) == 0); break;  /* non-zero */
+    case COND_BGE:  branch = ((fps_spcond & 2) == 0); break;  /* not neg */
+    case COND_BGT:  branch = ((fps_spcond & 6) == 0); break;  /* pos, non-0 */
     default:        break;
     }
 
@@ -1349,8 +1350,8 @@ if (sop == 1 && sps == 0) {
     switch (spd) {
         case 0: branch = ((fps_facond_br & 1) == 1); break;   /* BFEQ  */
         case 1: branch = (((fps_spcond >> 1) & 1) == 1); break;/* s-pad negative */
-        case 2: branch = ((fps_spcond & 1) == 1); break;      /* s-pad zero */
-        case 3: branch = ((fps_spcond & 1) == 0); break;      /* s-pad non-zero */
+        case 2: branch = ((fps_spcond & 4) != 0); break;      /* s-pad zero */
+        case 3: branch = ((fps_spcond & 4) == 0); break;      /* s-pad non-zero */
         /* 12-15 test a bit of the FLAG register, which is not modelled */
         default: break;                              /* 4-7 DPBS/status, 12-15 FLAG */
         }
@@ -1451,13 +1452,18 @@ if (df == 0) {
                 break;
         }
 
-    /* Set s-pad condition code */
-    if (result == 0)
-        fps_spcond = 0;
-    else if (result & 0x8000)
-        fps_spcond = -1;                                /* Negative */
-    else
-        fps_spcond = 1;                                 /* Positive */
+    /* S-PAD CONDITION IS A BIT CODE, NOT A SIGN.  SIM100 label 13880:
+           IF(SPFN(1).GE.128)                 SPCOND=SPCOND+2   negative
+           IF(SPFN(1).EQ.0.AND.SPFN(2).EQ.0)  SPCOND=SPCOND+4   zero
+       so bit1 = NEGATIVE and bit2 = ZERO (bit0 is TCADD's carry).  This
+       held -1/0/1 and was then read BOTH numerically (the COND field) and
+       as bits (the STEST field, which also had zero on bit0) -- the two
+       could not both be right.  Same defect as FACOND, which this file
+       records as "a two-bit code, not a sign ... the emulator held -1/0/1
+       and compared numerically". */
+    fps_spcond = 0;
+    if (result & 0x8000) fps_spcond |= 2;               /* negative */
+    if (result == 0)     fps_spcond |= 4;               /* zero */
 
     /* Write result to SPD (unless NOP or JMP/JSR).  SIM100 label 13880 also
        suppresses the write when COND=1 (STEST), which uses the s-pad ALU
@@ -1536,13 +1542,10 @@ if (df == 1) {
         fps_spfn = rev & 0xFFFF;
         if (spd < SP_SIZE)
             fps_spad[spd] = fps_spfn;
-        /* Set condition code */
-        if (fps_spfn == 0)
-            fps_spcond = 0;
-        else if (fps_spfn & 0x8000)
-            fps_spcond = -1;
-        else
-            fps_spcond = 1;
+        /* Same bit code as above (SIM100 13880). */
+        fps_spcond = 0;
+        if (fps_spfn & 0x8000) fps_spcond |= 2;
+        if (fps_spfn == 0)     fps_spcond |= 4;
         }
     }
 
