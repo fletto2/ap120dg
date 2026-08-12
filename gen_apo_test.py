@@ -164,6 +164,23 @@ ROUTINES = {
     # BAASRC.APS names them, with B "CONSTANT VECTOR B", i.e. the address
     # of a scalar (here MD 3).
     "VSADD": ([0, 1, 3, 4, 1, 3],      A3 + [2.0], 4, [a + 2.0 for a in A3]),
+    # VDIV IS NOT RUNNABLE BY THIS HARNESS, and the source says why.
+    # Its s-pads are known -- "S-PAD PARAMETERS / X = 0 / I = 1 / Y = 2 /
+    # J = 3 / C = 4 / K = 5 / N = 6" -- and its abstract is
+    # "C(M)=Y(M)/X(M)", so the convention below is right.  But the same
+    # header block also demands
+    #     "DATA PAD INITIALIZATIONS:  DPY=MASK / DPY(1)=1 / DPX(1)=-1"
+    # and this harness sets up main data and the s-pads ONLY.  Run as-is
+    # the routine never terminates: its Newton iteration starts from
+    # uninitialised data pads.  Every routine tested so far is pure
+    # add/multiply and needs no such state, which is why the gap did not
+    # show until the first DIVIDE was tried.
+    #
+    # Enabling it means teaching the harness to preload the data pads --
+    # worth doing, since VDIV is the only path to the DIVIDER and the
+    # !DIV coefficient table, neither of which any test reaches today.
+    # "VDIV": ([0, 1, 3, 1, 6, 1, 3], A3 + B3, 6,
+    #          [b / a for a, b in zip(A3, B3)]),
     }
 
 if ROUTINE not in ROUTINES:
