@@ -160,6 +160,10 @@ ROUTINES = {
     # "C(MK) = A(MI) * A(MI)".
     "VNEG":  ([0, 1, 3, 1, 3],         A3,         3, [-a for a in A3]),
     "VSQ":   ([0, 1, 3, 1, 3],         A3,         3, [a * a for a in A3]),
+    # VSADD takes A,I,B,C,K,N like VSMUL -- its own $EQU block in
+    # BAASRC.APS names them, with B "CONSTANT VECTOR B", i.e. the address
+    # of a scalar (here MD 3).
+    "VSADD": ([0, 1, 3, 4, 1, 3],      A3 + [2.0], 4, [a + 2.0 for a in A3]),
     }
 
 if ROUTINE not in ROUTINES:

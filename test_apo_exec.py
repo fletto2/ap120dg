@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 NOVA = os.path.join(HERE, "..", "simh", "BIN", "nova")
 SCRIPT = "/tmp/test_hsr.simh"
 DEFAULT = ["VADD", "VSUB", "VMUL", "VSMUL", "VMOV", "VCLR",
-           "VNEG", "VSQ"]
+           "VNEG", "VSQ", "VSADD"]
 
 
 def ieee_from_octal(hi, lo):
