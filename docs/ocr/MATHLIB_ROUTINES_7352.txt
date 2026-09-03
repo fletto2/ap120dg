@@ -1,0 +1,2088 @@
+FLOATING POINT
+SYSTEMS,
+INC.
+
+FPS AP-120B
+MATH LIBRARY ROUTINES
+FPS-7352
+
+FPS-7352
+·FLOAT I NG Poi NT SYSTEMS, INC. , 1977
+ALL RIGHTS RESERVED
+PUBLISHED IN THE UNITED STATES OF AMERICA.
+
+1 (1
+\::::'...,/
+
+JUNE 1977
+
+PO BOX 23489 PORTLAND. OR 97223
+
+11000 SW llTH .STREET. BEAVERTON. OR 97005
+
+(503) 6413151
+
+TLX 360470 FLOATPOINT PTL
+
+NEW APPROACHES TO THE AP-120B
+
+----------------------------I. HIGHER LEVEL LANGUAGES FOR THE AP-120B
+1. What language? (Is Fortran immortal?)
+
+Some choices:
+
+A. Scalar (Standard) Fortran, vectorized automatically
+Questions:
+i. How much does the user have to modify his code to make it
+vectorizeable?
+ii. Who splits the code between the host computer and the AP,
+·the user,_ or the vectorizer?
+iii. Does the vectorizer run on a large computer, or a mini?
+2. Scalar Fortran with Vector calls (like the VFC)
+3. Fortran with vector syntax added, i~e. ability to declare vectors
+and operate on them. PL/l allows this. Some possibilities
+A(l,*)=B(l,*)+C(l,*)
+add the first column of two matrices
+A=A+lO.O
+add 10.0 to all the elements of A
+4. Other scalar languages (ALGOL, etc)
+5. A vector language such as APL.
+6. Optimization, how good?
+2. How does the· higher level language affect the AP-120B - Host
+relationship?
+II. THE AP-120B/HOST COMPUTER DUAL PROCESSOR
+1. The current approach: the AP-120B as tightly controlled slave of the
+
+host computer.
+2. A 'virtual channel' to lessen operating system overhead.
+3. The Vector Function Chainer: moving the CALLS from the host to the AP-120B.
+4. Who is master? or how to coordinate host 1/0 with AP-120B computation.
+
+APPENDIX B
+
+Page
+
+Name
+
+INDEX OF ROUTINES IN PAGE ORDER
+
+Operation
+
+Typical
+Execution
+Time/Loop
+(us)
+
+Program
+Size
+(AP120B
+PS words)
+
+167 I 333
+
+167 I 333
+
+DATA TRANSFER AND CONTROL OPERATIONS (APEX)
+
+D-2
+D-4
+D-6
+D-7
+.D-8
+D-9
+D-10
+D-11
+D-12
+
+AP PUT
+PUT DATA INTO THE AP120B
+APGET
+GET DATA FROM THE AP120B
+APCLR . INITIALIZE THE. AP 120B
+APWD
+WAIT FOR AP120B DATA TRANSFER
+APWR
+HAIT FOR AP120B PROGRAM EXECUTION
+. APWAIT HAIT FOR AP120B
+APGSP
+READ AN AP120B S-PAD REGISTER
+APC HK
+CHECK AP120B PROGRAM ERROR CONDITION
+APSTAT GET AP120B HARDWARE STATUS
+
+II. fl
+II. ff
+ff. ff
+ff. II
+II. ff
+fl. fl
+fl. fl
+fl. II
+ff. ff
+
+II. fl
+ff. II
+I!. II
+II • II
+fl. If
+fl. II
+fl • II
+II. ti
+fl • fl
+
+0
+0
+0
+0
+0
+0
+0
+0
+
+0
+.0
+
+0
+
+0
+
+0.2
+0.5
+l. 2
+0.3
+0.3
+0.5
+
+0.3
+0.8
+LS
+
+13
+14
+14
+
+4
+6
+
+12
+
+0.3
+0.3
+
+6
+
+6
+
+12
+17
+17
+17
+17
+75
+16
+17
+
+12
+
+0
+0
+0
+0
+0
+0
+
+BASIC .VECTOR ARITHMETIC
+D-15
+D-16
+D-17
+D-18
+D-19
+D-20
+D-21
+D-22
+D-23
+D-24
+D-25
+D-26
+D-27
+D-28
+D-29
+D-30
+
+D-31
+D-32
+D-33
+D-34
+
+VCLR
+VMOV
+VSWAP
+VFILL
+VRAMP
+VNEG
+VADD
+VSUB
+VHUL
+VDIV
+VS ADD
+VSMUL
+VSQ
+VSSQ
+VABS ·
+VSQRT
+VLOG
+VLN
+VALOG
+VEXP
+
+D-35 ·
+
+VSIN
+
+D-36
+D-37
+D-38
+D-39
+
+vcos
+
+·n-40
+
+VATAN
+VATN2
+VRAND
+VHA
+
+VECTOR CLEAR.
+VECTOR MOVE
+VECTOR SWAP
+VECTOR FILL
+VECTOR RAMP
+VECTOR NEGATE
+VECTOR .ADD
+VECTOR SUBTRACT
+VECTOR MULTIPLY
+VECTOR DIVIDE
+VECTOR SCALAR ADD
+VECTOR SCALAR MULTIPLY
+VECTOR SQUARE
+VECTOR SIGNED SQUARE
+VECTOR ABSOLUTE VALUE
+VECTOR SQUARE ROOT
+VECTOR LOGARITID1 (BASE 10)
+VECTOR NATURAL LOGARITHM
+VECTOR ANTILOGARITHM (BASE 10)
+VECTOR EXPONENTIAL
+VECTOR SINE
+VECTOR COSINE
+VECTOR.ARCTANGENT·
+VECTOR ARCTANGENT OF Y/X
+VECTOR RAtIDOM NUMBERS
+VECTOR ~1ULTIPLY Al1D ADD
+B
+
+1
+
+o~s
+
+0.8
+0.8
+1. 7
+
+o.s
+0.5
+0.5
+0.5
+0.5
+
+1. 8
+4. 7
+
+4.0
+4.8
+4.2
+4.4
+4. 7
+8. 7
+
+13.8
+1. 2
+1. 2
+
+0.8
+1. 3
+1. 3
+1. 3
+1. 7
+0.8
+0.8
+0.8
+
+0.8
+0.8
+1. 8
+
+4.7
+4.0
+
+s.o
+4;2
+4.4
+4.7
+8.7
+13.8
+1. 2
+1. 8
+
+9
+18
+
+7
+
+10
+10
+12
+
+75
+8
+
+10
+9
+
+10
+7
+
+14
+79
+52
+
+79
+
+52
+
+52
+
+39
+42
+
+39
+42
+
+46
+
+46
+46
+
+46
+89
+90
+
+16
+20
+
+52
+
+89
+90
+16
+15
+
+FPS-7352
+6-1-77
+
+Page
+
+D-41
+D-42
+D-43
+D-45
+D-47
+D-48
+D-49
+D-50
+D-51
+D-52
+
+Uame
+
+VAM
+VSMSA
+VMMA
+VAAM
+VAND
+VEQV
+VOR
+VF RAC
+VINT
+VIND EX
+
+Operation
+
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+
+ADD AND MULTIPLY
+SCALAR MULTIPLY AND SCALAR ADD
+MULTIPLY, MULTIPLY, AND ADD
+ADD) ADD, AND MULTIPLY
+LOGICAL AND
+LOGICAL EQUIVALENCE
+LOGICAL OR
+TRilllCATE TO FRACTION
+TRUNCATE TO INTEGER
+INDEX
+
+Typical
+Execution
+Time/Loop
+(us)
+
+Program
+Size
+(AP120B
+PS words)
+
+--------16 7
+333
+
+--------167
+333
+
+1. 2
+
+o.s
+
+1. 5
+1. 5
+
+o.'rr
+0.8
+0.8
+0.7
+0.5
+0.8
+
+1. 8
+0.8
+2.3
+2.3
+1. 3
+1. 3
+1. 3
+
+0.3
+0.8
+1.3
+
+20
+22
+
+24
+18
+17
+17
+17
+13
+
+14
+25
+
+15
+15
+20
+20
+8
+8
+8
+
+13
+14
+23
+
+VECTOR-TO-SCALAR OPERATIONS
+D-54
+D-55
+D-56
+D-57
+D-58
+D-59
+D-60
+D-61
+D-62
+D-63
+D-64
+D-65
+· D-66
+
+SVE
+SVEHG
+SVESQ
+
+svs
+DOT PR
+NAXV
+MINV
+HAXMGV
+MINMGV
+MEANV
+M:~AMGV
+
+HEASQV
+IU1SQV
+
+SUH OF VECTOR ELEMENTS
+SUM OF VECTOR ELEMENT UAGNITUDES
+SUM OF VECTOR ELEMENT SQUARES
+SUM OF VECTOR SIGNED SQUARES
+DOT PRODUCT
+MAXIHtJH ELEMENT IN VECTOR
+MINIMUM ELEMENT IN VECTOR
+MAXIMUM MAGNI Tl.JD E ELEMENT rn VECTOR
+MINIMUM MAGNITUDE ELEMENT IN VECTOR
+MEAN VALUE OF VECTOR ELEHENTS
+MEAN OF VECTOR ELEMENT MAGNITUDES
+MEAN OF VECTOR ELEMENT SQUARES
+ROOT-HEAN-SQUARE OF VECTOR ELEMENTS
+
+0.3
+
+o.3
+0.3
+0.3
+0.5
+0.3
+0.3
+0.3
+0.3
+0.3
+0.3
+0.3
+0.3
+
+0.3
+0.3
+0.3
+0.3
+0.8
+0.3
+0.3
+0.3
+0.3
+0.3
+0.3
+0.3
+0.3
+
+7
+10
+10
+11
+
+19
+19
+19
+
+19
+19
+45
+48
+48
+77
+
+7
+10
+10
+11
+10
+
+19
+19
+19
+19
+45
+48
+48
+77
+
+----~----------------------------.--·----------~----------------------
+
+VECTOR COMPARISON OPERATIONS
+---------------------------------~--~------------------~-----------
+
+D-68
+D-69
+D-70
+
+VMAX
+VMIN
+
+D-71.
+
+VMINHG
+VCLIP
+
+D-72
+D-73
+
+Vl1AXHG
+
+VLU1
+
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+
+MAXIMUM
+MINIMUM
+MAXIMUM MAGNITUDE
+MINIMUM MAGNITUDE
+CLIP
+LIMIT
+
+0.8
+0.8
+1. 0
+1. 0
+
+1. 3
+1. 3
+1. 3
+1. 3
+
+0.5
+
+0.8
+0.8
+
+o.s
+
+19
+
+19
+14
+14
+
+14
+14
+14
+14
+
+16
+
+16
+
+14
+
+'14
+
+1. 3
+
+9
+
+8
+
+1. 1
+
+0.7
+1.7
+
+0.8
+
+1. 2
+
+9
+
+0.8
+
+15
+
+9
+8
+10
+9
+7
+
+COMPLEX VECTOR ARITHMETIC
+D-75
+
+D-76
+D-77
+
+D-78
+D-79
+
+CVHOV
+COMPLEX VECTOR MOVE
+CVFILL COMPLEX VECTOR FILL
+CVCOHB COMPLEX VEC'I:OR COMBUTE
+CVREAL FOPJ-1 COMPLEX VECTOR OF REALS
+VREAL .EXTRACT REALS OF COMPLEX VECTOR
+B
+
+2
+
+0.8
+0.5
+
+o.s
+
+10
+
+Page
+
+D-80
+D-81
+D-82
+D-83
+D-84
+D-85
+D-87
+D-88
+D-89
+D-90
+D-91
+D-92
+D-93
+D-95
+D-96
+
+D-97
+D-98
+D-99
+
+Name
+
+VIMAG
+CVNEG
+GVCONJ
+CVADD
+CVSUB
+.CVMUL
+CVSMUL
+CVRC IP
+CRVADD
+CRVSUB
+CRVMUL
+CRVDIV
+CVMA
+CVMAGS
+SCJHA
+POLAR
+RECT
+CDOTPR
+
+Typical
+Execution
+Time/Loop
+(us)
+
+Program
+Size
+(AP120B
+PS words)
+
+167
+
+333
+
+167
+
+EXTRACT IMAGINARIES OF COMPLEX VECTOR 0.5
+COMPLEX VECTOR NEGATE
+0.8
+COMPLEX VECTOR CONJUGATE
+1.2
+COMPLEX VECTOR ADD
+1. 0,
+COMPLEX VECTOR SUBTRACT
+1. 0
+COMPLEX VECTOR HULT IPL Y
+1. 0
+COMPLEX VECTOR SCALAR MULTIPLY
+0.8
+·s. 2
+COlIPLEX VECTOR RECIPROCAL
+COMPLEX AND REAL VECTOR ADD
+1. 3
+COMPLEX AND REAL VECTOR SUBTRACT
+1. 3
+COMPLEX AND REAL VECTOR MULTIPLY
+1. 3
+COMPLEX AND REAL VECTOR DIVIDE
+3.3
+COMPLEX VECTOR MULTIPLY AND ADD
+2.7
+COMPLEX VECTOR MAGNITUDE SQUARED
+0.7
+SELF-CONJUGATE MULTIPLY AND ADD
+1. 3
+RECTANGULAR TO POLAR CONVERSION
+19.5
+POLAR TO RECTANGULAR CONVERSION
+10.7
+COMPLEX DOT PRODUCT
+0.7
+
+0.8
+
+16
+
+1. 3
+1. 3
+
+11
+
+2.0
+2.0
+2.0
+1. 3
+
+13
+
+Operation
+
+5 • .2
+1. 8
+1. 8
+1. 8
+
+12
+13
+25
+11
+50
+. 14
+14
+14
+
+3.3
+2.7
+
+92
+
+1. 2
+
+13
+
+1.5
+19.5
+10.7
+
+15
+
+30'
+
+333
+8
+11
+
+12
+12
+12
+26
+11
+
+so
+14
+14
+14
+92
+30
+
+119
+
+U3
+15
+119
+
+1. 3
+
+46
+15
+
+46
+16
+
+11
+
+15
+12
+19
+
+11
+7
+12
+
+1. 5
+
+0.8
+0.8
+0.8
+1. 7
+
+0.7
+
+0.8
+
+9
+
+9
+
+61
+69
+62
+49
+61
+40
+61
+35
+
+61
+69
+62
+49
+61
+40
+61
+35
+
+DATA FORMATING OPERATIONS
+D-101 VFLT
+D-102 VFIX
+D-104 VS CALE
+D-106 VSCSCL
+D-108 VSHFX
+D-109 · VUP8
+D-110 VUPS8
+D-111 VPK8
+D-112 . VUP 16
+D-113 VUPS16
+D-114 VPK16
+D-115 VFLT32
+D-116 VFIX32
+
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+
+INTEGER FLOAT
+INTEGER FIX
+SCALE (POWER 2) AND FIX
+SCAN, SCALE (POWER 2) AND FIX
+SHIFT AND FIX
+8-B IT BYTE UNPACK
+8-BIT SIGNED BYTE UNPACK
+8~BIT BYTE PACK
+16-BIT BYTE UNPACK
+16-BIT SIGNED BYTE UNPACK
+16-BIT BYTE PACK
+32-BIT INTEGER FLOAT
+32-BIT INTEGER FIX
+
+0.7
+0.7
+0.7
+
+o.s
+
+0.9
+0.9
+0.8
+1. 3
+0.8
+1. 7
+1. 2
+
+o.s
+
+0.9
+0.9
+0.8
+1. 3
+
+0.8
+1. 7
+
+1.2
+
+19
+
+---------~------~------------------~-------------------------------
+
+HATRIX OPERATIONS
+
+------------------------------------------------------------------D-118
+n-119
+
+D-121
+D-123
+
+D-125
+D-127
+D-129
+D-131
+
+MATRIX TRANSPOSE
+MATRIX MULTIPLY
+MMUL32 MATRIX MULTIPLY (DIMENSION <=32)
+MATINV" MATRIX INVERSE
+MATRIX VECTOR MULTIPLY (3X3)
+HVML3
+HATRIX VECTOR MULTIPLY ('4X4)
+MVML4
+3-DIMEHSION COORDINATE TRANSFORMATION
+CTRN3
+FAST MEMORY MATRIX MULTIPLY
+FMMM
+MTRANS
+
+mruL
+
+B
+
+3
+
+0.5
+0.9
+0.62* 0.83
+0.50* 0.73
+1.6 * 2.1
+2.0 * 2.2
+3.3 * 3.8
+2.3 * 2.5
+0.43*
+
+18
+
+59
+27
+
+160
+30
+39
+37
+61
+
+17
+59
+27
+160
+30
+39
+37
+
+Page
+
+Uame
+
+D-133
+
+FMMM32
+
+Operation
+
+FAST MEMORY MATRIX MULTIPLY (<=32)
+
+Typical
+Execution
+Time/Loop
+(us)
+
+Program
+Size
+(AP120B
+PS words)
+
+167 I 333
+
+167 I 333
+
+0.41*
+
+33
+
+----~----------------------------~-------~-------------------------
+
+FFT OPERATIONS
+
+-------------------~-------------------------------~---------------
+
+D-136
+D-138
+D-140
+D-142
+D-144
+D-145
+
+CFFT
+CFFTB
+RFFT
+RFFTB
+CFFTSC
+RFFTSC
+
+COMPLEX TO COMPLEX FFT (IN PLACE)
+COMPLEX TO COMPLEX FFT (NOT IN PLACE)
+REAL TO COMPLEX FFT (IN PLACE)
+REAL TO COMPLEX FFT (NOT IN PLACE)
+COMPLEX FFT SCALE
+REAL FFT SCALE AND FORMAT
+
+0.28
+0.20*
+0.18*
+0.14*
+0.8 *
+0.7
+
+0.28*
+0.8
+1. 0 *
+0.7
+0.7
+0.7
+0.50*
+
+0.40
+0.28
+0.27
+0.20
+0.8
+
+191
+248
+260
+316
+42
+59
+
+189
+246
+258
+314
+42
+59
+
+0.28
+0.8
+1. 2
+0.8
+0.8
+0.8
+0.65
+
+106
+25
+41
+13
+16
+25
+100
+
+106
+25
+41
+13
+16
+25
+100
+
+1. 3
+
+AUXILIARY OPERATIONS
+D-148
+D-150
+D-151
+D-153
+D-154
+D-155
+D-156
+
+CONV
+CONVOLUTION (CORRELATION)
+DEQ22 · DIFFERENCE EQUATION, 2 POLES, 2 ZEROS.
+VPOLY
+VECTOR POLYNOMIAL EVALUATION
+VSUM
+VECTOR SID.1 OF ELEMENTS INTEGRATION
+VTRAPZ VECTOR TRAPEZOIDAL RULE. INTEGRATION
+VS HIPS VECTOR SIMPSONS 1/3 RULE INTEGRATION
+WIENER WIENER LEVINSON ALGORITID!
+SIGNAL PROCESSING OPERATIONS
+
+(optional)
+
+-----------------------------~---~-----------~---------------------
+
+D-159
+D-160
+D-162
+D-163
+D-164
+D-165
+D-166
+D-167
+D-168
+D-169
+D-171
+D-173
+D-175
+D-177
+
+HIST
+.HISTOGRAM
+HANNING WINDOW MULTIPLY
+HANN
+ASPEC
+ACCUMULATING AUTO-SPECTRUM
+CSPEC
+ACCUMULATING CROSS-SPECTRUM
+VAVLIN VECTOR.LINEAR AVERAGING
+VAVEXP VECTOR EXPONENTIAL AVERAGING
+VDBPHR . VECTOR CONVERSION TO DB (POWER)
+TRANS
+TRANSFER FID1CTION
+CO HER
+COHERENCE FUNCTION
+ACORT
+AUTO-CORRELATION (TIME-DOMAIN)
+ACORF
+AUTO-CORRELATION (FREQUENCY-DOMAIN)
+CCORT
+CROSS-CORRELATION (THIE-DOMAIN)
+CC ORF
+CROSS-CORRELATION (FREQUENCY-DOMAIN)
+TCONV
+POSTTAPERED CONVOLUTION (CORRELATION)
+TABLE
+
+Mill10RY
+
+OPERATIONS
+
+1. 3
+
+0.7
+
+1. 4
+0.8
+
+1. 3
+
+1. 5
+
+2~7
+
+2.7
+1. 3
+
+0.8
+0.8
+1. 2
+3.6
+4.3
+0.29*
+1.-80*
+0.29*
+2.58*
+0.30*
+
+1.3
+1. 3
+
+3.6
+4.8
+0.29
+2.70
+0.29
+3.93
+0.30
+
+69
+69
+43
+43
+15
+15
+. 30
+30
+51
+46
+52
+47
+74
+74
+75
+75
+88
+93
+113 113
+376. 357
+113 113
+388 365
+113 113
+
+(optional)
+
+----------~-----~-------------------------~------------------------
+
+D-180
+
+MU10V
+
+0.2
+
+VECTOR MOVE (MD TO TM)
+B
+
+4
+
+0.3
+
+7
+
+7
+
+· Typtcal
+Execution
+Page
+
+Name
+
+. Time/Loop
+
+Operation
+
+(us)
+
+D-181
+D-182
+D-183
+D-184
+D-185
+D-186
+D-187
+D-188
+D-189
+D-190
+D-191
+D-192
+D-193
+D-194
+D-195
+D-196
+D-197
+D-198.
+D-199
+D-200
+D-201 ·
+
+TMMOV
+MTIMOV
+TMU10V
+TTIMOV
+MMTADD
+:mtTSUB
+MHTI1UL
+
+HTMADD'
+MTMSUB
+THMSUB
+MTMMUL
+MTTADD
+MTTSUB
+TMTSUB
+MTTI1UL
+.TTMADD
+TTI-1SUB
+TTilMUL
+TTTADD
+TTTSUB
+TTT11UL
+
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+VECTOR
+
+MOVE (TH TO MD)
+MOVE WITH INCREMENT (MD TO. TM)
+MOVE WITH INCREMENT (TM TO MD)
+MOVE WITH INCREMENT· (TM TO TH)
+ADD (MD+MD TO TM)
+SUBTRACT nm-MD TO TH)
+MULTIPLY (MD*HD TO· TM)
+ADD (MD+TM TO tID) ·
+SUBTRACT (MD-TH TO MD)
+SUBTRACT . (TH-MD TO MD)
+MULTIPLY (MD*TH TO MD)
+ADD (MD+TM TO TH)
+SUBTRACT (lID-TM TO TM)
+SUBTRACT (TM-MD -TO TH)
+MULTIPLY (MD*TH TO TM)
+ADD (TM+TH TO MD)
+SUBTRACT (TM-TI1 TO MD)
+MULTIPLY (TM*TH TO MD)
+ADD (TH+TH TO TH)
+SUBTRACT (TH-TH TO TH)
+HULTIPLY (TM*TM TO TM)
+
+Program
+Size
+
+(AP120B
+PS words)
+
+167
+
+333
+
+167
+
+0.2
+0.5
+0.3
+
+0.3
+0.5
+0.3
+0.5
+0.7
+0.7
+0.7
+0.7
+0.7
+0.7
+0.7
+
+5
+7
+
+12
+
+12
+
+12
+
+o.s
+
+0.5·
+0.5
+0.5
+0.5
+0.5
+0.5
+
+o.s
+o.5·
+
+o.5
+
+0.5
+0.5
+0.5
+0.5
+0.5
+0.5
+0.7
+0.7
+0.7
+
+0.5
+0.5
+0.5
+0.5
+0.5
+0.5
+0.7
+0.7
+0.7
+
+3.8
+3.8
+4.7
+4.0
+4.2
+4.4
+4.8
+8.7
+
+@ 3.8
+@ 3.8
+
+333
+7
+
+7
+
+7
+
+17
+17
+17
+17
+17
+17
+17
+16
+18
+16
+17
+
+13
+13
+9
+9
+9
+9
+9
+
+17
+17
+
+16
+18
+16
+17
+18
+17
+17
+
+9
+9
+
+9
+9
+
+12
+
+12
+
+28
+28
+37
+37
+28
+31
+31
+46
+46
+
+28
+28
+37
+37
+28
+
+18
+
+APAL-CALLABLE UTILITY OPERATIONS
+D-203
+D-204
+D-205
+D-206
+D-207
+D-2 08
+D-209
+D-210
+D-211
+D-212
+D-213
+D-214
+D-215
+D-216
+D-217
+D-218
+D-219·
+D-220
+D-221
+D-222
+D-223
+D-224
+D-225·
+
+DIV
+SCALAR DIVIDE
+SQRT
+SCALAR SQUARE ROOT
+LOG
+SCALAR LOGARITHM (BASE 10)
+LN
+SCALAR NATURAL LOGARITHM
+EXP
+SCALAR EXPONENTIAL
+SIN
+SCALAR SINE
+COS
+SCALAR COSINE
+ATAH
+SCALAR ARCTANGENT
+ATN2
+. SCALAR ARCTANGENT OF Y/X
+SPFLT
+FLOAT S-PAD INTEGER
+SPMUL
+S-PAD MULTIPLY
+VFCLl
+VECTOR FUNCTION CALLER (1 ARGUMENT)
+VFCL2
+VECTOR FUNCTION CALLER (2 ARGUMENT)
+BITREV COMPLEX VECTOR BIT REVERSE ORDERING
+REALTR REAL FFT UNRAVEL AND FINAL PASS
+FFT2
+RADIX 2 FFT FIRST PASS
+FFT4
+RADIX 4 FFT PASS
+FFT2B
+RADIX 2 FFT FIRST PASS + BIT REVERSE
+Rfo_DIX 4 FFT FIRST PASS+ BIT.REVERSE
+FFT4B
+STSTAT SET FFT MODE STATUS BITS
+CLSTAT CLEAR FFT MODE STATUS BITS
+LOGARITHM (BASE 2)
+ILOG2
+ADVANCE POINTERS AFTER RADIX 2 FFT
+ADV2
+B
+
+5
+
+@ 4. 7
+@ 4.0
+@ 4.2
+@ 4.4
+@ 4.8
+@ 8.7
+13. 8 @13.8
+0.8 @ 0.8
+2.3 @ 2.3
+0.8
+1. 0
+
+1. 0
+
+0.9
+0.4
+
+1. 0
+1. 4
+
+3.7
+
+0.7
+2.7
+5.3
+
+1. 3
+
+2. 7
+
+1. 3
+
+5.3
+2. 7
+5.0 @ s.o
+0.5 @ o.s
+4.0 @ 4.0
+0.7 @ 0. 7
+
+31
+
+31
+46
+46
+
+5
+
+5
+
+14
+10
+
+14
+10
+
+11
+
+11
+
+45
+
+43
+
+51
+
+51
+16
+81
+25
+44
+
+16
+81
+25
+44
+19
+19
+19
+8
+
+19
+
+19
+19
+8
+
+Page
+
+D-226
+D-227
+
+Name
+
+Operation
+
+ADV4
+SET24B
+
+notes: II.ti
+
+*
+
+@
+
+ADVANCE POINTERS AFTER RADIX 4 FFT
+SETUP FOR FFT2B AND FFT4B
+
+Typical
+Execution
+Time/Loop
+(us).
+
+Program
+Size
+(AP120B
+PS words)
+
+--------333
+167
+
+--------167
+333
+
+0.7
+1. 2
+
+@
+@
+
+0.7
+1.2
+
+Timing host system dependent
+Refer to description of routine fdr explanation of timing
+Total execution time
+
+B
+
+6
+
+8
+8
+
+8
+8
+
+**********
+
+*
+*
+*
+
+VADD
+
+**********
+
+*
+*
+*
+
+---- VECTOR ADD
+
+*
+*
+*
+
+~---
+
+**********
+
+PURPOSE:
+
+VADD
+
+*
+*
+*
+
+**********
+
+To add the elements of two vectors.
+
+FORTRAN CALL: CALL VADD (A, LB J, C, K~, N)
+PARAMETERS:
+
+A
+I
+B
+J
+
+=
+c =
+K
+N
+
+=
+
+Source vector base address
+A address increment
+Source vector base address
+B address increment
+Destination vectQr base address
+c address increment
+Element count
+
+= A(mI) +
+
+FORMULA:
+
+C(mK)
+
+DESCRIPTION:
+
+Adds N elements 6f vector beginning at address
+A to N elements of vector beginning at address B,
+and stores results in vector.beginning at
+address C.
+
+EXAMPLE:
+
+CALL VADD(O,l,200,1,400,1,lOO)
+Stores into AP120B main data memory locations
+400,401, •.•• ,498,499 the sum of the numbers
+in locations 0 and 200, 1 and 201,
+'.
+98 and 298, 99 and 299.
+
+B(mJ)
+
+for m=O to N-1
+
+....
+
+EXECUTION
+TIME/LOOP:
+(us)
+
+BEST
+
+o.s
+
+(B)
+
+TYPICAL
+0.8
+
+1.0 (A)
+
+1. 3
+
+WORST
+1. 0
+1. 5
+
+SETUP(us)
+(167 ns memory)
+2.7
+(333 ns memory)
+1. 2
+
+PROGRAM SIZE: 17
+(AP words)
+10
+APAL CALL:
+SCRATCH:
+
+(167 ns memory)
+(333 ns memory)
+
+JSR VADD
+SP(0,2,4,14,15),DPX(O~l),DPY(O),
+
+(167 ns memory)
+
+FA,MD, 111
+SP(0,2,4,6),DPX(O),FA~MD
+
+E1{I'ERNALS:
+
+(333 ns memory)
+
+(167 ns memory)
+
+SPFLT
+. None
+
+(333 ns memory)
+
+D
+
+21
+
+**********
+
+**
+*
+
+CVMAGS
+
+**********
+
+** ---*
+
+COMPLEX VECTOR MAGNITUDE SQUARED ----
+
+**********
+PURPOSE:
+
+*
+*
+*
+
+CVMAGS
+
+**********
+
+To compute the squared magnitude of
+the elements of a complex vector.
+
+FORTRAN CALL: qALL
+
+CVMAGS(A,I,C,K~N)
+
+PARAMETERS:
+
+A =·source vector base address
+I
+A address increment
+c = D~stination vector base address
+K = c address increment
+N = Complex element count
+
+FORMULA:
+
+C(mK)
+
+DESCRIPTION~
+
+For each of the N complex elements
+of the complex vector beginning at address A,
+th~ square of the real p~rt is added to the
+square of the imaginary part, and the result
+is stored into the real vector beginning at
+address C.
+
+EXAMPLE:
+
+CALL CVMAGS(0,2,200~1,50)
+Stores into. AP120B main data memory
+locations 200,201,.o •• ,248,249
+th~ sum of the squares of the numbers in
+locations 0 and 1, 2 and 3, ~.. • ,
+96 and 97, 98 and 99.
+
+EXECUTION
+TIME/LOOP:
+(us)
+
+BEST
+0.7
+1. 2
+
+= A(mI)**2
+
+TYPICAL
+0.7
+1. 2
+
++ A(mI+l)**2 for m=O to N-1
+
+WORST
+0.8
+l. 3
+
+SETUP(us)
+(167 ns memory)
+1. 7
+(333 ·OS memory)
+2.0
+(167 ns memory)
+( 333 ns memory)
+
+PROGRAM SIZE: 13
+(AP words) · 18
+APAL CALL:
+SCRATCH:
+EXTERNALS:
+
+*
+*
+*
+
+JSR CVMAGS
+SP(0,2,4),DPX(O-l),DPY(O),FA.FM,?ID
+None
+
+D
+
+95
+
+

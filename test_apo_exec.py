@@ -32,8 +32,17 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 NOVA = os.path.join(HERE, "..", "simh", "BIN", "nova")
 SCRIPT = "/tmp/test_hsr.simh"
+# VDIV IS IN THE DEFAULT SET NOW THAT IT WORKS.  It is the only routine
+# here that exercises the DIVIDER, table memory, the exponent construction
+# (LDSPE/COM/MDPX) and the sign machinery -- the other nine are add and
+# multiply on positive data and passed throughout the session in which
+# every operand in main data was twice its nominal value.  VDIV1 and VDIV2
+# are single-element cases that separate a scale error from a bias one.
 DEFAULT = ["VADD", "VSUB", "VMUL", "VSMUL", "VMOV", "VCLR",
-           "VNEG", "VSQ", "VSADD"]
+           "VNEG", "VSQ", "VSADD", "VDIV", "VDIV1", "VDIV2", "VABS", "VMA", "VLOG",
+           "VSQRT", "VSQRT2",
+           "VSIN", "VSIN2", "VSIN3", "VSIN4", "VSIN5", "VEXP", "VOR", "VAND", "VINT", "VCOS", "VALOG",
+           "VATAN", "VATAN2", "MAXV", "DOTPR", "CVADD", "CVMUL", "CVMUL2", "VMAX", "MMUL", "CFFT", "CFFT4", "CFFTI", "MINV", "HANN", "HANN2", "VDBPWR", "VAVLIN", "ASPEC", "ASPEC1", "CSPEC", "TRANS", "CVCONJ", "CVNEG", "CVMOV", "CVFILL", "CVCOMB", "CVMAGS", "CRVMUL", "CRVDIV", "CRVADD", "CRVSUB", "CVMA", "VMIN", "VCLIP", "VLIM", "LVGT", "LVGE", "LVEQ", "LVNE", "LVNOT", "VLMERG", "VRAMP", "VFILL", "VLN", "VATN2", "VFRAC", "VSWAP", "VTSMUL", "VTSADD", "VSMA", "VAM", "VMSB", "VSBM", "VMMA", "VMMSB", "VAAM", "VSBSBM", "VSMSA", "MTRANS", "MVML3", "MATINV", "SOLVEQ", "EIGRS", "IMTQL2", "TRED2", "EIGRS3", "MATINV2", "SOLVEQ2", "VMAXMG", "CVRCIP", "ACORT", "CCORT", "ACORT4"]
 
 
 def ieee_from_octal(hi, lo):
@@ -87,6 +96,30 @@ def run(routine):
     if SELF_TEST:
         want = list(want)
         want[0] += 1.0
+    # THE DIVIDER IS ITERATIVE, so exact equality is the wrong test for it.
+    # VDIV computes a reciprocal by Newton-Raphson -- its own header names
+    # the series -- and converges to about 1e-7 of the true quotient.  The
+    # add/multiply routines are exact and stay on an exact comparison; only
+    # the divider gets a tolerance, and it is tight enough that the 2x, 4x
+    # and 256x errors this file records would all still fail it.
+    # The DIVIDER and the SERIES routines are iterative: VDIV converges by
+    # Newton-Raphson and VLOG/VSQRT evaluate a polynomial, so exact equality
+    # is the wrong test for them.  The add/multiply routines stay exact.
+    # VDBPWR states its OWN accuracy in its header -- "ACCURACY: ERROR LESS
+    # THAN +- 0.1 DB" -- and dB is an ABSOLUTE scale, so a relative bound is
+    # the wrong test (its first element is 0 dB, where relative tolerance is
+    # meaningless -- the same trap VCOS hit with cos(PI/2)).  Checked against
+    # the routine's own spec, tightened 10x: the observed errors are 0.0019,
+    # 0.0005 and 0.0014 dB.
+    if routine == "VDBPWR":
+        ok = len(got) == len(want) and all(
+            abs(g - w) <= 0.01 for g, w in zip(got, want))
+        return ok, "expected %s, got %s" % (want, got)
+    if routine.startswith("VDIV") or routine in ("VLOG", "VSQRT", "VSQRT2", "VEXP",
+                            "VSIN", "VSIN2", "VSIN3", "VSIN4", "VSIN5", "VCOS", "VALOG", "VATAN", "VATAN2", "HANN2", "TRANS", "CRVDIV", "VLN", "VATN2", "VFRAC", "EIGRS3"):
+        ok = len(got) == len(want) and all(
+            abs(g - w) <= 1e-6 * max(1.0, abs(w)) for g, w in zip(got, want))
+        return ok, "expected %s, got %s" % (want, got)
     return (got == want), "expected %s, got %s" % (want, got)
 
 

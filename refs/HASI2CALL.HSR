@@ -1,0 +1,48 @@
+       SUBROUTINE FCVADD
+     * (P 1,P 2,P 3,P 4,P 5,P 6,P
+     * 7)
+       REAL P 1(1)
+       INTEGER P 2
+       REAL P 3(1)
+       INTEGER P 4
+       REAL P 5(1)
+       INTEGER P 6
+       INTEGER P 7
+        COMMON /APLDCM/ IPAV( 33),NU2,IDLM,NU1,IPPAAD,IPPAND,IOVS(33),
+     *  LMT(10,3),LMTE
+      IF (IDLM.NE.  1) CALL L 101
+      IPAV(1)=    7
+      IPA=IPPAAD
+      IPAV(  2)=IPA
+      IPA=IPA+    1 *     1
+      IPAV(  3)=IPA
+      CALL APPUT (P  1,IPAV(  2),IPAV(  3)-IPAV(  2),1)
+      IPA=IPA+    1 *     1
+      IPAV(  4)=IPA
+      CALL APPUT (P  2,IPAV(  3),IPAV(  4)-IPAV(  3),1)
+      IPA=IPA+    1 *     1
+      IPAV(  5)=IPA
+      CALL APPUT (P  3,IPAV(  4),IPAV(  5)-IPAV(  4),1)
+      IPA=IPA+    1 *     1
+      IPAV(  6)=IPA
+      CALL APPUT (P  4,IPAV(  5),IPAV(  6)-IPAV(  5),1)
+      IPA=IPA+    1 *     1
+      IPAV(  7)=IPA
+      CALL APPUT (P  5,IPAV(  6),IPAV(  7)-IPAV(  6),1)
+      IPA=IPA+    1 *     1
+      IPAV(  8)=IPA
+      CALL APPUT (P  6,IPAV(  7),IPAV(  8)-IPAV(  7),1)
+      IPA=IPA+    1 *     1
+      IPAV(  9)=IPA
+      CALL APPUT (P  7,IPAV(  8),IPAV(  9)-IPAV(  8),1)
+      CALL APRUN (    16,1,1,0,13)
+      CALL APWD
+      CALL APEXC
+      RETURN
+      END
+        BLOCK DATA
+        COMMON /APLDCM/ IPAV( 33),NU2,IDLM,NU1,IPPAAD,IPPAND,IOVS(33),
+     *  LMT(10,3),LMTE
+        DATA NU2,IDLM,NU1,IPPAAD,IOVS(2),LMTE
+     *  /0,0,0,0,0,0/
+        END

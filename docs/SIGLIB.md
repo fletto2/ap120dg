@@ -1,0 +1,940 @@
+# SIGSRC -- routine reference
+
+**Reconstructed from `[327,010]SIGSRC.APS`.**  FPS published no manual for
+this library that survives in any archive searched (bitsavers,
+archive.org, and the ten manuals transcribed in `docs/ocr/`).
+Every line below is quoted or derived from the shipped source;
+where a routine does not state something, this says so rather
+than guessing.
+
+
+## Contents
+
+| routine | entry | parameters | s-pads documented |
+|---|---|---|---|
+| [VAVLIN](#vavlin) | VAVLIN | 6 | 8 |
+| [VAVEXP](#vavexp) | VAVEXP | 6 | 8 |
+| [HIST](#hist) | HIST | 7 | 12 |
+| [HANN](#hann) | HANN | 6 | 9 |
+| [VDBPWR](#vdbpwr) | VDBPWR | 6 | 10 |
+| [ASPEC](#aspec) | ASPEC | 3 | 4 |
+| [CSPEC](#cspec) | CSPEC | 4 | 5 |
+| [TRANS](#trans) | TRANS | 4 | 5 |
+| [COHER](#coher) | COHER | 5 | 6 |
+| [ACORT](#acort) | ACORT | 4 | 5 |
+| [CCORT](#ccort) | CCORT | 5 | 6 |
+| [ACORF](#acorf) | ACORF | 4 | 5 |
+| [CCORF](#ccorf) | CCORF | 5 | 5 |
+| [TCONV](#tconv) | TCONV | 9 | 1 |
+| [DECFIR](#decfir) | DECFIR | 6 | 1 |
+| [ENVEL](#envel) | ENVEL | 3 | 9 |
+| [HLBRT](#hlbrt) | HLBRT | 3 | 8 |
+| [PKVAL](#pkval) | PKVAL | 7 | 12 |
+| [VXCS](#vxcs) | VXCS | 6 | 10 |
+| [SHPHU](#shphu) | SHPHU | 6 | 12 |
+| [UNWRAP](#unwrap) | UNWRAP | 3 | 13 |
+| [CPSTRM](#cpstrm) | CPSTRM | 3 | 13 |
+| [UNWCOR](#unwcor) | UNWCOR | - | 0 |
+| [RDFT](#rdft) | RDFT | 8 | 14 |
+| [WIENER](#wiener) | WIENER | 6 | 23 |
+| [LPAUTO](#lpauto) | LPAUTO | 11 | 32 |
+| [CFFTI](#cffti) | CFFTI | 3 | 12 |
+| [RFFTI](#rffti) | RFFTI | 3 | 4 |
+| [BITRVI](#bitrvi) | BITRVI | - | 10 |
+| [IFFT4](#ifft4) | IFFT4 | - | 11 |
+| [IFFT4G](#ifft4g) | IFFT4G | - | 23 |
+| [IREALT](#irealt) | IREALT | - | 16 |
+
+32 routines.
+
+
+## VAVLIN
+
+`$ENTRY VAVLIN, 6`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS OF SOURCE VECTOR |
+| 1 | `I` | INCREMENT BETWEEN ELEMENTS OF A |
+| 2 | `B` | ADDRESS OF CURRENT NUMBER OF FRAMES |
+| 3 | `C` | BASE ADDRESS OF DESTINATION VECTOR C |
+| 4 | `K` | INCREMENT BETWEEN ELEMENTS OF C |
+| 5 | `N` | NUMBER OF ELEMENTS IN C |
+| 15 | `CC` |  |
+| 50 | `BITMAP` |  |
+
+
+    ---ABSTRACT---
+    FORMULA: C(MK)=C(MK)*B/(B+1) + A(MI)/(B+1) FOR M=0 TO N-1
+    EQUIPMENT: AP-120 WITH FAST MEMORY
+    SIZE: 20 LOCATIONS + DIV (28) + SPUFLT (8) = 56 LOCATIONS
+    REVISED:  SEP 79  D.GANGULY.ZERO ARRAY SIZE TEST ADDED.
+    FORTRAN: CALL VAVLIN(A,I,B,C,K,N)
+    S-PAD PARAMETERS
+    SCRATCH:  SP(0,3,14,15), DPX(0-2), DPY(0-1), FA,FM,MD,TM
+
+
+## VAVEXP
+
+`$ENTRY VAVEXP, 6`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS OF SOURCE VECTOR |
+| 1 | `I` | INCREMENT BETWEEN ELEMENTS OF A |
+| 2 | `B` | ADDRESS OF DISCOUNT FACTOR |
+| 3 | `C` | BASE ADDRESS OF DESTINATION VECTOR C |
+| 4 | `K` | INCREMENT BETWEEN ELEMENTS OF C |
+| 5 | `N` | NUMBER OF ELEMENTS IN C |
+| 15 | `CC` |  |
+| 50 | `BITMAP` |  |
+
+
+    ---ABSTRACT---
+    FORMULA: C(MK)=C(MK)*(B-1)/B + A(MI)/B FOR M=0 TO N-1
+    EQUIPMENT: AP-120 WITH FAST MEMORY
+    SIZE: 21 LOCATIONS + DIV (28) + SPUFLT (8) = 57 LOCATIONS
+    REVISED:  SEP 79  D.GANGULY.   ZERO ARRAY SIZE TEST ADDED.
+    FORTRAN: CALL VAVEXP(A,I,B,C,K,N)
+    S-PAD PARAMETERS
+    SCRATCH:  SP(0,3,14,15), DPX(0-2), DPY(0-1), FA,FM,MD,TM
+
+
+## HIST
+
+`$ENTRY HIST, 7`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS, SOURCE VECTOR |
+| 1 | `I` | SOURCE VECTOR INCREMENT |
+| 1 | `TA` |  |
+| 2 | `C` | BASE ADDRESS, DEXTINATION VECT |
+| 2 | `TB` |  |
+| 3 | `D` |  |
+| 3 | `N` | LENGTH OF SOURCE VECTOR |
+| 4 | `NB` | NUMBER OF BINS |
+| 5 | `HMX` | MAXIMUM VALUE OF A(I) |
+| 6 | `HMN` | MINIMUM VALUE |
+| 7 | `J` |  |
+| 26 | `BITMAP` |  |
+
+
+    FORMULA:  C(J(M)) = C(J(M)) + 1.0   FOR M=0 TO N-1
+    SIZE:         36 + SPUFLT (8) + DIV (28) = 72 LOCATIONS
+    SCRATCH:      SP(0,3,7,13-15),DPX(-1 TO 3), DPY(-2 TO 0),FA,FM,MD,TM
+
+
+## HANN
+
+`$ENTRY HANN, 6`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS OF SOURCE VECTOR A |
+| 1 | `I` | INCREMENT BETWEEN ELEMENTS OF A |
+| 2 | `C` | BASE ADDRESS OF DESTINATION VECTOR C |
+| 3 | `K` | INCREMENT BETWEEN ELEMENTS OF C |
+| 4 | `N` | NUMBER OF ELEMENTS IN C |
+| 5 | `F` | NORMALIZATION FLAG |
+| 13 | `ANG` | ADDRESS OF COSINE TABLE VALUE |
+| 14 | `WD` | COSINE TABLE ADDRESS INCREMENT |
+| 58 | `BITMAP` |  |
+
+
+    ---ABSTRACT---
+    FORMULA: C(MK)=W*A(MI)*(1.0-COS((2PI*M)/N))
+    EQUIPMENT: AP120 WITH EITHER MEMORY
+    SIZE:  24 LOCATIONS + STATUS (19 LOCATIONS) = 43 LOCATIONS
+    REV 2.3:  SEP 79  D.GANGULY.  ADDED ZERO ARRAY SIZE TEST.
+    FORTRAN: CALL HANN(A,I,C,K,N,F)
+    S-PAD PARAMETERS
+    F=0 MEANS UNNORMALIZED HANNING WINDOW
+    F=1 MEANS NORMALIZED HANNING WINDOW
+    SCRATCH: SP(0,2,4,15-17), DPX(0), DPY(0), DPA UNCHANGED
+
+
+## VDBPWR
+
+`$ENTRY VDBPWR, 6`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS OF SOURCE VECTOR |
+| 1 | `I` | INCREMENT BETWEEN ELEMENTS OF A |
+| 2 | `B` | ADDRESS OF SCALAR REFERENCE VALUE (0 DB) |
+| 3 | `C` | BASE ADDRESS OF DESTINATION VECTOR C |
+| 4 | `K` | INCREMENT BETWEEN ELEMENTS OF C |
+| 5 | `N` | NUMBER OF ELEMENTS IN C |
+| 13 | `C27` |  |
+| 14 | `UE` |  |
+| 15 | `SE` |  |
+| 50 | `BITMAP` |  |
+
+
+    ---ABSTRACT---
+    FORMULA: C(MK)=10.0 * LOG10 (A(MI)/B) FOR M=0 TO N-1
+    ACCURACY:  ERROR LESS THAN +- 0.1 DB.
+    EQUIPMENT: AP-120 WITH EITHER MEMORY
+    SIZE: 50 LOCATIONS + DIV (28) = 78 LOCATIONS
+    FORTRAN: CALL VDBPWR(A,I,B,C,K,N)
+    REVISION: SEP 79.  D.GANGULY. ZERO ARRAY SIZE TEST ADDED.
+    S-PAD PARAMETERS
+    SCRATCH:  SP(0,3-5,13-15), DPX(-1 TO 2), DPY(-2 TO 3), FA,FM,MD,TM
+
+
+## ASPEC
+
+`$ENTRY ASPEC, 3`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS OF SOURCE VECTOR (COMPLEX) |
+| 1 | `C` | BASE ADDRESS OF DESTINATION VECTOR C  (REAL) |
+| 2 | `N` | NUMBER OF ELEMENTS IN C |
+| 4 | `BITMAP` |  |
+
+
+    ---ABSTRACT---
+    FORMULA:  C(M) = C(M) + A(2M)**2 + A(2M+1)**2    FOR M=0 TO N-1
+    EQUIPMENT: AP-120 WITH EITHER MEMORY
+    SIZE: 9 + SCJMA (15) = 24
+    REVISION:  SEP 79  D.GANGULY. ZERO ARRAY SIZE TEST ADDED.
+    FORTRAN: CALL ASPEC(A,C,N)
+    S-PAD PARAMETERS
+    SCRATCH:  SP(0-6),DPX(0),FA,FM,MD
+
+
+## CSPEC
+
+`$ENTRY CSPEC, 4`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS OF SOURCE VECTOR (COMPLEX) |
+| 1 | `B` | BASE ADDRESS OF SOURCE VECTOR (COMPLEX) |
+| 2 | `C` | BASE ADDRESS OF DESTINATION VECTOR C  (COMPLEX) |
+| 3 | `N` | NUMBER OF COMPLEX ELEMENTS |
+| 8 | `BITMAP` |  |
+
+
+    ---ABSTRACT---
+    FORMULA:  C(2M)+IC(2M+1) = (C(2M)+IC(2M+1)) + (A(2M)-IA(2M+1))*(B(2M)+IB(2M+1))
+    EQUIPMENT: AP-120 WITH EITHER MEMORY
+    SIZE: 12 + CVMA (30) = 42
+    REVISION:  SEP 79  D.GANGULY. ZERO ARRAY SIZE TEST ADDED.
+    FORTRAN: CALL CSPEC(A,B,C,N)
+    S-PAD PARAMETERS
+    SCRATCH:  SP(0-8),DPX(0,1),DPY(0,1),FA,FM,MD
+
+
+## TRANS
+
+`$ENTRY TRANS, 4`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS OF AUTOSPECTRUM VECTOR (REAL) |
+| 1 | `B` | BASE ADDRESS OF CROSS-SPECTRUM VECTOR (COMPLEX) |
+| 2 | `C` | BASE ADDRESS OF DESTINATION VECTOR C  (COMPLEX) |
+| 3 | `N` | NUMBER OF COMPLEX ELEMENTS |
+| 8 | `BITMAP` |  |
+
+
+    ---ABSTRACT---
+    FORMULA:  C(2M)+IC(2M+1) = (B(2M)+IB(2M+1)) / A(M)      FOR M=0 TO N-1
+    EQUIPMENT: AP-120 WITH EITHER MEMORY
+    SIZE: 9  + CRVDIV (92) = 101
+    REVISION:  SEP 79  D.GANGULY. ZERO ARRAY SIZE TEST ADDED.
+    FORTRAN: CALL TRANS(A,B,C,N)
+    S-PAD PARAMETERS
+    SCRATCH:  SP(0-15),DPX(-2 TO 3),DPY(-4 TO 2),FA,FM,MD,TM
+
+
+## COHER
+
+`$ENTRY COHER, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS OF AUTO-SPECTRUM VECTOR (REAL) |
+| 1 | `B` | BASE ADDRESS OF AUTO-SPECTRUM VECTOR (REAL) |
+| 2 | `C` | BASE ADDRESS OF CROSS-SPECTRUM VECTOR C  (COMPL |
+| 3 | `D` | BASE ADDRESS OF DESTINATION VECTOR (REAL) |
+| 4 | `N` | NUMBER OF ELEMENTS |
+| 16 | `BITMAP` |  |
+
+
+    ---ABSTRACT---
+    FORMULA:  D(M) = (C(2M)**2 + C(2M+1)**2) / (A(M)*B(M))  FOR M=0 TO N-1
+    EQUIPMENT: AP-120 WITH EITHER MEMORY
+    SIZE: 22 + VDIV (75) + CVMAGS (13 FAST, 18 SLOW) = 110 (FAST MEM), 115 (SLOW ME
+    REVISION:  SEP 79  D.GANGULY. ZERO ARRAY SIZE TEST ADDED.
+    FORTRAN: CALL COHER(A,B,C,D,N)
+    S-PAD PARAMETERS
+    SCRATCH:  SP(0-15),DPX(-1 TO 3),DPY(-4 TO 2),FA,FM,MD,TM
+
+
+## ACORT
+
+`$ENTRY ACORT, 4`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS OF SOURCE VECTOR |
+| 1 | `C` | BASE ADDRESS OF DESTINATION VECTOR C |
+| 2 | `N` | ELEMENT COUNT FOR C (NUMBER OF LAGS) |
+| 3 | `M` | ELEMENT COUNT FOR A |
+| 12 | `BITMAP` |  |
+
+
+    ---ABSTRACT---
+    FORMULA: C(P) = SUM FROM Q=0 TO M-P-1 (A(P+Q) * A(Q))  FOR M=0 TO N-1
+    EQUIPMENT: AP-120 WITH EITHER MEMORY
+    SIZE: 12 + TCONV (112) = 124
+    N=8   M=128    0.29
+    REVISION:  SEP 79  D.GANGULY. ZERO ARRAY SIZE TEST ADDED.
+    FORTRAN: CALL ACORT(A,C,N,M)
+    S-PAD PARAMETERS
+    SCRATCH:  SP(0-15),DPA,DPX(0-31),DPY(0-31),FA,FM,MD
+
+
+## CCORT
+
+`$ENTRY CCORT, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS OF SOURCE VECTOR (OPERAND) |
+| 1 | `B` | BASE ADDRESS OF SOURCE VECTOR (OPERATOR) |
+| 2 | `C` | BASE ADDRESS OF DESTINATION VECTOR C |
+| 3 | `N` | ELEMENT COUNT FOR C (NUMBER OF LAGS) |
+| 4 | `M` | ELEMENT COUNT FOR A AND B |
+| 24 | `BITMAP` |  |
+
+
+    ---ABSTRACT---
+    FORMULA: C(P) = SUM FROM Q=0 TO M-P-1 (A(P+Q) * B(Q))  FOR M=0 TO N-1
+    EQUIPMENT: AP-120 WITH EITHER MEMORY
+    SIZE: 12 + TCONV (112) = 124
+    N=8   M=128    0.29
+    REVISION:  SEP 79  D.GANGULY. ZERO ARRAY SIZE TEST ADDED.
+    FORTRAN: CALL CCORT(A,B,C,N,M)
+    S-PAD PARAMETERS
+    SCRATCH:  SP(0-15),DPA,DPX(0-31),DPY(0-31),FA,FM,MD
+
+
+## ACORF
+
+`$ENTRY ACORF, 4`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `L` |  |
+| 0 | `V` |  |
+| 12 | `BITMAP` |  |
+| 1024 | `R` |  |
+| 2048 | `C` |  |
+
+
+    --- ABSTRACT ---
+    FORMULA AND PARAMETERS ARE THE SAME AS ACORT.
+    EQUIPMENT:  AP120B WITH EITHER MEMORY
+    SIZE:  82 + SETSP (28) + SAVESP (18) + SAVSP0 (10) + SPADD (1) + SPSUB (1)
+    N=8   M=128                  1.80             2.70
+    REVISION:  SEP 79  D.GANGULY. ZERO ARRAY SIZE TEST ADDED.
+    FORMULA:    C(PK)=SUM FROM Q=0 TO M-P-1 (A(P+Q)*A(Q))
+    CALL VCLR(APM,1,M)
+    CALL RFFT(A,MPM,1)
+    CALL VMUL(A,1,A,1,A,1,2)
+    CALL CVMAGS(AP2,2,AP2,2,MM1)
+    CALL VCLR(AP3,2,MM1)
+    CALL RFFTSC(A,MPM,-1,-1)
+    CALL RFFT(A,MPM,-1)
+    CALL VMOV(A,1,C,1,N)
+
+
+## CCORF
+
+`$ENTRY CCORF, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `L` |  |
+| 0 | `V` |  |
+| 24 | `BITMAP` |  |
+| 1024 | `R` |  |
+| 2048 | `C` |  |
+
+
+    --- ABSTRACT ---
+    FORMULA AND PARAMETERS ARE THE SAME AS CCORT.
+    EQUIPMENT:  AP120B WITH EITHER MEMORY
+    SIZE:  95 + SETSP (28) + SAVESP (18) + SAVSP0 (10) + SPADD (1) + SPSUB (1)
+    N=8   M=128                  2.58             3.93
+    REVISION:  SEP 79  D.GANGULY. ZERO ARRAY SIZE TEST ADDED.
+    FORMULA:    C(PK)=SUM FROM Q=0 TO M-P-1 (A(P+Q)*B(Q))
+    CALL VCLR(APM,1,M)
+    CALL VCLR(BPM,1,M)
+    CALL RFFT(A,MPM,1)
+    CALL RFFT(B,MPM,1)
+    CALL VMUL(A,1,B,1,A,1,2)
+    CALL CVMUL(BP2,2,AP2,2,AP2,2,MM1,-1)
+    CALL RFFTSC(A,MPM,-1,-1)
+    CALL RFFT(A,MPM,-1)
+    CALL VMOV(A,1,C,1,N)
+
+
+## TCONV
+
+`$ENTRY TCONV, 9`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 490 | `BITMAP` |  |
+
+
+    ---ABSTRACT---
+    THIS DOES A TAPERED CONVOLUTION (J<0) OR CORRELATION (J>0), WITH THE
+    FORMULA: C(PK)=SUM FROM Q=0 TO R (A((P+Q)I)*B(QJ)
+    EQUIPMENT:    AP-120B
+    FORTRAN: CALL TCONV(A,I,B,J,C,K,N,M,L)
+    SCRATCH:      SP(0-15.), DPX(0-31), DPY(0-31),DPA,FA,FM,MD
+    LOOP1B, WHICH GENERALLY DOES THE SAME THING AS
+    S-PAD PARAMETERS:
+
+
+## DECFIR
+
+`$ENTRY DECFIR, 6`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 120 | `BITMAP` |  |
+
+
+    ---ABSTRACT---
+    FORMULA:
+    K = 0 TO (N/D)-1.
+    EQUIPMENT:    AP-120B WITH EITHER MEMORY
+    SAMPLE CALL:  CALL CONV (A,B,C,D,N,M)
+    SCRATCH:      SP(0-16.), DPX(0-31), DPY(0-31)
+    COMPUTE THE SIZE OF THE INPUT DATA TO BE TRANSFERRED INTO DP'S.
+    CHECK THE SIZE OF THE X-ARRAY REMAINING.
+    THIS SUB LOOP DOES THE FOLLOWING:
+    THIS SUB-LOOP DOES THE SAME THING AS GETI WITH THE FOLLOWING
+
+
+## ENVEL
+
+`$ENTRY ENVEL, 3`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `IX` | BASE ADDR.X(T) |
+| 0 | `L` | FLAG FOR THE LEFT HALF WORD. |
+| 1 | `IE` | BASE ADDR OF ENVELOPE & H(X(T)). |
+| 2 | `N` | ARRAY SIZE INFORMATION. |
+| 4 | `BITMAP` |  |
+| 7 | `IXT` | TEMPORARY STORAGE FOR IX |
+| 8 | `IET` | TEMPORARY STORAGE FOR IE. |
+| 9 | `NT` | "        "     "   N. |
+| 1024 | `R` | FLAG FOR THE RIGHT HALF WORD. |
+
+
+    --- ABSTRACT ---
+    FORMULA USED:  E(T)=SQRT ( X**2 + H(X)**2 ).
+    SIZE:       42 APAL WORDS.
+    SCRATCH:       ALL S-PADS.
+    FORTRAN CALL:  CALL ENVEL(IX,IE,N).
+    START BY CHECKING THE ARRAY SIZE.
+
+
+## HLBRT
+
+`$ENTRY HLBRT, 3`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `IX` | BASE ADDRESS OF X(T). |
+| 0 | `L` | FLAG FOR LEFT HALF OF THE WORD. |
+| 1 | `IH` | BASE ADDRESS OF H{X(T)}. |
+| 2 | `N` | LOC.FOR ARRAY SIZE. |
+| 4 | `BITMAP` |  |
+| 6 | `IHT` | TEMP.LOC.FOR IH. |
+| 7 | `NT` | TEMP.LOC.FOR N. |
+| 1024 | `R` | FLAG FOR THE RIGHT HALF OF THE WORD. |
+
+
+    --- ABSTRACT ---
+    SIZE:     72 LOCATIONS
+    SCRATCH: SP(0-15),DPX(-4 TO 3),DPY(-4 TO 3),FA,FM,MD,TM.
+    FORTRAN CALL:  CALL HLBRT (IX,IH,N)
+    START BY CHECKING THE ARRAY SIZE.
+
+
+## PKVAL
+
+`$ENTRY PKVAL, 7`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `M` | BASE ADDR. OF INPUT NON NEGATIVE VECTOR. |
+| 1 | `PEAK` | BASE ADDRESS OF OUTPUT VECTOR OF PEAKS & VALLEYS. |
+| 2 | `N` | NUMBER OF ELEMENTS OF A & B. |
+| 3 | `MP` | BASE ADDRESS OF INDICIES OF A ELEMENTS PLACED IN B. |
+| 4 | `NP` | THE NUMBER OF PEAKS & VALLEYS SOUGHT. |
+| 5 | `R` | ADDR. OF RATIO OF LAST EXTREMUM TO CURRENT POINT. |
+| 6 | `MODE` | PEAK OR VALLEY SEARCH FLAG. |
+| 7 | `M0` |  |
+| 8 | `MINDX` |  |
+| 9 | `MAX` |  |
+| 10 | `TWO` |  |
+| 84 | `BITMAP` |  |
+
+
+    CALL PKVAL(A,B,N,C,NP,R,MODE)
+    --- ABSTRACT ---
+    FROM THE LAST PEAK OR VALLEY; IF IT DOES, IT IS DECLARED.  ONCE
+    FORMULA:
+    SIZE:76+41 EXTERNALS = 137
+    START BY CHECKING ARRAY SIZES.
+
+
+## VXCS
+
+`$ENTRY VXCS, 6`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `XADD` | BASE ADDRESS OF SOURCE VECTOR |
+| 1 | `YB` | BASE ADDRESS OF DESTINATION VECTOR |
+| 2 | `YINC` | ADDRESS INCREMENT ON DESTINATION VECTOR |
+| 3 | `WADD` | ADDRESS OF FREQUENCY PARAMETER |
+| 4 | `T0` | ADDRESS OF INITIAL PHASE |
+| 5 | `N` | NUMBER OF ELEMENTS IN SOURCE |
+| 14 | `STATUS` | SCRATCH |
+| 15 | `MASK` | SCRATCH |
+| 15 | `TBL1` | SCRATCH |
+| 36 | `BITMAP` |  |
+
+
+    --- ABSTRACT --
+    EQUIPMENT: AP 120 WITH EITHER MEMORY
+    SIZE: 42 LOCATIONS
+    FORTRAN: CALL VXCS(A,B,I,F,P,N)
+    S-PAD PARAMETERS
+    SCRATCH SP(14,15),DPX(0,3),DPY(-1,2,3),TM,FM,FA
+
+
+## SHPHU
+
+`$ENTRY SHPHU, 6`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS OF VECTOR A |
+| 0 | `DELTA` | DELTA = A(M+1)-A(M) |
+| 0 | `LAST` | HOLDS A(M) |
+| 1 | `COR` | CORRECTION FACTOR |
+| 1 | `I` | INCREMENT FOR A |
+| 1 | `LIMIT` |  |
+| 2 | `B` | ADDRESS OF EPSILON |
+| 2 | `T` | HOLDS A(M) + COR |
+| 3 | `C` | BASE ADDRESS OF VECTOR C |
+| 4 | `K` | INCREMENT FOR C |
+| 5 | `N` | COUNT OF C |
+| 50 | `BITMAP` |  |
+
+
+    --- ABSTRACT ---
+    FORMULA:
+    EQUIPMENT:     AP-120B
+    SIZE:          20 LOCATIONS
+    FORTRAN:       CALL SHPHU (A,I,B,C,K,N)
+    S-PAD PARAMETERS
+    SCRATCH:  SP(0,1,2,3,4,5,6), DPX(0,1,2), DPY(0,1), FA, FM, MD, TM
+    BEGIN BY CHECKING THE SIZE OF THE ARRAY.
+
+
+## UNWRAP
+
+`$ENTRY UNWRAP, 3`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDR OF X(T) |
+| 1 | `B` | BASE ADDR OF X(F) AND LOGMAG/PHASE OUT |
+| 2 | `NT` | NO. OF ELEMENTS IN X(T) |
+| 3 | `SGNX` | ADDRESS OF  SIGN OF DC COMPONENT =B+NT |
+| 4 | `BITMAP` |  |
+| 4 | `SHFT` | ADDRESS OF # SHIFTS TO DETREND =B+NT+1 |
+| 6 | `M` | ADDR OF NT*2**12, M=D+NT/2+1 |
+| 7 | `NR` | BASE ADDR OF NR(I): |
+| 8 | `C` | BASE ADDR OF TX(T) = B+NT |
+| 9 | `D` | BASE ADDR OF J*XP(F) = DX(F)/DF = RP+JIP, D=C+NT |
+| 10 | `E` | BASE ADDR OF POLAR X(F)=MAG(X(F)),PRNCPL VALUES, |
+| 11 | `PHIP` | BASE ADDR OF INTERMEDIATE PHIP(I),PRNCPL VALUES |
+| 12 | `PHIDVT` | BASE ADDR OF INTERMEDIATE PHI'(I),PHASE DERIV'S |
+
+
+    CALL UNWRAP(A,W,NT2)
+    --- ABSTRACT ---
+    SIZE:735 UNWRAP+1464 EXTERNALS=2421 (BASE 8)
+    BEGIN BY CHECKING THE SIZE OF THE ARRAY.
+
+
+## CPSTRM
+
+`$ENTRY CPSTRM, 3`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDR OF X(T) & CEPSTRUM OUTPUT. |
+| 1 | `B` | BASE ADDR OF X(F) AND LOGMAG/PHASE OUT |
+| 2 | `NT` | NO. OF ELEMENTS IN X(T) |
+| 3 | `SGNX` | ADDRESS OF  SIGN OF DC COMPONENT =B+NT |
+| 4 | `BITMAP` |  |
+| 4 | `SHFT` | ADDRESS OF # SHIFTS TO DETREND =B+NT+1 |
+| 6 | `M` | ADDR OF NT*2**12, M=D+NT/2+1 |
+| 7 | `NR` | BASE ADDR OF NR(I): |
+| 8 | `C` | BASE ADDR OF TX(T) = B+NT |
+| 9 | `D` | BASE ADDR OF J*XP(F) = DX(F)/DF = RP+JIP, D=C+NT |
+| 10 | `E` | BASE ADDR OF POLAR X(F)=MAG(X(F)),PRNCPL VALUES, |
+| 11 | `PHIP` | BASE ADDR OF INTERMEDIATE PHIP(I),PRNCPL VALUES |
+| 12 | `PHIDVT` | BASE ADDR OF INTERMEDIATE PHI'(I),PHASE DERIV'S |
+
+
+    CALL CPSTRM(A,W,NT2)
+    --- ABSTRACT ---
+    SIZE:750 UNWRAP+1464 EXTERNALS=2434 (BASE 8)
+    BEGIN BY CHECKING THE ARRAY SIZE.
+
+
+## UNWCOR
+
+`$ENTRY UNWCOR`
+
+
+_No `$EQU` parameter block found._
+
+
+_The header states no formula, size or abstract._
+
+
+## RDFT
+
+`$ENTRY RDFT, 8`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS OF THE TIME VECTOR. |
+| 1 | `B` | BASE ADDRESS OF TIME VECTOR. |
+| 2 | `F0` | THE ADDROF THE LEAST NON-NEGATIVE FREQUENCY VALUE. |
+| 3 | `T0` | ADDR. OF MOST NEGATIVE TIME VALUE. |
+| 4 | `NT` | THE NUMBER OF TIME PONTS. |
+| 5 | `NF` | THE NUBMER OF POSITIVE FREQUENCIES. |
+| 6 | `M` | THE ADDRESS OF THE TOTAL INPUT DATA INTERVAL. |
+| 7 | `I` | DIRECTION FLAG. |
+| 8 | `X` |  |
+| 9 | `NX` |  |
+| 10 | `DX` |  |
+| 11 | `Y` |  |
+| 12 | `DXI` |  |
+| 176 | `BITMAP` |  |
+
+
+    CALL RDFT(A,B,F0,T0,NT,NF,M,I)
+    I=  1 IF FORWARD TRANSFORM IS DESIRED,OR
+    -1 IF INVERSE TRANSFORM IS DESIRED
+    --- ABSTRACT ---
+    M=2*NF, WHICH GIVES THE TRUE RESOLUTION IN THE TIME DOMAIN.
+    SIZE: 305  (BASE 8)
+    EQUIPMENT: 167 OR 333 NS MEMORY
+    START BY CHECKING ARRAY SIZES.
+
+
+## WIENER
+
+`$ENTRY WIENER, 6`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `INV` |  |
+| 0 | `LR` | LENGTH OF FILTER |
+| 0 | `Y` |  |
+| 1 | `Q` |  |
+| 1 | `R` | ADDRESS OF AUTO-CORRELATION COEFF. |
+| 1 | `TEMP` |  |
+| 2 | `AL` |  |
+| 2 | `FL` |  |
+| 2 | `G` | ADDRESS OF RIGHT-HAND SIDE COEFFICIENTS |
+| 3 | `D` |  |
+| 3 | `F` | ADDRESS OF FILTER COEFFICIENTS |
+| 3 | `R2` |  |
+| 4 | `A` | ADDRESS OF PREDICTION ERROR OPERATOR |
+| 5 | `ISW` | SWITCH: +1 FOR GENERAL ALGORITHM, |
+| 7 | `L` |  |
+| 8 | `AJP` |  |
+| 8 | `FJRP` |  |
+| 9 | `FJWP` |  |
+| 9 | `RJP` |  |
+| 10 | `AKP` |  |
+| 11 | `RKP` |  |
+| 15 | `T` |  |
+| 33 | `BITMAP` |  |
+
+
+    --- ABSTRACT ---
+    EQUIPMENT:        AP-120B WITH EITHER MEMORY
+    SIZE:             67 LOCATIONS PLUS DIVIDE
+    SCRATCH:          SP:0-15.;  DPX: -3 TO +3;  DPY: -3 TO +3 (REL TO DPA)
+    WHAT THIS SUBROUTINE DOES:-------------------------------
+
+
+## LPAUTO
+
+`$ENTRY LPAUTO, 11`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `DENOM` | JSR DIV ARGUEMENT |
+| 0 | `MM1` | LOOP40 ITERATIONS |
+| 0 | `N` | LENGTH OF TIME SERIES |
+| 0 | `NUM` | JSR DIV ARGUEMENT |
+| 1 | `DUMMY` | JSR DIV SCRATCH |
+| 1 | `MINC` | LOOP40 INDEX |
+| 1 | `X` | VECTOR OF TIME SAMPLES |
+| 1 | `XNP` | X(NP) |
+| 2 | `AIP` | A(IP) |
+| 2 | `M` | ORDER OF FILTER |
+| 2 | `PPASSN` | PROBLEM PASS NUMBER |
+| 3 | `AIB` | A(IB) |
+| 3 | `RC` | VECTOR OF REFLECTION COEFFICIENTS |
+| 4 | `MP1` | M+1 |
+| 5 | `A` | VECTOR OF FILTER COEFFICIENTS |
+| 6 | `ALPHA` | VECTOR OF ENERGY TERMS PER ITERATION |
+| 7 | `R` | VECTOR OF AUTOCORRELATION COEFFICIENTS |
+| 8 | `IERADR` | ADDRESS OF ERROR STATUS |
+| 9 | `K` | LOOP12 INDEX |
+| 9 | `MINC2` | MINC+2 |
+| 10 | `MINC1` | MINC+1 |
+| 10 | `NPEND` | LOOP10 ITERATIONS |
+| 11 | `BASEX` | LOOP10 BASE ADDRESS OF X(1) |
+| 11 | `MH` | LOOP30 ITERATIONS |
+| 11 | `MINC20` | LOOP20 ITERATIONS |
+| 12 | `BASEIB` | LOOP30 BASE ADDRESS OF A(MINC2-2) |
+| 12 | `BASER` | LOOP20 BASE ADDRESS OF R(MINC2-1) |
+| 12 | `BASEXK` | LOOP10 BASE ADDRESS OF X(1+K) |
+| 15 | `BASEA` | LOOP20 BASE ADDRESS OF A(1) |
+| 15 | `BASEIP` | LOOP30 BASE ADDRESS OF A(2) |
+| 15 | `FLAG17` | PROBLEM PASS NUMBER |
+| 21 | `BITMAP` |  |
+
+
+    EQUIPMENT: AP-120B WITH STANDARD OR FAST MEMORY
+    SIZE:      115 + EXTERNALS = 171 LOCATIONS
+    SCRATCH:   SP(0,1,4,11-15),DPX(-4,-3,-1,0,1,2),DPY(-4 TO 3),FA,FM,TM,MD
+    S-PAD PARAMETERS:  (I=INPUT,O=OUTPUT)
+    CALL LPAUTO(N,IXADR,M,IRCADR,MP1,IAADR,IALADR,IRADR,IERADR)
+    S=0.
+
+
+## CFFTI
+
+`$ENTRY CFFTI, 3`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `C` | BASE ADDRESS OF ARRAY |
+| 1 | `N` | NUMBER OF COMPLEX PTS IN THE ARRAY |
+| 2 | `F` | DIRECTION: 1= FOWARD, -1= INVERSE |
+| 6 | `BITMAP` |  |
+| 11 | `MINC` | ARRAY INCREMENT BETWEEN REAL ELEMENTS (2) |
+| 12 | `WD` | W DELTA |
+| 13 | `MDEL` | MEMORY DELTA |
+| 14 | `FP` | PARAMETER FOR STSTAT (F) |
+| 14 | `ICOUNT` | I-LOOP COUNT |
+| 15 | `JCOUNT` | J-LOOP COUNT |
+| 15 | `M` | FROM STSTAT (M = LOG2(N)) |
+| 15 | `NP` | FOR STSTAT (N) |
+
+
+    N=32768 WITH 4.5K TMROM),
+    EQUIPMENT: AP-120B WITH EITHER MEMORY
+    SIZE:      32 + FFT2 (16) + FFT4 (79) + STATUS (19) + ADV (7)
+    SCRATCH:   SP(2-15), DPX(-4 TO 3), DPY(-4 TO 3), FA,FM,MD,TM
+    1.   CALL 'STSTAT'       THIS TAKES 'N' AND 'F', AND SETS THE BIT-REVERSE
+    CALL FFT4  (TO DO THE NEXT FFT PASS)
+    CALL ADV4  (TO ADVANCE TO THE NEXT PASS)
+    (CALL IFFT4), IS PERFORMED BEFORE DONE
+    5.  WHEN DONE, CALL 'CLSTAT' TO CLEAR THE BIT-REVERSE AND FFT-MODE
+
+
+## RFFTI
+
+`$ENTRY RFFTI, 3`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `C` | BASE ADDRESS OF REAL DATA VECTOR |
+| 1 | `N` | NUMBER OF REAL POINTS IN THE VECTOR |
+| 2 | `F` | DIRECTION: 1= FOWARD, -1= INVERSE |
+| 6 | `BITMAP` |  |
+
+
+    N=32768 WITH 4.5K TMROM),
+    EQUIPMENT: AP-120B WITH EITHER MEMORY
+    SIZE:      35 + REALTR (49) + CFFT (187 FAST, 185 STRD) + IREALT (99)
+    SCRATCH:   SP(2-15), DPX(-4 TO 3), DPY(-4 TO 3), FA,FM,MD,TM
+    DIRECT:  FIRST DOES AN N/2-POINT FOWARD COMPLEX FFT.
+    THEN DOES AN N-POINT FOWARD REAL FFT;
+    INVERSE: FIRST DOES AN N-POINT INVERSE REAL FFT;
+    THEN DOES AN N/2-POINT INVERSE COMPLEX FFT.
+    N=8*COSINE TABLE SIZE
+
+
+## BITRVI
+
+`$ENTRY BITRVI`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `BASE` | ARRAY BASE ADDRESS |
+| 1 | `N` | N (NUMBER OF COMPLEX POINTS) |
+| 9 | `BASEP1` | BASE + DI |
+| 10 | `BASEP2` | BASE + 2 * DI |
+| 11 | `I` | ARRAY SUBSCRIPT |
+| 12 | `I2` | I/2 |
+| 12 | `T` | ARRAY SUBSCRIPT SHIFTED LEFT 8 (*256) |
+| 13 | `BRI2` | &I/2 |
+| 13 | `DT` | DELTA FOR T (2 * 256 = 512) |
+| 14 | `DI` | DELTA FOR I (2) |
+
+
+    EQUIPMENT: AP-120B WITH STANDARD MEMORY
+    SIZE:      55 LOCATIONS
+    SCRATCH:   SP(11-16), FA,MD
+
+
+## IFFT4
+
+`$ENTRY IFFT4`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `BASE` | BASE ADRS OF I/O DATA ARRAY (R,I,R,I...; 2*N VALUES) |
+| 0 | `W3R` | W3 REAL |
+| 1 | `N` | SIZE OF COMPLEX FFT |
+| 1 | `W3I` | W3 IMAGINARY |
+| 2 | `LPBASE` | POINTER TO 1ST OF 4 RADIX-4 DATA VALUES |
+| 5 | `ITCNT` | LOOP CNTR = N/4/2 RADIX-4 FFT BUTTERFLIES |
+| 8 | `W1` | TM POINTER FOR FIRST ANGLE |
+| 9 | `W2` | TM POINTER FOR SECOND ANGLE |
+| 10 | `W3` | TM POINTER FOR THIRD ANGLE |
+| 11 | `MINC` | BASIC DATA MEMORY ADR INCR = 2 (R,I) |
+| 12 | `WD` | TABLE MEMORY ADDRESSING INCREMENT = 2 (R,I) |
+
+
+    COMPLEX FFT; THIS ROUTINE DOES THE APPROPRIATE
+    EQUIPMENT: AP120B WITH STANDARD OR FAST MEMORY
+    SIZE:      37 LOCATIONS
+    SCRATCH:   SP(2,5,10,11,12,14), DPX(-4 TO 1),
+
+
+## IFFT4G
+
+`$ENTRY IFFT4G`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `BPDIW` |  |
+| 0 | `DRR` |  |
+| 0 | `DRW` |  |
+| 0 | `W3R` | W3 REAL |
+| 1 | `BPDRW` |  |
+| 1 | `DIR` |  |
+| 1 | `DIW` |  |
+| 1 | `W3I` | W3 IMAGINARY |
+| 2 | `AMCRZ` |  |
+| 2 | `APCR` |  |
+| 2 | `APCRZ` |  |
+| 2 | `BPDI` |  |
+| 2 | `BRW` |  |
+| 2 | `LPBASE` | POINTER TO 1ST OF 4 RADIX-4 DATA VALUES |
+| 3 | `AMCIZ` |  |
+| 3 | `AMCR` |  |
+| 3 | `APCIZ` |  |
+| 3 | `BIW` |  |
+| 3 | `BPDR` |  |
+| 3 | `READ` | DATA INPUT POINTER |
+| 4 | `WRITE` | DATA OUTPUT POINTER |
+| 11 | `MINC` | BASIC DATA MEMORY ADR INCR = 2 (R,I) |
+| 13 | `MDEL` | DATA MEMORY ADR INCR WITHIN EACH RADIX-4 = N/2 |
+
+
+    EQUIPMENT: AP-120B WITH STANDARD OR FAST MEMORY
+    SIZE:      48 LOCATIONS
+    SCRATCH:   SP(2,3,4), DPX(-4 TO 3), DPY(2,3), FA,FM,MD
+    N      $EQU  1     "SIZE OF COMPLEX FFT
+
+
+## IREALT
+
+`$ENTRY IREALT`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDRESS OF INPUT DATA VECTOR |
+| 0 | `HALF` | 0.5 FROM TM FOR INTERPOLATION MULTIPLIER |
+| 0 | `RE` | WR*APCI; WR*APCI+WI*AMCR |
+| 1 | `AR` | AR IN SPECIAL CASE |
+| 1 | `C` | BASE ADDRESS OF OUTPUT DATA VECTOR |
+| 1 | `IM` | WR*AMCR; WI*APCI-WR*AMCR |
+| 2 | `N` | SIZE OF FFT (TM SIZE*8) |
+| 3 | `F` | +1 FOR DIRECT; -1 FOR INVERSE |
+| 8 | `W` | INITIAL ANGLE REF (PI FOR INVERSE, 0 FOR DIRECT) |
+| 9 | `WD` | ANGLE REF INCREMENT = 2 |
+| 10 | `MDEL` | DATA MEMORY DELTA = 2 |
+| 11 | `ICTR` | LOOP COUNTER = N/8 (N=TM SIZE*8) |
+| 12 | `AREAD` | INITIALLY = A BASE ADDRESS |
+| 13 | `CREAD` | INITIALLY = A+N = ADRS OF END OF INPUT DATA VECTOR |
+| 14 | `AWRITE` | INITIALLY = C BASE ADDRESS |
+| 15 | `CWRITE` | INITIALLY = C+N = ADRS OF END OF OUTPUT DATA VECTOR |
+
+
+    EQUIPMENT: AP-120B WITH STANDARD OR FAST MEMORY
+    SIZE:      99 LOCATIONS
+    SCRATCH:   SP(10 TO 17), DPX(-4 TO 1), DPY(-3 TO 1), FA,FM,TM,MD
+

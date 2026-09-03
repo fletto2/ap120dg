@@ -1,0 +1,4 @@
+        $TITLE SEQV1
+        $ENTRY SEQV1,0
+$INSERT FLTEST.DAT
+        $END

@@ -56,6 +56,9 @@ class Module:
         self.base_addr = 0      # assigned by linker
         self.from_library = False  # appeared after a ***LSB
         self.code_blocks = []   # (start_in_code, count, loc) per ***CODE
+        # Set when a ***CODE block's LOC is not where concatenation puts it
+        # -- the OVERWRITE / gap condition.  See the placement comment below.
+        self.loc_anomaly = None
         # ***DBDB: named data blocks this module declares.  Each entry is
         # (name, mod, length_in_MD_words, local).  LOAD1 label 6000 reads the
         # header as "10 count name mod", accepts a leading "." (8238) to mean
@@ -145,6 +148,16 @@ def parse_apo(filename, stop_at_leb=True):
             continue
 
         if '***TITLE' in line:
+            # A SECOND ***TITLE before the module's ***END is LOD100's
+            # error 13, DOUBLE TITLE BLOCK -- "a subroutine's title was
+            # encountered twice" -- and it is FATAL.  Confirmed on the
+            # 11/44 with an object carrying its title block twice: the
+            # recovered loader stops with ERROR 13, distinguishing it from
+            # the ERROR 14 a truncated module gives.  Flagged here rather
+            # than raised, so the LINKER stays a parser and the LOADER
+            # decides; lnk100.py's own callers do not treat it as fatal.
+            if current is not None and not getattr(current, 'saw_end', False):
+                current.double_title = True
             state = 'title'
             continue
 
@@ -357,6 +370,21 @@ def parse_apo(filename, stop_at_leb=True):
             # relocation in a later block is applied one block too early.
             code_start = len(current.code)
             word_idx = code_start
+            # THE PLACEMENT IS BY CONCATENATION, NOT BY LOC -- words are
+            # appended where the previous block ended and `code_loc` is only
+            # recorded.  That is CORRECT for every module FPS ships: all 526
+            # code blocks in the nine libraries have LOC exactly equal to the
+            # cumulative count of the blocks before them (measured, not
+            # assumed -- 103 of the 376 modules carry more than one block).
+            # But an object whose LOC does NOT follow on would be mis-placed
+            # SILENTLY, and the two ways it can fail are both named in the
+            # linker manual: LOC below the running total is [M 5.2]
+            # "F OVERWRITE nnnnnn -- an attempt was made to overwrite a
+            # previously loaded program memory location", and LOC above it is
+            # a gap the concatenation quietly closes.  Say so rather than
+            # mis-link; nothing shipped triggers it.
+            if code_loc != code_start:
+                current.loc_anomaly = (code_loc, code_start)
             # Keep the block boundaries: LOD100 emits ONE load-module code
             # block per ***CODE block (LINKUP's WRTLM per header), so a
             # loader that concatenates them does not produce the same file.
@@ -424,6 +452,13 @@ def parse_apo(filename, stop_at_leb=True):
             continue
 
         if '***END' in line:
+            # Record that the module was properly terminated.  LOD100 error
+            # 14, MISSING END ("a bad object module was encountered"), is
+            # FATAL and confirmed on the 11/44: an object truncated before
+            # its ***END makes the recovered loader stop, while lod100.py
+            # loaded it happily.  Nothing else uses this flag.
+            if current is not None:
+                current.saw_end = True
             state = 'end_name'
             continue
 
@@ -459,10 +494,21 @@ class Linker:
         self.symbol_types = {}      # name → declared entry type
         self.inherited_types = dict(inherited_types or {})
 
+    # EVERY module in a job passes through add_modules(), whichever linker
+    # owns it -- the flat one, the pre-ISR one, or a segment's.  LOD100's
+    # validators need that WHOLE-JOB view (LOAD1 and FINISH look their
+    # blocks up in DBDTA1, a single global table), and lod100.py had no
+    # place holding it: the ISRMAP check works from `_groups` but the
+    # READYQ check false-fires there, and the type-3 relocation patch
+    # needed the same thing and got it by loop leftovers.  Recording them
+    # here is the one chokepoint that cannot be missed.
+    ALL_MODULES = []
+
     def add_modules(self, modules):
         """Add parsed modules to the linker."""
         for mod in modules:
             self.modules.append(mod)
+            Linker.ALL_MODULES.append(mod)
 
     def link(self):
         """Resolve symbols and produce linked output."""
@@ -501,15 +547,27 @@ class Linker:
                             f"Duplicate symbol '{name}': "
                             f"module {self.modules[prev[0]].name} @ {prev[2]} "
                             f"and {mod.name} @ {abs_addr}")
+                    # THE FIRST DEFINITION WINS.  [Linker M 5.2] "W MULTIPLE
+                    # ENTRY -- An $ENTRY symbol having the same name as one
+                    # already defined was encountered during a load ... The
+                    # loader proceeds by IGNORING THE LATEST DEFINITION."
+                    # LOAD1 agrees independently: a library module whose entry
+                    # is already in ENTDTA is sent to 4470 (LIBFG2=0) and not
+                    # loaded, so the earlier definition stands there too.
+                    continue
                 self.symbol_table[name] = (idx, offset, abs_addr)
                 self.symbol_types[name] = mod.entry_types.get(name, 0)
 
             for name, offset in mod.entries.items():
                 abs_addr = mod.base_addr + offset
-                if name in self.entry_points and self.entry_points[name] != abs_addr:
-                    self.warnings.append(
-                        f"Duplicate entry '{name}': {self.entry_points[name]} "
-                        f"and {abs_addr} (module {mod.name})")
+                if name in self.entry_points:
+                    if self.entry_points[name] != abs_addr:
+                        self.warnings.append(
+                            f"Duplicate entry '{name}': "
+                            f"{self.entry_points[name]} "
+                            f"and {abs_addr} (module {mod.name})")
+                    # First definition wins -- see the AENTRY path above.
+                    continue
                 self.entry_points[name] = abs_addr
                 if name not in self.symbol_table:
                     self.symbol_table[name] = (idx, offset, abs_addr)

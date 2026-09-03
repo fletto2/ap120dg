@@ -1,0 +1,33 @@
+       SUBROUTINE SUBR1 
+     * (P 1,P 2,P 3,P 4,P 5,P 6,P 7,P 8,P 9,P10,P11,P12,P
+     *13)
+       INTEGER P 1
+       INTEGER P 2
+       INTEGER P 3
+       INTEGER P 4
+       INTEGER P 5
+       INTEGER P 6
+       INTEGER P 7
+       INTEGER P 8
+       INTEGER P 9
+       INTEGER P10
+       INTEGER P11
+       INTEGER P12
+       INTEGER P13
+        COMMON /APLDCM/ IPAV( 33),NU2,IDLM,NU1,IPPAAD,IPPAND,IOVS(33),
+     *  LMT(10,3),LMTE
+       COMMON /PASS  / C 1001(17    )
+       INTEGER C 1001
+       DATA C 1001(    1)/        0/
+      IF (IDLM.NE.  1) CALL L 101
+      CALL APRUN (    16,1,1,0,13)
+      CALL APWD
+      CALL APEXC
+      RETURN
+      END
+        BLOCK DATA
+        COMMON /APLDCM/ IPAV( 33),NU2,IDLM,NU1,IPPAAD,IPPAND,IOVS(33),
+     *  LMT(10,3),LMTE
+        DATA NU2,IDLM,NU1,IPPAAD,IOVS(2),LMTE
+     *  /0,0,0,0,0,0/
+        END

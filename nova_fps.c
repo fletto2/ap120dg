@@ -113,8 +113,17 @@
 #define PS_SIZE         4096            /* Program Store: 4K x 64-bit */
 #define MD_SIZE         65536           /* Main Data: 64K x 38-bit (stored in 64-bit) */
 #define TM_SIZE         8192            /* Table Memory: 8K for trig + constants */
+
 #define SP_SIZE         16              /* Scratch Pad: 16 x 16-bit (0-15, octal 0-17) */
 #define SRS_SIZE        16              /* Subroutine Return Stack */
+/* STATUS bit 5, SRAO -- the subroutine-return-stack OVERFLOW/UNDERFLOW
+   flag.  SIM100 sets it at BOTH 51100 (JSR, stack full) and 51200
+   (RETURN, stack empty) with
+       STATUS(2)=(STATUS(2)/64)*64+MOD(STATUS(2),32)+32
+   which preserves bits 0-4 and 6-up and sets bit 5.  It does not collide
+   with the bits already modelled here: 0-2 are the bit-reverse width,
+   3 is FFT mode and 4 is IFFT. */
+#define FPS_STATUS_SRAO 040             /* bit 5 */
 
 /* REG SELECT values for FN EXAM/DEP */
 #define REGSEL_PSA      0
@@ -182,6 +191,19 @@
 #define SPS_WRTEXP  1
 #define SPS_WRTHMN  2
 #define SPS_WRTLMN  3
+
+/* Restricted write width -- SIM100 31151/31152/31153 set (WRTN,WRTL) to
+   (2,1), (2,3), (2,5) over the six-element word, whose elements 1-2 are
+   the exponent and 3-6 the mantissa.  Every write is then
+   MOVPRT(src,WRTL,dst,WRTL,6,6,WRTN), so these are the three 16-bit
+   thirds; the default (line 1201) is (6,1), the whole word. */
+#define FPS_WRT_ALL ((t_uint64)0x3FFFFFFFFFULL)     /* all 38 bits */
+#define FPS_WRT_EXP ((t_uint64)0x3FF << 28)         /* exponent, 37-28 */
+#define FPS_WRT_HMN ((t_uint64)0xFFF << 16)         /* mantissa 27-16  */
+#define FPS_WRT_LMN ((t_uint64)0xFFFF)              /* mantissa 15-0   */
+#define FPS_WRT(dst,src) \
+    ((dst) = ((dst) & ~wrt_mask) | ((t_uint64)(src) & wrt_mask))
+
 #define SPS_CLR     8
 #define SPS_INC     9
 #define SPS_DEC     10
@@ -223,6 +245,11 @@ extern int32 AMASK;                                     /* Nova address mask */
 
 /* Host interface registers */
 static int32 fps_swr;                   /* Switch Register */
+/* APSTATUS is ONE register in SIM100 -- STATUS(2) -- carrying the
+   bit-reverse width in bits 0-2 and the FFT/IFFT mode in bits 3-4.  It was
+   modelled here as two, so STSTAT's width never reached the reversal. */
+static int32 fps_pnlbs;                 /* Panel bus (RAPS -> LDSPNL) */
+#define SFFTSZ 4096                     /* length of the cosine table */
 static int32 fps_fn_status;             /* FN status (read) */
 static int32 fps_lites;                 /* Lights register */
 static int32 fps_ctl;                   /* Control register */
@@ -296,6 +323,7 @@ static t_uint64 *fps_md;                  /* Main Data (38-bit in 64-bit) */
 /* Table Memory ROM */
 static t_uint64 *fps_tm;               /* Table Memory ROM (allocated in reset) */
 
+
 /* DMA state */
 static int32 fps_dma_active;            /* DMA transfer in progress */
 static int32 fps_dma_phase;             /* 0=first word, 1=second word */
@@ -310,6 +338,7 @@ static int32 fps_ctl05_done;            /* Subdevice 2: CTL05 DONE */
 
 /* Execution state */
 static int32 fps_spcond;                 /* S-pad condition code */
+static t_uint64 fps_dpbs_prev;           /* DPBS bus, previous cycle */
 static int32 fps_facond;                 /* Float adder condition (current) */
 static int32 fps_facond_br;              /* ...as the branch field sees it */
 
@@ -888,10 +917,17 @@ hmant |= 0x800000;
 /* Convert exponent: AP bias 512, host bias 127.
    IEEE: value = hmant × 2^(hexp-150)  [hmant is 24-bit with hidden 1]
    AP:   value = amant × 2^(aexp-540)  [amant is 28-bit 2's complement]
-   With amant = hmant << 3: aexp = hexp + 387.
+   With amant = hmant << 3: aexp = hexp + 386.
    The <<3 shift puts 24-bit hmant into [2^26, 2^27), keeping bit 27
-   clear so the 28-bit 2's complement sign is correct for positive values. */
-aexp = hexp + (512 - 125);
+   clear so the 28-bit 2's complement sign is correct for positive values.
+
+   THE BIAS IS 386, NOT 387, SINCE THE MANTISSA SCALE BECAME 2**27.
+   With 2**28 this read 387 and every value arriving in main data was
+   TWICE its nominal size -- invisible to the nine routines, because the
+   inverse conversion carried the same error and a linear routine cancels
+   it.  Measured directly: a test writing [1,2,3,4,5,6] put
+   [2,4,6,8,10,12] in main data. */
+aexp = hexp + (512 - 126);
 
 /* Shift 24-bit mantissa to 28-bit: <<3 keeps bit 27 (sign) clear */
 amant = hmant << 3;
@@ -916,8 +952,16 @@ amant = fp_get_mant (ap_val);
 sign = (amant < 0) ? 1 : 0;
 if (sign) amant = -amant;
 
-/* Convert exponent (inverse of host-to-AP: aexp = hexp + 387) */
-hexp = aexp - (512 - 125);
+/* A NEGATIVE VALUE NORMALISES TO -2**27, so its magnitude is 2**27 and
+   does NOT fit the 24 bits the IEEE mantissa field expects after the >>3
+   below -- `(amant >> 3) & 0x7FFFFF` would drop the hidden bit and halve
+   the value.  Shift it into range and carry the exponent, which is what
+   VNEG exposed: -1.0 and -2.0 came back as -0.5 and -1.0 while -3.0,
+   whose magnitude is below 2**27, was unaffected. */
+while (amant > 0x07FFFFFF) { amant >>= 1; aexp++; }
+
+/* Convert exponent (inverse of host-to-AP: aexp = hexp + 386) */
+hexp = aexp - (512 - 126);
 if (hexp <= 0 || hexp >= 255) { *hi = 0; *lo = 0; return; }
 
 /* Shift 28-bit mantissa to 24-bit (>>3, inverse of <<3), strip hidden bit */
@@ -1070,104 +1114,45 @@ if (fps_wc == 0)
 #define FP_EXP_BIAS     512
 #define FP_38_MASK      0x3FFFFFFFFFULL
 
-static int32 fp_get_exp (t_uint64 val)
+#include "fps_float.h"
+
+/* TABLE MEMORY FETCH -- SIM100 label 40100.  TM addressing has TWO MODES.
+   Out of FFT mode the address is taken as-is ("NOT IN FFT MODE, FETCH THE
+   REQUESTED ADDRESS").  In FFT mode the hardware folds a full-circle
+   address into the quarter-period cosine table:
+
+        BIT 15' 0 - COSINE VALUE DESIRED / 1 - SINE VALUE DESIRED
+        BITS 2 AND 3 ARE THE QUADRENT OF THE ANGLE.
+        BITS 4 TO 14 ARE AN ANGLE BETWEEN 0 AND ALMOST PI/2.
+
+   which is why VSIN doubles its index with MOVL (bit 0 is the cos/sin
+   selector) and why the stored table is a plain cosine run rather than
+   interleaved pairs. */
+
+static t_uint64 fps_tm_fetch (int32 tmav)
 {
-return (int32)((val >> FP_EXP_SHIFT) & FP_EXP_MASK);
+int32 iquad, ics, i;
+t_uint64 v;
+
+if (fps_tm == NULL) return 0;
+if (!(fps_ap_status & 010))                              /* not FFT mode */
+    return (tmav >= 0 && tmav < TM_SIZE) ? fps_tm[tmav] : 0;
+
+tmav &= 0x7FFF;                                 /* 40100: drop the sign bit */
+iquad = (tmav / (SFFTSZ * 2)) % 4;              /* 40110 */
+ics   = tmav % 2;                               /* 0 = cos, 1 = sin */
+tmav  = (tmav / 2) % SFFTSZ;
+i = iquad + ics;
+if (i == 1 || i == 3) tmav = SFFTSZ - tmav;     /* want COS(PI/2 - THETA) */
+if (tmav == SFFTSZ) return 0;                   /* PI/2 is NOT in the table */
+v = (tmav >= 0 && tmav < TM_SIZE) ? fps_tm[tmav] : 0;
+i = iquad - ics;
+if (ics == 1 && !(fps_ap_status & 020)) i += 2;  /* IFFT flag clear */
+if (i == 1 || i == 2)                           /* negate the fetched value */
+    v = fp_pack (fp_get_exp (v), -fp_get_mant (v));
+return v;
 }
 
-static int32 fp_get_mant (t_uint64 val)
-{
-int32 mant = (int32)(val & FP_MANT_MASK);
-if (mant & 0x08000000)                                 /* Sign extend 28-bit */
-    mant |= (int32)0xF0000000;
-return mant;
-}
-
-/* 38-bit AP float -> double, for tracing only. */
-static double fps_38bit_to_double (t_uint64 val)
-{
-int32 exp = fp_get_exp (val);
-int32 mant = fp_get_mant (val);
-if (mant == 0) return 0.0;
-return (double)mant / 268435456.0 * pow (2.0, (double)(exp - FP_EXP_BIAS));
-}
-
-static t_uint64 fp_pack (int32 exp, int32 mant)
-{
-return ((t_uint64)(exp & FP_EXP_MASK) << FP_EXP_SHIFT) |
-       ((t_uint64)mant & FP_MANT_MASK);
-}
-
-static t_uint64 fps_38bit_add (t_uint64 a, t_uint64 b)
-{
-int32 exp_a = fp_get_exp (a), exp_b = fp_get_exp (b);
-int32 mant_a = fp_get_mant (a), mant_b = fp_get_mant (b);
-int32 result_exp, result_mant, diff;
-
-if (mant_a == 0) return b;
-if (mant_b == 0) return a;
-
-diff = exp_a - exp_b;
-result_exp = (diff >= 0) ? exp_a : exp_b;
-if (diff > 0) mant_b >>= diff;
-else if (diff < 0) mant_a >>= -diff;
-
-result_mant = mant_a + mant_b;
-
-/* Normalize */
-if (result_mant == 0) return 0;
-while (result_mant > 0x07FFFFFF || result_mant < -0x08000000) {
-    result_mant >>= 1;
-    result_exp++;
-    }
-while (result_mant != 0 &&
-       result_mant < 0x04000000 && result_mant > -0x04000000) {
-    result_mant <<= 1;
-    result_exp--;
-    }
-if (result_exp >= (int32)FP_EXP_MASK || result_exp <= 0) return 0;
-return fp_pack (result_exp, result_mant);
-}
-
-static t_uint64 fps_38bit_sub (t_uint64 a, t_uint64 b)
-{
-int32 exp_b = fp_get_exp (b);
-int32 mant_b = fp_get_mant (b);
-if (mant_b == 0) return a;
-return fps_38bit_add (a, fp_pack (exp_b, -mant_b));
-}
-
-static t_uint64 fps_38bit_mul (t_uint64 a, t_uint64 b)
-{
-int32 exp_a = fp_get_exp (a), exp_b = fp_get_exp (b);
-int32 mant_a = fp_get_mant (a), mant_b = fp_get_mant (b);
-t_int64 prod;
-int32 result_exp, result_mant;
-
-if (mant_a == 0 || mant_b == 0) return 0;
-
-prod = (t_int64)mant_a * (t_int64)mant_b;
-/* A mantissa m represents m/2^28 -- fps_38bit_to_double divides by
-   268435456.0 -- so the product of two of them, scaled 2^-56, has to
-   come back by 28 bits, not 27.  Shifting by 27 left every product
-   exactly a factor of two high, which is what VMUL returned: 8, 20, 36
-   for an expected 4, 10, 18. */
-result_mant = (int32)(prod >> 28);
-result_exp = exp_a + exp_b - FP_EXP_BIAS;
-
-/* Normalize */
-if (result_mant == 0) return 0;
-while (result_mant > 0x07FFFFFF || result_mant < -0x08000000) {
-    result_mant >>= 1;
-    result_exp++;
-    }
-while (result_mant < 0x04000000 && result_mant > -0x04000000) {
-    result_mant <<= 1;
-    result_exp--;
-    }
-if (result_exp >= (int32)FP_EXP_MASK || result_exp <= 0) return 0;
-return fp_pack (result_exp, result_mant);
-}
 
 
 /* Execute one AP instruction cycle */
@@ -1177,7 +1162,9 @@ static void fps_execute_cycle (void)
 t_uint64 instr;
 int32 df, sop, sh, sps, spd, fadd_op, cond, disp;
 int32 ma_op, dpa_op, tma_op, dpbs, use_value, mem_cycle;
-int32 spsr_val, result, branch, psa_set = 0;
+int32 spsr_val, result, branch, psa_set = 0, rps2 = 0;
+int32 shift_carry = -1;
+t_uint64 wrt_mask = FPS_WRT_ALL;
 
 if (!fps_running || !fps_ps)
     return;
@@ -1260,13 +1247,37 @@ tma_op  = FPS_TMA_OP(instr);
 /* Check if VALUE field is active (disables YW, FM, M1, M2, MI, MA, TMA, DPA) */
 use_value = (dpbs == DPBS_VALUE) ||
             (df == 0 && sop == SOP_SPEC && sps >= 8 && sps <= 12 && (spd & 7) <= 3);
+/* ...AND THAT INCLUDES THE ADDRESS CONTROLS, WHICH WERE EXTRACTED ABOVE
+   AND NEVER GATED.  SIM100 says so in its own comment, right after SPLIT:
+       C  SEE IF ANYBODY IS USING THE VALUE FIELD, IF SO SET A FLAG
+       C     TO DISABLE THE YX,FM,M1,M2,MA,TMA, AND DPA FIELDS
+   VALUE is bytes 7-8 (VALUE(1)=CB(7), VALUE(2)=CB(8)) and MI/MA/DPA/TMA
+   are the four 2-bit fields of byte 8, so a literal's low bits WERE being
+   obeyed as address controls.  RESLVE's `RPSF MASKLOC` is such an
+   instruction -- sop=1 sps=11 spd=3 matches IVAL's first clause -- and
+   its offset's bits 3:2 loaded DPA with -1, so the pattern written to
+   DPY[0] was read from slot 31 and its mask phase ANDed nothing with
+   nothing.  YW, FM, M1, M2 and MI were already honoured here; these three
+   were not. */
+if (use_value)
+    ma_op = dpa_op = tma_op = 0;
 
 /* S-pad source read */
 spsr_val = (sps < SP_SIZE) ? fps_spad[sps] : 0;
 
 /* Check for SPEC operations FIRST (SOP=1, SPS<8) — these take priority
    and return immediately without further processing */
-if (df == 0 && sop == SOP_SPEC && sps < 8) {
+/* SPS=0 IS THE STEST BRANCH-CONDITION GROUP AND MUST NOT SHORT-CIRCUIT.
+   This block ends by advancing PSA and RETURNING, which skips the adder,
+   multiplier and memory fields -- but those are INDEPENDENT fields of the
+   same 64-bit microword, and a horizontal instruction set exists precisely
+   so one instruction can branch AND compute.  VSQRT's PS 42 is
+   `FSUB FM,DPY` carrying `BFEQ ZILCH1`: sop=1 sps=0 fadd=2 a1=FM a2=DPY.
+   With the early return the subtraction never ran, `(A/2 - 1)` was never
+   formed, and the series came out 4+2=6 instead of 4-2=2 -- the whole
+   VSQRT error.  The named SPEC ops (SWDB, HALT, JMP/JSR, SETEXIT) still
+   return, since they genuinely redefine the cycle. */
+if (df == 0 && sop == SOP_SPEC && sps < 8 && sps != 0) {
     switch (sps) {
         case 1:                                         /* HOSTPNL: SWDB */
             fps_fn_status ^= FN_SWR_ACK;
@@ -1314,11 +1325,31 @@ switch (cond) {
     case COND_NOP:  break;                              /* No branch */
     case COND_BR:   branch = 1; break;                  /* Unconditional */
     case COND_RET:                                      /* Return from subroutine */
-        if (fps_sra > 0) {
-            fps_sra--;
-            fps_psa = fps_srs[fps_sra & 0xF];
-            psa_set = 1;                                /* Skip normal PSA advance */
-            }
+        /* A RETURN ALWAYS POPS -- THERE IS NO UNDERFLOW GUARD.  SIM100's
+           51200 reads SRS at the current SRA, decrements, and on underflow
+           WRAPS the pointer and sets the SRAO bit in STATUS:
+
+               51200  SRAV=SRA(2)
+                      CALL MREAD(SRS,SRAV,PSA,16,1,2)
+                      CALL TCADD(SRA,MONE2,SRA,2,K)
+                      IF (SRA(2)/15.EQ.0) GO TO 60000
+                      SRA(1)=0
+                      SRA(2)=MOD(SRA(2),16)
+                      STATUS(2)=(STATUS(2)/64)*64+MOD(STATUS(2),32)+32
+
+           This used to be guarded by `if (fps_sra > 0)`, so a RETURN with
+           an empty stack did NOTHING and execution FELL THROUGH to the
+           next instruction.  That is how ACORF ended up inside RESLVE:
+           SPADD is one instruction at PS 521, SPSUB one at 522, and
+           RESLVE begins at 523, so a return that failed to jump walked
+           straight into the resolver and span in its parameter-move loop.
+           The 16-entry stack wraps (SRS_SIZE is 16), which is what makes
+           the pointer arithmetic below equivalent to SIM100's. */
+        fps_sra = (fps_sra - 1) & 0xF;
+        fps_psa = fps_srs[fps_sra];
+        psa_set = 1;                                    /* Skip normal PSA advance */
+        if (fps_sra == 0xF)                             /* wrapped == underflow */
+            fps_ap_status |= FPS_STATUS_SRAO;
         break;                                          /* Let rest of cycle complete */
     case 3:  branch = 1; break;                          /* BINTRQ - interrupt request */
     case 4:  branch = 1; break;                          /* BION - I/O ready (stub: always) */
@@ -1330,10 +1361,46 @@ switch (cond) {
         10  MOD(FACOND,2) .EQ. 0   not zero            BFNE
         11  FACOND .EQ. 0          positive non-zero   BFGT
        BFEQ is NOT here -- it lives in the STEST field below. */
-    case 8:  branch = (fps_facond_br == 2); break;          /* BFLT */
-    case 9:  branch = (fps_facond_br != 2); break;          /* BFGE */
-    case 10: branch = ((fps_facond_br & 1) == 0); break;    /* BFNE */
-    case 11: branch = (fps_facond_br == 0); break;          /* BFGT */
+    /* THE GROUP STARTS AT 9, NOT 8.  ASM100's listing of VDIV settles it:
+       all FOUR of its BFGE instructions encode cond=10, and every branch
+       target matches the listing's labels --
+
+           PS  8 cond=10 disp=18 -> 10   ".+2"
+           PS 20 cond=10 disp=21 -> 25   POS1  (octal 31)
+           PS 35 cond=10 disp=21 -> 40   POS2  (octal 50)
+           PS 50 cond=10 disp=23 -> 57   POS   (octal 71)
+
+       The old base of 8 came from reading SIM100's `I=CONDF+1` with the
+       label list (11110,11111,11112,11113) and ASSUMING the group began at
+       CONDF=8.  The listing names the mnemonic, so it wins over an inferred
+       base.  SIM100's ORDER -- BFLT, BFGE, BFNE, BFGT -- is unchanged.
+
+       Why nothing caught it: for a POSITIVE operand FACOND is 0, and both
+       BFGE (`!= 2`) and BFNE (`&1 == 0`) are then true, so the shifted
+       table branches identically on positive data.  The nine regression
+       routines branch on S-PAD conditions and never exercise FACOND at
+       all. */
+    /* THE MAPPING COMES FROM ASM100's OPSYM, WHICH IS THE TABLE THAT
+       ENCODED THIS MICROCODE.  Its branch rows put the code in word 2 in
+       steps of 32:
+
+           BFPE 192/32 = 6    BFEQ 256/32 = 8    BFNE 288/32 =  9
+           BFGE 320/32 = 10   BFGT 352/32 = 11
+
+       and VDIV's listing agrees independently -- all four of its BFGE
+       instructions encode 10, with every target landing on a named label.
+       `BFLT` is NOT in this field at all: its OPSYM row is word 1 = 4096 in
+       a different group (1025).
+
+       The previous table (8=BFLT 9=BFGE 10=BFNE 11=BFGT) was inferred from
+       SIM100's label ORDER at 11110-11113 with an assumed base, and it put
+       BFGE one code low.  On POSITIVE data BFGE and BFNE are both true, so
+       nothing detected it -- and the nine regression routines branch on
+       S-PAD conditions, never on FACOND. */
+    case 8:  branch = ((fps_facond_br & 1) != 0); break;    /* BFEQ, zero */
+    case 9:  branch = ((fps_facond_br & 1) == 0); break;    /* BFNE */
+    case 10: branch = (fps_facond_br != 2); break;          /* BFGE */
+    case 11: branch = (fps_facond_br == 0); break;   /* BFGT */
     /* Read the BIT CODE: bit1 negative, bit2 zero (SIM100 13880). */
     case COND_BEQ:  branch = ((fps_spcond & 4) != 0); break;  /* zero */
     case COND_BNE:  branch = ((fps_spcond & 4) == 0); break;  /* non-zero */
@@ -1348,10 +1415,43 @@ switch (cond) {
    on "count reached zero" never exits. */
 if (sop == 1 && sps == 0) {
     switch (spd) {
-        case 0: branch = ((fps_facond_br & 1) == 1); break;   /* BFEQ  */
-        case 1: branch = (((fps_spcond >> 1) & 1) == 1); break;/* s-pad negative */
-        case 2: branch = ((fps_spcond & 4) != 0); break;      /* s-pad zero */
-        case 3: branch = ((fps_spcond & 4) == 0); break;      /* s-pad non-zero */
+        /* ENUMERATED FROM ASM100's OPSYM, base 4096 step 4 in word 1:
+               0 BFLT  1 BLT  2 BNC  3 BZC  4 BDBN  5 BDBZ  6 BIFN  7 BIFZ
+           `BNC`/`BZC` are CARRY tests, not zero tests -- zero and non-zero
+           are BFEQ/BFNE, which live in the WORD-2 field at 8 and 9.  The
+           previous reading had 1-3 as negative/zero/non-zero, conflating
+           the two branch fields.  VSQRT needs BNC: it halves the exponent
+           with `MOVR E,E` and branches on the bit shifted out to choose
+           Q = 1 or Q = SQRT(2), which is exactly the sqrt(2) it was off by. */
+        case 0: branch = ((fps_facond_br & 2) != 0); break;   /* BFLT */
+        case 1: branch = ((fps_spcond & 2) != 0); break;      /* BLT  */
+        /* BNC = branch if carry NON-ZERO, BZC = branch if carry ZERO.
+           Read the other way round, VSQRT sent EVEN exponents to `ODDQ1`
+           and applied Q = sqrt(2) to them, leaving every result exactly
+           sqrt(2) out with the direction tracking parity.  The labels are
+           the evidence: `BNC ODDQ1` must reach the ODD path, and MOVR's
+           carry (SIM100's LSHFT returns the bit shifted out) is 1 for an
+           odd exponent. */
+        case 2: branch = ((fps_spcond & 1) != 0); break;      /* BNC  */
+        case 3: branch = ((fps_spcond & 1) == 0); break;      /* BZC  */
+        /* BDBN / BDBZ -- branch on the DATA BUS being NEGATIVE / ZERO.
+           SIM100's STEST dispatch (SOP=1, SPS=0, I=SPDF+1) is explicit:
+
+               11604   IF (PSFLD .EQ. 1) GO TO 12000          BDBN
+                       IF(MOD(DPBS(3)/8,2).EQ.1) BRANCH=1
+               11605   IF(MOD(DPBS(3)/4,4).EQ.0) BRANCH=1     BDBZ
+                       IF (PSFLD .EQ. 1) BRANCH=1
+
+           DPBS(3) is the mantissa's top element, bits 27:24, so `/8 mod 2`
+           is mantissa bit 27 -- the SIGN -- and `/4 mod 4` is bits 27:26,
+           which are both clear only for a zero (or unnormalised) value.
+           So BDBN is branch-if-NEGATIVE, which is what DIVIDE's
+           `BDBN NEG  "SEE IF X IS NEG"` asks for; reading it as
+           branch-if-non-zero fires on every positive operand and negates
+           the quotient.  ASM100's OPSYM puts them at 4112 and 4116, i.e.
+           codes 4 and 5 of the word-1 branch group (base 4096, step 4). */
+        case 4: branch = (((fps_dpbs_prev >> 27) & 1) != 0); break;  /* BDBN */
+        case 5: branch = (((fps_dpbs_prev >> 26) & 3) == 0); break;  /* BDBZ */
         /* 12-15 test a bit of the FLAG register, which is not modelled */
         default: break;                              /* 4-7 DPBS/status, 12-15 FLAG */
         }
@@ -1443,12 +1543,33 @@ if (df == 0) {
             break;
         }
 
-    /* Shift */
+    /* Shift.  ASM100's OPSYM gives `MOVR` word 1 = 19456 and `MOVRR`
+       = 18432, which decode to SOP=4 (MOV) with SH = 3 and 2, so the
+       shift is a MODIFIER on the s-pad ALU op rather than an opcode.
+
+       THE BIT SHIFTED OUT IS THE CARRY.  SIM100 forms SPCOND with
+       `TCADD(...,SPCOND)` and then ADDS 2 for negative and 4 for zero,
+       so bit0 is the carry and the two flag bits sit above it.  VSQRT
+       depends on it: it halves the exponent with `MOVR E,E` and takes
+       `BNC` on the bit that fell off to choose Q = 1 (E even) or
+       Q = SQRT(2) (E odd) -- which is exactly the factor it was out by. */
+    shift_carry = -1;
     switch (sh) {
         case 0: break;                                  /* No shift */
-        case 1: result = ((result << 1) | (result >> 15)) & 0xFFFF; break; /* L */
-        case 2: result = ((result >> 1) | (result << 15)) & 0xFFFF; break; /* R */
-        case 3: result = ((result >> 1) & 0x7FFF);     /* RR (logical right) */
+        /* LOGICAL shifts, not rotates.  SIM100 shifts with
+           `CALL LSHFT(SPFN,I,2,0,SPCOND,K)` and LSHFT's header is
+           "IF SIGNED IS 1 AN ARITHMETIC IS PERFORMED, IF 0 A LOGICAL
+           SHIFT" -- the argument is 0 -- with the bit that falls off going
+           to CARRY, never back into the word.  Rotating manufactured a low
+           bit: VSIN's `MOVL TABLE,TABLE1` on 0x9A00 gave 0x3401 = 13313,
+           an ODD table address past TM_SIZE that read as zero, where a
+           logical shift gives 0x3400 = 13312. */
+        case 1: shift_carry = (result >> 15) & 1;
+                result = (result << 1) & 0xFFFF; break;        /* MOVL */
+        case 2: shift_carry = result & 1;
+                result = (result >> 1) & 0x7FFF; break;        /* MOVRR */
+        case 3: shift_carry = result & 1;
+                result = ((result >> 1) & 0x7FFF);     /* RR (logical right) */
                 break;
         }
 
@@ -1461,19 +1582,59 @@ if (df == 0) {
        could not both be right.  Same defect as FACOND, which this file
        records as "a two-bit code, not a sign ... the emulator held -1/0/1
        and compared numerically". */
-    fps_spcond = 0;
-    if (result & 0x8000) fps_spcond |= 2;               /* negative */
-    if (result == 0)     fps_spcond |= 4;               /* zero */
+    /* SPCOND HOLDS ACROSS AN S-PAD NO-OP, exactly as SPFN does.  SIM100
+       sets it inside the ALU group at 13880, which a no-op never reaches
+       (SOP=1 goes to 20000, and SOP=0 with SPS<8 is the NOP test), so the
+       condition code survives to be read by a LATER instruction's branch.
+       VSQRT depends on it: `MOVR E,E` sets the carry at one instruction
+       and `BNC ODDQ1` reads it at the NEXT, whose own s-pad field does no
+       work -- clearing unconditionally wiped the carry in between. */
+    if (!(sop == SOP_SPEC || (sop == SOP_NOP && sps < 8))) {
+        fps_spcond = 0;
+        if (shift_carry > 0) fps_spcond |= 1;           /* carry, bit0 */
+        if (result & 0x8000) fps_spcond |= 2;           /* negative */
+        if (result == 0)     fps_spcond |= 4;           /* zero */
+        }
 
     /* Write result to SPD (unless NOP or JMP/JSR).  SIM100 label 13880 also
        suppresses the write when COND=1 (STEST), which uses the s-pad ALU
        purely to set condition bits. */
     if ((sop != SOP_NOP || spad_single_op) && spd < SP_SIZE && cond != 1 &&
-        !(sop == SOP_SPEC && sps == 8 && use_value))
+        sop != SOP_SPEC)
+        /* SOP=1 NEVER writes the s-pad.  SIM100's dispatch at 13090 sends
+           SOP=1 straight to 20000, past every write to SPFN (13110-13434)
+           and past the MWRIT at 13850 -- this file records it as "SOP=1 is
+           always a no-op for the s-pad ALU (IXNOP)".  The SPD field in
+           that group is a SELECTOR, not a destination: the address mode
+           for JMP/JSR (SPS 8) and the test code for STEST (SPS 0).  The
+           previous guard covered only SPS 8, so an STEST could clobber the
+           s-pad numbered by its test code exactly as JSRT clobbered
+           s-pad 5. */
+        /* THE WHOLE JMP/JSR GROUP, not just the VALUE modes.  With
+           SOP=SPEC and SPS=8 the SPD field is the ADDRESS MODE
+           (0/1 absolute, 2/3 PC-relative, 4/5 TMA, 6/7 panel -- ASM100's
+           eight rows), NOT an s-pad destination.  Guarding only on
+           `use_value` suppressed the writeback for modes 0-1 and let
+           modes 2-3 clobber the s-pad whose number equals the SPD code:
+           MEASURED, `JSRT` (spd 5) wrote 0 into s-pad 5, which is VFCL1's
+           `ADR` -- so the second call computed TMA = LOC + 0 = 3 and
+           jumped into the prologue, hanging VATAN. */
         fps_spad[spd] = result & 0xFFFF;
 
-    /* SPFN output = result (available for deposit into DP, etc.) */
-    fps_spfn = result;
+    /* SPFN HOLDS ACROSS AN S-PAD NO-OP.  SIM100's dispatch at 13090 is
+           I=SOPF+1
+           GO TO (13100,20000,13102,13103,13104,13105,13106,13107),I
+       and SOP=1 goes straight to 20000, PAST every write to SPFN
+       (13110-13434) -- so a no-op leaves the previous value standing.
+       Assigning it unconditionally overwrites SPFN with whatever the
+       MOV SPD default put in `result`, i.e. an arbitrary s-pad, on every
+       instruction that does no s-pad work.  That is fatal to the two
+       readers that build a float from it, DPBS case 6 (SIM100 23306) and
+       A2 case 6, MDPX (35206) -- both do TCADD(SPFN,P512,...) -- because
+       the instruction that USES SPFN typically does no s-pad work itself:
+       SPUFLT's "FADD DPY,MDPX" is exactly that shape. */
+    if (!(sop == SOP_SPEC || (sop == SOP_NOP && sps < 8)))
+        fps_spfn = result;
     }
 
 /* SPEC field operations (when DF=0, SOP=1) */
@@ -1495,10 +1656,22 @@ if (df == 0 && sop == SOP_SPEC) {
             if (spd & 1) {                              /* JSR (odd SPD) */
                 fps_srs[fps_sra & 0xF] = (fps_psa + 1) & 0xFFF;
                 fps_sra = (fps_sra + 1) & 0xF;
+                /* Stack full -- SIM100 51100 wraps and sets SRAO, exactly as
+                   51200 does on underflow.  The wrap itself already matches;
+                   only the flag was missing. */
+                if (fps_sra == 0)
+                    fps_ap_status |= FPS_STATUS_SRAO;
                 }
             fps_psa = target;
-            return;                                     /* Don't advance PSA */
+            psa_set = 1;      /* Skip normal PSA advance, but FALL THROUGH so the
+                                 data pad, adder and memory fields of this same
+                                 instruction still execute.  SIM100 dispatches the
+                                 jump and carries on through the cycle; an early
+                                 return here loses a `DPX<FA` that shares its
+                                 microword with a JSR.  Same fix, same reason, as
+                                 COND_RET above. */
             }
+            break;
 
         case 1:                                         /* HOSTPNL: SWDB */
             fps_fn_status ^= FN_SWR_ACK;
@@ -1533,6 +1706,17 @@ if (df == 1) {
         int32 nbits = 15 - shift;
         int32 val = spsr_val & 0x7FFF;
         int32 rev = 0;
+        /* SIM100 discards the SOURCE'S BIT 0 before reversing: its
+               CALL LSHFT(TA2,-1,2,0,K,K)      <- pre-shift, carry dropped
+               DO 13050 I=1,J   ... reverse ...
+               CALL LSHFT(SPSR,1,2,0,K,K)      <- the post left-shift
+           sits BEFORE the loop, so the first bit tested is bit 1.  The
+           emulator started at bit 0, which is a one-bit offset in every
+           reversed address.  (LSHFT's own header: negative COUNT shifts
+           right, CARRY is the bit shifted out.)  This is invisible while
+           the bit-reverse width is stuck at 0 -- see the split-STATUS
+           note -- so only an FFT that really sets it can show it. */
+        val >>= 1;
         int32 i;
         for (i = 0; i < nbits; i++) {
             rev = (rev << 1) | (val & 1);
@@ -1608,6 +1792,8 @@ t_uint64 dpx_val = fps_dpx[dpx_ridx];
 t_uint64 dpy_val = fps_dpy[dpy_ridx];
 tr_dpx = dpx_val; tr_dpy = dpy_val;
 tr_xr = dpx_ridx; tr_yr = dpy_ridx; tr_xw = dpx_widx;
+
+
 tr_yw = dpy_widx;   /* the DPY WRITE slot -- see below */
 t_uint64 md_val = fps_mdr;      /* three cycles behind SETMA */
 t_uint64 fa_new = fps_fa, fm_new = fps_fm;
@@ -1631,6 +1817,16 @@ if (fadd_op != 7 && !(fadd_op == 0 && FPS_A1(instr) == 0)) {
        latched by the preceding instruction.
        When FADD=0 the A1 field is the single-operand sub-opcode rather
        than a source select, so A1 is not loaded at all (label 35000). */
+    /* AND NEITHER LATCH IS TOUCHED WHEN THE ADDER IS SKIPPED.  SIM100's
+       label 35000 is
+           IF(FADDF.EQ.7.OR.(FADDF.EQ.0.AND.A1F.EQ.0)) GO TO 40000
+       and 40000 is PAST the A1 and A2 selects at 35100-35300, so both hold.
+       That matters because FADD=7 is the LDREG/IO group, where the A2 field
+       is the REGISTER SELECTOR and not an adder source at all -- selecting
+       A2 from it corrupts the latch.  Harmless while A2 case 6 returned
+       DPX unchanged, which is what VADD's two A2=6 instructions want, and
+       destructive the moment MDPX is implemented properly. */
+    if (!(fadd_op == 7 || (fadd_op == 0 && FPS_A1(instr) == 0))) {
     if (fadd_op != 0)
         /* A1 sources: 0=hold, 1=FM, 2=DPX, 3=DPY, 4=TMR, 5-7=ZERO */
         switch (FPS_A1(instr)) {
@@ -1650,15 +1846,57 @@ if (fadd_op != 7 && !(fadd_op == 0 && FPS_A1(instr) == 0)) {
         case 3: fps_a2 = dpy_val; break;                /* DPY */
         case 4: fps_a2 = md_val; break;                 /* MD */
         case 5: fps_a2 = 0; break;                      /* ZERO */
-        case 6:                                         /* MDPX: modify DPX */
-            /* On real hardware: copies DPX mantissa and applies exponent
-               from SPFN+512, then FPADD normalizes. Since DPBS=6 already
-               produces a normalized float in DPX, MDPX passes it through. */
-            fps_a2 = dpx_val;
+        case 6:                                         /* MDPX, SIM100 35206 */
+            /* DPX's MANTISSA with the EXPONENT REPLACED BY SPFN+512:
+
+                   35206  CALL MOVPRT(DPXR,3,A2,3,6,6,4)   elements 3-6, mantissa
+                          CALL TCADD(SPFN,P512,TA2,2,K)    SPFN + 512
+                          TA2(1)=MOD(TA2(1),4)             keep 10 bits
+                          CALL MOVPRT(TA2,1,A2,1,2,6,2)    into elements 1-2
+
+               and EDPX (7, ASM100 ARGSYM "/2HED,2HPX,7,2/" -- there is no
+               MDPY in this field) is the mirror, DPX's exponent with a
+               mantissa of MOD(SPFN(2),4)*4 in element 3, SIM100 35207.
+
+               IMPLEMENTING BOTH FAITHFULLY BREAKS SEVEN OF THE NINE WORKING
+               ROUTINES -- VSADD returned 25133058 for 3.0 -- so it is
+               REVERTED to the pass-through pending the reason.  VADD itself
+               carries TWO A2=6 instructions, and A2 is an architectural
+               LATCH, so a value written here survives into later
+               instructions that select A2=0 to hold it.  The prime suspect
+               is the GATE: SIM100 selects A2 inside the adder section,
+               which label 35000 skips entirely when
+               "FADD==7 || (FADD==0 && A1==0)", while this code selects it
+               every cycle.  Check that before re-enabling -- the semantics
+               above are sourced twice.  They were reverted once because
+               implementing them broke seven routines; the cause was the
+               MISSING 35000 GATE above, not these. */
+            fps_a2 = (dpx_val & FP_MANT_MASK)
+                     | (((t_uint64)((fps_spfn + 512) & 0x3FF)) << FP_EXP_SHIFT);
             break;
-        case 7:                                         /* MDPY */
-            fps_a2 = dpx_val;
+        case 7:                                         /* EDPX, SIM100 35207 */
+            /* The mirror of MDPX: DPX's EXPONENT with a small mantissa
+               taken from SPFN.
+
+                   35207  CALL RMOV(ZERO6,A2,6)
+                          CALL MOVPRT(DPXR,1,A2,1,6,6,2)   elements 1-2
+                          A2(3)=MOD(SPFN(2),4)*4           element 3
+
+               Element 3 is mantissa bits 27:24, so the mantissa is
+               (SPFN & 3) << 26.  VEXP is the only routine here that uses
+               it, and it needs exactly this: `DPX(SCALE)<SPFN` builds a
+               value whose EXPONENT is I+1+512, then
+               `FADD ZERO,EDPX(SCALE)` pairs that exponent with a mantissa
+               of 0.5 to make "DO .5 * 2**(I+1)", which is its own comment.
+
+               Previously reverted with MDPX when implementing the pair
+               broke seven routines.  That cause is now known and fixed --
+               the missing 35000 adder-skip gate and the 2**27 mantissa
+               scale -- and MDPX has been live and correct since. */
+            fps_a2 = (dpx_val & ((t_uint64)0x3FF << FP_EXP_SHIFT))
+                     | ((t_uint64)(fps_spfn & 3) << 26);
             break;
+        }
         }
 
     /* Floating adder pipeline: FPADD→FAB1, shift FAB1→FAB2.
@@ -1704,17 +1942,77 @@ if (fadd_op != 7 && !(fadd_op == 0 && FPS_A1(instr) == 0)) {
                        reciprocal table with the leading bits
                        ("LDSPT ADR; DB=DPX  GET TABLE BITS"). */
                     sm_mant = fp_get_mant (fps_a2);
-                    if (sm_mant < 0)
-                        fa_new = fp_pack (sm_exp, (-sm_mant) | 0x08000000);
+                    if (sm_mant < 0) {
+                        int32 mag = -sm_mant, e = sm_exp;
+                        /* SIM100 label 1000 normalises FIRST and only then
+                           turns the bit on ("CALL NORMAL... / A3(3)=A3(3)+8"),
+                           so the shift can never disturb it.  A normalised
+                           operand negates to a normalised magnitude except at
+                           -0x08000000, whose negation lands ON bit 27 and
+                           would otherwise leave a zero magnitude. */
+                        while (mag > 0x07FFFFFF) { mag >>= 1; e++; }
+                        while (mag != 0 && mag < 0x04000000) { mag <<= 1; e--; }
+                        /* The sign rides in bit 27, so the MAGNITUDE must
+                           fit bits 26:0.  A negative operand normalises to
+                           -2**27, whose magnitude is 2**27 and would
+                           collide with the sign bit -- shift it down. */
+                        while (mag > 0x07FFFFFF) { mag >>= 1; e++; }
+                        if (mag & 0x08000000) { mag >>= 1; e++; }
+                        fa_new = (e >= (int32)FP_EXP_MASK || e <= 0)
+                                 ? 0 : fp_pack (e, mag | 0x08000000);
+                        }
                     else fa_new = fps_a2;
                     break;
                 case 7:                                 /* FABS, SIM100 10700 */
                     sm_mant = fp_get_mant (fps_a2);
-                    if (sm_mant < 0) fa_new = fp_pack (sm_exp, -sm_mant);
+                    if (sm_mant < 0) {
+                        int32 mag = -sm_mant, e = sm_exp;
+                        /* Same exit as F2CSM -- 10700 falls through to 1000,
+                           which normalises.  Only FIX and SCALE inhibit it
+                           (10150, "INHIBIT NORMALIZATION"). */
+                        while (mag > 0x07FFFFFF) { mag >>= 1; e++; }
+                        while (mag != 0 && mag < 0x04000000) { mag <<= 1; e--; }
+                        fa_new = (e >= (int32)FP_EXP_MASK || e <= 0)
+                                 ? 0 : fp_pack (e, mag);
+                        }
                     else fa_new = fps_a2;
                     break;
+                case 3:                                 /* SCALE trunc  */
+                case 6:                                 /* SCALE rounded */
+                case 1:                                 /* FIX rounded  */
+                case 2: {                               /* FIX truncated */
+                    /* SIM100 labels 10100-10350.  FIX aligns the mantissa
+                       to a FIXED exponent, ISCALE = 512+27 = 539, and sets
+                       EC to it -- so the mantissa becomes the INTEGER
+                       (mant/2**27 * 2**27).  Normalisation is INHIBITED
+                       (10150, NOCNT=0), which is the opposite of the other
+                       single-operand conversions and is what makes the
+                       result usable as an index.  VSIN needs it: DPX(V)
+                       holds the integer part of X*SCALE and indexes the
+                       cosine table with it. */
+                    /* SCALE takes its target exponent from the VALUE
+                       field instead of the constant 27 -- SIM100 10600:
+                           ISCALE = MOD(VALUE(1),4)*256 + VALUE(2)
+                           I = 512;  IF (ISCALE.GE.512) I = -I
+                           ISCALE = ISCALE + I - 1
+                       and then joins FIX at 10150. */
+                    int32 iscale;
+                    int32 delta;
+                    if (a1_op == 3 || a1_op == 6) {
+                        iscale = FPS_VALUE(instr) & 0x3FF;
+                        iscale += (iscale >= 512 ? -512 : 512) - 1;
+                        }
+                    else iscale = 512 + 27;
+                    delta = sm_exp - iscale;
+                    int32 m = fp_get_mant (fps_a2);
+                    if (delta < -32) m = 0;             /* 10120: clean 0 */
+                    else if (delta < 0) m >>= -delta;   /* 10350          */
+                    else if (delta > 0) m <<= delta;
+                    fa_new = fp_pack (iscale, m);
+                    break;
+                    }
                 default:
-                    fa_new = fps_a2;                    /* FIX / SCALE */
+                    fa_new = fps_a2;                    /* SCALE */
                     break;
                 }
             break;
@@ -1723,8 +2021,41 @@ if (fadd_op != 7 && !(fadd_op == 0 && FPS_A1(instr) == 0)) {
         case 2: fa_new = fps_38bit_sub (fps_a1, fps_a2); break; /* FSUB */
         case 3: fa_new = fps_38bit_add (fps_a1, fps_a2); break; /* FADD */
         case 4: fa_new = ~(fps_a1 ^ fps_a2) & FP_38_MASK; break; /* FEQV */
-        case 5: fa_new = fps_a1 & fps_a2; break;        /* FAND */
-        case 6: fa_new = fps_a1 | fps_a2; break;        /* FOR */
+        case 5: {                                       /* FAND */
+            /* SIM100 label 500 is CALL LAND(MA,MB,MC,4) -- the AND is over
+               the FOUR-element MANTISSA array only, and it shares the
+               operand-ALIGNMENT path with the add at 300, so the operands
+               arrive at a common exponent and the exponent itself is NOT
+               ANDed.  ANDing the whole packed word instead mixes the
+               exponent fields, which is what VDIV's uniform 2**-8 error
+               looks like: its "MAKE R" step is FAND DPY,MDPX with DPY
+               holding the !DIV mask, whose own mantissa is 0x7FFFF. */
+            int32 ma, mb, ec;
+            fps_38bit_align (fps_a1, fps_a2, &ma, &mb, &ec);
+            /* AND THEN NORMALISE -- SIM100's 500 is "CALL LAND(MA,MB,MC,4)"
+               followed by "GO TO 1000", the common exit that calls NORMAL,
+               exactly as the add at 300 does.  RESLVE's leading-bit search
+               depends on it: it reads the bit NUMBER out of the result's
+               EXPONENT with `LDSPE`, which only counts the leading set bit
+               if the result has been normalised.  Invisible to VAND
+               (A AND A shares an exponent and is already normal) and to
+               VDIV's "MAKE R" (the answer is zero, which normalises to
+               itself) -- the two cases that were its only coverage. */
+            fa_new = fps_38bit_normalise (ec, ma & mb);
+            break;
+            }
+        case 6: {                                       /* FOR */
+            /* SIM100 label 600 is LCOM/LAND over the SAME four-element
+               mantissa array as 500 -- "A OR B = NOT(NOT A AND NOT B)" --
+               so the OR is mantissa-only and aligned, exactly like FAND.
+               ORing the whole packed word mixes the exponent fields. */
+            int32 ma, mb, ec;
+            fps_38bit_align (fps_a1, fps_a2, &ma, &mb, &ec);
+            /* Normalise, for the reason on FAND above: SIM100 600 is
+               LCOM/LAND and exits through the same 1000. */
+            fa_new = fps_38bit_normalise (ec, ma | mb);
+            break;
+            }
         }
     fps_fab1 = fa_new;
     }
@@ -1755,7 +2086,7 @@ if (fm_start == 1) {
         case 0: m1_val = fps_fm; break;                 /* FM */
         case 1: m1_val = dpx_val; break;                /* DPX */
         case 2: m1_val = dpy_val; break;                /* DPY */
-        case 3: m1_val = fps_tmr; break;                /* TMR */
+        case 3: m1_val = fps_tmr; break;   /* TMR */
         }
     switch (m2_field) {
         case 0: m2_val = fps_fa; break;                 /* FA */
@@ -1771,23 +2102,85 @@ if (fm_start == 1) {
     fps_fmb3 = fps_fmb2;
     fps_fmb2 = fps_fmb1;
     fps_fmb1 = fps_38bit_mul (m1_val, m2_val);
+
+
+
+
+
     }
 
 /* Data Pad Bus select */
 switch (dpbs) {
     case 0: break;                                      /* NOP */
     case 1: dpbs_val = fps_inbs; break;                 /* DB (input bus) */
-    case 2: dpbs_val = (t_uint64)FPS_VALUE(instr); break; /* VALUE */
+    case 2:                                             /* VALUE */
+        /* THE LITERAL GOES ON THE BUS TWICE -- SIM100 23302:
+               CALL MOVPRT(VALUE,1,DPBS,1,2,6,2)   elements 1-2, the EXPONENT
+               DPBS(1)=MOD(DPBS(1),4)              masked to 10 bits
+               CALL MOVPRT(VALUE,1,DPBS,5,2,6,2)   elements 5-6, the LOW MANTISSA
+           so a `DB=nnnn` presents its value in the exponent field AND in
+           the low 16 bits.  That is what makes RESLVE's
+           `DPY(PATTERN)<1032; WRTEXP` work: the restricted write copies
+           the EXPONENT elements, and they carry 1032.  With the literal
+           only in the low bits the exponent came out ZERO, the leading-bit
+           number read back as nonsense, and the mask loop never emptied.
+           Readers that take the low 16 bits (LDSPI, LDMA) are unaffected. */
+        dpbs_val = (((t_uint64)(FPS_VALUE(instr) & 0x3FF)) << 28)
+                 | (t_uint64)(FPS_VALUE(instr) & 0xFFFF);
+        break;
     case 3: dpbs_val = dpx_val; break;                  /* DPX */
     case 4: dpbs_val = dpy_val; break;                  /* DPY */
     case 5: dpbs_val = md_val; break;                   /* MD */
-    case 6:                                             /* SPFN bus (SIM100 line 23306) */
-        /* Produces a normalized float from the SPFN integer value.
-           On real hardware this goes through DPBS→DPX→MDPX→FPADD normalize.
-           We produce the normalized result directly. */
-        dpbs_val = fps_double_to_38bit((double)(int16_t)(fps_spfn & 0xFFFF));
+    case 6:                                             /* SPFN bus, SIM100 23306 */
+        /* REVERTED -- see the note in CLAUDE.md.  The faithful pair (this
+           and MDPX) is right in structure and leaves every routine short by
+           exactly ONE ELEMENT, because FPS's literal 27 assumes a mantissa
+           scaled 2**27 and fps_38bit_to_double divides by 2**28. */
+        dpbs_val = ((t_uint64)((fps_spfn + 512) & 0x3FF) << FP_EXP_SHIFT)
+                   | (t_uint64)(fps_spfn & 0xFFFF);
+        if (fps_spfn & 0x8000)
+            dpbs_val |= (t_uint64)0x0FFF0000;
         break;
     case 7: dpbs_val = fps_tmr; break;              /* TM, via TMR */
+    }
+
+/* PS TO DPBS (SOP=1, SPEC=13, PS=0-7) -- SIM100 label 23050, whose own
+   header names it exactly that.  It reads the word at PSA+1 as a LITERAL
+   and puts it on the DPBS bus, with TWOCYC=2 so the next cycle skips the
+   data word.  This is how RPSF/RPSL load embedded constants:
+
+        RPSF SCLC4K; DPX(SCALE)<DB      "GET SCALE FACTOR
+
+   The byte arithmetic (MOVPRT into DPBS(3), then the /16 realignment and
+   the PST(4) exponent fixup) decodes to: for ODD SPD -- the RPSF* forms,
+   I=5 -- exponent from bits 37:28 and mantissa from bits 27:0, i.e. the
+   38-bit float sits in the LOW 38 BITS of the following microword; for
+   EVEN SPD -- the RPSL* forms, I=1 -- exponent bits 63:60, mantissa bits
+   59:32, the left half.  SIM100 uses only MOD(SPDF,2), so the A/T/P
+   suffixes differ in the ASSEMBLER, not in the hardware read. */
+if (df == 0 && sop == SOP_SPEC && sps == 11 && spd <= 7) {
+    /* SIM100 23000: I = MOD(SPDF,8)/2+1 selects the ADDRESS MODE --
+       23010 VALUE (absolute), 23011 PSA+VALUE (PC-relative),
+       23012 TMA, 23013 the switch register.  The same four modes
+       JMP/JSR carries in its SPD subfield.  The literal therefore lives
+       at a LABEL, not at PSA+1, which is why VSIN's eight RPSF
+       instructions are consecutive and share a word 1. */
+    int32 psptr;
+    t_uint64 lit;
+    switch ((spd & 7) / 2) {
+        case 0: psptr = FPS_VALUE(instr); break;
+        case 1: psptr = fps_psa + FPS_VALUE(instr); break;
+        case 2: psptr = fps_tma; break;
+        default: psptr = fps_swr; break;
+        }
+    psptr &= 0xFFF;
+    lit = fps_ps ? fps_ps[psptr] : 0;
+    if (spd & 1)
+        dpbs_val = lit & 0x3FFFFFFFFFULL;           /* bits 37:0 */
+    else
+        dpbs_val = (((lit >> 60) & 0xF) << FP_EXP_SHIFT)
+                 | ((lit >> 32) & 0x0FFFFFFFULL);
+    rps2 = 1;
     }
 
 /* LDSPT (SOP=0, SPS=15).  SIM100 runs the s-pad ALU dispatch (13114, MOV
@@ -1803,8 +2196,76 @@ switch (dpbs) {
    DPBS(3)'s low nibble and bytes 4,5,6, and the field is mantissa bits
    25..19 -- a 7-BIT INDEX.  That is VDIV's "GET TABLE BITS": the leading
    magnitude bits index the reciprocal table. */
+/* PANEL BUS READS (FADD=7, A1=1) MUST HAPPEN BEFORE THE LDSP GROUP.
+   SIM100 builds PNLBS in its 23xxx bus-construction section and only
+   reaches the LDSP group at 31114 afterwards, so `RTMA; LDSPNL 15` --
+   ONE instruction doing both -- must see this cycle's value.  Leaving the
+   read down in the register section made LDSPNL take the PREVIOUS panel
+   bus, which is the same within-one-instruction ordering defect this file
+   records for MI and MA. */
+if (fadd_op == 7 && FPS_A1(instr) == 1) {
+    switch (FPS_A2(instr)) {
+        /* RPSA reads the PROGRAM COUNTER.  ASM100 /3,-28672/ = 0x9000,
+           so FADD=7 A1=1 A2=0 -- the same read family as RMA/RTMA/RAPS.
+           VATAN's whole body is "RPSA; LDSPNL LOC" then "LDSPI ADR;
+           DB=ATAN": capture where I am, note the function's offset from
+           here, jump.  Without RPSA the base is never set and the routine
+           returns zeros. */
+        case 0: fps_pnlbs = fps_psa; break;   /* RPSA */
+        case 2: fps_pnlbs = fps_ma; break;              /* RMA  */
+        case 3: fps_pnlbs = fps_tma; break;             /* RTMA */
+        case 6: fps_pnlbs = fps_ap_status; break;        /* RAPS */
+        default: break;
+        }
+    }
+
+/* LDSPNL (SOP=0, SPS=12) -- SIM100 31114, "SPS 12: PANEL BUS":
+       31114   CALL MWRIT(PNLBS,SP,SPDV,SPSIZE,2,1)
+   VSIN pairs it with RAPS to read APSTATUS into an s-pad.  Like LDSPE and
+   LDSPT it is a write AFTER the bus selects, not an s-pad ALU result. */
+if (df == 0 && sop == SOP_NOP && sps == 12 && spd < SP_SIZE && cond != 1)
+    fps_spad[spd] = fps_pnlbs & 0xFFFF;
+
 if (df == 0 && sop == SOP_NOP && sps == 15 && spd < SP_SIZE && cond != 1)
     fps_spad[spd] = (int32)((dpbs_val >> 19) & 0x7F);
+
+/* LDSPE -- the UNBIASED EXPONENT of the DPBS bus into the s-pad.
+   SIM100 31115, in the same group and written the same way as LDSPT:
+
+       31115   CALL MOVPRT(DPBS,1,TA2,1,6,2,2)    elements 1-2, the exponent
+               CALL TCADD(TA2,M512,TA2,2,K)       minus 512
+               GO TO 31120                        into SP[SPDV]
+
+   Elements 1-2 are the exponent -- the same mapping settled for the
+   write-width codes -- which is bits 37-28 packed, and the bias is 512.
+   VDIV needs it for "LDSPE E; DB=DPX  GET EXPONENT", which is how the
+   2**(-E-1) scaling of DPX(2) is built; without it E holds a stale value
+   and the scaling is never applied.  Kept 16-bit and two's complement,
+   since a normalised operand below 1.0 gives a negative exponent. */
+if (df == 0 && sop == SOP_NOP && sps == 13 && spd < SP_SIZE && cond != 1)
+    fps_spad[spd] = (int32)((((dpbs_val >> 28) & 0x3FF) - 512) & 0xFFFF);
+
+/* LDSPI TAKES THE DPBS BUS, like the rest of its family.  `LDSPI TBLADR;
+   DB=!DIV` reaches the s-pad through DPBS select 2 (VALUE), so a literal
+   still works -- but `LDSPI TABLE; DB=DPX(V)` in VSIN selects DPX
+   (measured: dpbs=3 at its PS 18) and must take the PAD, not the unused
+   immediate field.  Taking the bus covers both forms with one rule, and
+   this is where the value exists: the s-pad ALU runs BEFORE the bus
+   select, which is why LDSPE and LDSPT are written here too. */
+if (df == 0 && sop == SOP_NOP && sps == 14 && spd < SP_SIZE && cond != 1
+    && dpbs != 2)
+    fps_spad[spd] = (int32)(dpbs_val & 0xFFFF);
+
+/* Restricted write width.  SIM100 31000 gates the whole SOP1 group on
+   "SOPF.EQ.0 .AND. (SPSF.LE.3 .OR. SPSF.GE.12)" and then splits it,
+   "IF(SPSF.LE.3) GO TO 31150" -- the same group the LDSPE/LDSPI/LDSPT
+   codes 12-15 live in.  SPS=0 falls through to 32000 and changes
+   nothing, so only 1-3 narrow the write. */
+if (sop == SOP_NOP) {
+    if (sps == SPS_WRTEXP)      wrt_mask = FPS_WRT_EXP;
+    else if (sps == SPS_WRTHMN) wrt_mask = FPS_WRT_HMN;
+    else if (sps == SPS_WRTLMN) wrt_mask = FPS_WRT_LMN;
+    }
 
 /* FADD=7 I/O group: register loads from DPBS value (SIM100 line 32000).
    A1=0 selects "store into regs", A2 selects which register. */
@@ -1817,9 +2278,35 @@ if (fadd_op == 7 && FPS_A1(instr) == 0) {
             fps_spd_hold = (int32)(dpbs_val & 0xF);
             fps_ldspd = 1;
             break;
-        case 2: fps_ma = (int32)(dpbs_val & 0xFFFF); break;    /* LDMA */
-        case 3: fps_tma = (int32)(dpbs_val & 0xFFFF); break;   /* LDTMA */
+        /* A1 SELECTS THE DIRECTION in this group: 0 LOADS the register
+           from the DPBS bus, 1 READS it onto the PANEL bus.  ASM100's
+           OPSYM gives the read forms with word1=3 and A1=1 --
+           RMA /3,-27648/ = 0x9400 (A2=2), RTMA /3,-27136/ = 0x9600
+           (A2=3), RAPS /3,-25600/ = 0x9C00 (A2=6) -- against LDAPS
+           /3,-29696/ = 0x8C00 with A1=0.  VEXP needs RTMA: its
+           "RTMA; LDSPNL 15" is how it captures the !EXP table address
+           into an s-pad, and without it s-pad 13 stays zero and the
+           later "MOV 15,15; SETTMA" points table memory at 0. */
+        case 2:
+            if (FPS_A1(instr) == 1) break;   /* read: done above */
+            else if (0) ;        /* RMA  */
+            else fps_ma = (int32)(dpbs_val & 0xFFFF);          /* LDMA */
+            break;
+        case 3:
+            if (FPS_A1(instr) == 1) break;   /* read: done above */
+            else if (0) ;       /* RTMA */
+            else fps_tma = (int32)(dpbs_val & 0xFFFF);         /* LDTMA */
+            break;
         case 4: fps_dpa = (int32)(dpbs_val & 0x3F); break;     /* LDDPA */
+        case 6:                                 /* APSTATUS, SIM100 32106 */
+            /* RAPS and LDAPS both decode to FADD=7, A2=6 (ASM100 OPSYM:
+               word1=3 with word2 0x9C00 / 0x8C00); A1 tells them apart.
+               32106 is MOVPRT(DPBS,5,NWSTAT,1,6,2,2) -- the LOW 16 BITS of
+               the bus -- with LDAPS=1.  FADD=7 skips the adder (the 35000
+               gate), so A1 is free to be a sub-selector here. */
+            if (FPS_A1(instr) != 1)                             /* RAPS done above */
+                fps_ap_status = (int32)(dpbs_val & 0xFFFF);     /* LDAPS */
+            break;
         }
     }
 
@@ -1830,15 +2317,31 @@ if (fadd_op == 7 && FPS_A1(instr) == 0) {
    this cycle -- DPX=2 latches whatever the adder pipeline presented in
    FA at the top of the cycle, which is how pipeline-scheduled library
    code retrieves results. */
+/* Restricted write width (SIM100 label 31150, "RESTRICT WIDTH OF MEMORY
+   WRITE (SOP=0,SOP1=1-3)").  31151/31152/31153 set the (WRTN,WRTL) pair
+   to (2,1), (2,3) and (2,5); the default at line 1201 is (6,1), the whole
+   word.  Every write is then MOVPRT(src,WRTL,dst,WRTL,6,6,WRTN) -- two
+   elements of the six starting at WRTL -- and that is applied to the data
+   pads (33101-33203) exactly as it is to MI (41101-41103).
+
+   The six elements hold the exponent in 1-2 and the mantissa in 3-6, so
+   the three modes are exact 16-bit thirds of the word.  That mapping is
+   what makes LDSPT's MOD(DPBS(3),4)*32+MOD(DPBS(4)/8,32) come out as
+   mantissa bits 25-19 and LDMA's MOVPRT(DPBS,5,AMA,1,6,2,2) come out as
+   the low 16 mantissa bits, both of which are separately verified here. */
+/* Latch the bus for the NEXT cycle's BDBN/BDBZ, which are evaluated
+   before the bus select exists -- the same one-cycle rule FACOND follows. */
+fps_dpbs_prev = dpbs_val;
+
 switch (FPS_DPX(instr)) {
-    case 1: fps_dpx[dpx_widx] = dpbs_val; break;
-    case 2: fps_dpx[dpx_widx] = fps_fa; break;
-    case 3: fps_dpx[dpx_widx] = fps_fm; break;
+    case 1: FPS_WRT (fps_dpx[dpx_widx], dpbs_val); break;
+    case 2: FPS_WRT (fps_dpx[dpx_widx], fps_fa); break;
+    case 3: FPS_WRT (fps_dpx[dpx_widx], fps_fm); break;
     }
 switch (FPS_DPY(instr)) {
-    case 1: fps_dpy[dpy_widx] = dpbs_val; break;
-    case 2: fps_dpy[dpy_widx] = fps_fa; break;
-    case 3: fps_dpy[dpy_widx] = fps_fm; break;
+    case 1: FPS_WRT (fps_dpy[dpy_widx], dpbs_val); break;
+    case 2: FPS_WRT (fps_dpy[dpy_widx], fps_fa); break;
+    case 3: FPS_WRT (fps_dpy[dpy_widx], fps_fm); break;
     }
 
 /* Memory address updates (when not using VALUE field).
@@ -1868,12 +2371,41 @@ if (!use_value) {
     switch (ma_op) {
         case ADDR_INC:  fps_ma = (fps_ma + 1) & 0xFFFF; break;
         case ADDR_DEC:  fps_ma = (fps_ma - 1) & 0xFFFF; break;
-        case ADDR_SET:  fps_ma = fps_spad[spd] & 0xFFFF; break;
+        case ADDR_SET:
+            /* SETMA TAKES THE S-PAD ALU RESULT, NOT THE STORED S-PAD --
+               the same correction already made for SETTMA below, and for
+               the same reason.  VSWAP settles it:
+
+                   LOOP:  SUB# I,A; SETMA; MI<FA     "1,STORE A
+                          SUB# K,C; SETMA; MI<FA     "2,STORE C
+
+               the `#` suffix means NO WRITEBACK, so the s-pad still holds
+               the un-decremented pointer while the ALU has `A - I`, which
+               is the address the store must use.  Reading the s-pad wrote
+               BOTH destinations one element too high -- measured as
+               [1,7,8,9,1,2] where a correct swap gives [7,8,9,1,2,3].
+               For an ordinary `ADD K,C; SETMA` the ALU result IS written
+               back, so spad[spd] == result and nothing changes; only the
+               `#` (no-writeback) forms differ, which is why 74 routines
+               never noticed. */
+            fps_ma = result & 0xFFFF;
+            break;
         }
     switch (dpa_op) {
         case ADDR_INC:  fps_dpa = (fps_dpa + 1) & 0xFF; break;
         case ADDR_DEC:  fps_dpa = (fps_dpa - 1) & 0xFF; break;
-        case ADDR_SET:  fps_dpa = fps_spad[spd] & 0xFF; break;
+        case ADDR_SET:
+            /* SETDPA takes the ALU RESULT, for the same reason SETMA and
+               SETTMA do -- a `#` operation suppresses the s-pad writeback,
+               so the stored s-pad is stale while the ALU carries the value
+               the instruction computed.  All three ADDR_SET arms now agree.
+               NO ROUTINE IN THE SUITE EXERCISES THIS YET (SETDPA after a
+               `#` is what would show it), so this is applied on the
+               strength of its two siblings rather than on a measurement,
+               and it is a NO-OP for the ordinary non-`#` forms where the
+               writeback makes spad[spd] == result. */
+            fps_dpa = result & 0xFF;
+            break;
         }
     /* TMA IS 16 BITS.  These two masked to 0xFFF while ADDR_SET beside
        them used 0xFFFF -- the same 12-bit defect already recorded for the
@@ -1884,7 +2416,26 @@ if (!use_value) {
     switch (tma_op) {
         case ADDR_INC:  fps_tma = (fps_tma + 1) & 0xFFFF; break;
         case ADDR_DEC:  fps_tma = (fps_tma - 1) & 0xFFFF; break;
-        case ADDR_SET:  fps_tma = fps_spad[spd] & 0xFFFF; break;
+        case ADDR_SET:
+            /* SETTMA TAKES THE S-PAD ALU RESULT, NOT THE STORED S-PAD.
+               VSQRT settles it: `ADDL# ADR,INVTBL; SETTMA` computes
+               (INVTBL + ADR) << 1 -- the routine stores the table address
+               HALVED (`!DIVD2 $EQU 4000` octal = 2048, commented "!DIV/2")
+               and doubles it back here -- but the `#` suffix means NO
+               WRITEBACK, so the s-pad still holds 2049 while the ALU
+               produced 4098:
+
+                   >>AS psa=30 spd=8 spad=2049 res=4098 sop=2 sh=1 cond=1
+
+               Reading the s-pad gave 2049, a dead FFT-table slot, so every
+               coefficient after the first read ZERO and the polynomial
+               collapsed to its constant term -- which is exactly why VSQRT
+               was linear in A.  Where no s-pad op runs, `result` is the
+               MOV SPD default and equals the s-pad, so this is a no-op for
+               every other user (measured: PS 19, 26 and 44 all have
+               res == spad). */
+            fps_tma = result & 0xFFFF;
+            break;
         }
     }
 
@@ -1892,10 +2443,10 @@ if (!use_value) {
    From SIM100.FTN line 2236: MI=1→FA, MI=2→FM, MI=3→DPBS */
 if (mi_field != 0 && fps_md && fps_ma < MD_SIZE) {
     switch (mi_field) {
-        case 1: fps_md[fps_ma] = fps_fa;                 /* FA (float adder) */
+        case 1: FPS_WRT (fps_md[fps_ma], fps_fa);      /* FA (float adder) */
                 break;
-        case 2: fps_md[fps_ma] = fps_fm; break;        /* FM (float multiplier) */
-        case 3: fps_md[fps_ma] = dpbs_val; break;      /* From DPBS */
+        case 2: FPS_WRT (fps_md[fps_ma], fps_fm); break; /* FM (float mult) */
+        case 3: FPS_WRT (fps_md[fps_ma], dpbs_val); break; /* From DPBS */
         }
     }
 }
@@ -1911,7 +2462,7 @@ fps_mdb[0] = 0;           fps_mdb_v[0] = 0;
    -- and the fetch started by THIS cycle's TMA enters TMB1.  Table
    memory is a ROM read with no valid flag: every cycle fetches. */
 fps_tmb[1] = fps_tmb[0];
-fps_tmb[0] = (fps_tm && fps_tma < TM_SIZE) ? fps_tm[fps_tma] : 0;
+fps_tmb[0] = fps_tm_fetch (fps_tma);
 /* SIM100 label 41010: a memory cycle starts on a live MA field, or on
    the FADD=7 register-load forms that touch MA. */
 mem_cycle = ((ma_op >= 1 && !use_value) ||
@@ -1923,16 +2474,19 @@ if (mem_cycle) {
     else {
         fps_mdb_v[0] = 1;
         fps_mdb[0] = (fps_md && fps_ma < MD_SIZE) ? fps_md[fps_ma] : 0;
+
         }
     }
 
 
 if (fps_trace && fps_trace_n != 0) {
-    printf ("  FA=%.6g MD=%.6g DPXr=%.6g DPYr=%.6g DPYw=%.6g MA=%o TMA=%o"
+    printf ("  FA=%.6g MD=%.6g DPXr=%.6g DPXw=%.6g DPYr=%.6g DPYw=%.6g MA=%o TMA=%o"
             " xr=%d yr=%d xw=%d yw=%d SP=[%d %d %d %d %d %d %d] fc=%d\n",
             fps_38bit_to_double (fps_fa),
             fps_38bit_to_double ((fps_md && fps_ma < MD_SIZE) ? fps_md[fps_ma] : 0),
-            fps_38bit_to_double (tr_dpx), fps_38bit_to_double (tr_dpy),
+            fps_38bit_to_double (tr_dpx),
+            fps_38bit_to_double (fps_dpx[tr_xw & 0x1F]),
+            fps_38bit_to_double (tr_dpy),
             fps_38bit_to_double (fps_dpy[tr_yw & 0x1F]),
             fps_ma, fps_tma, tr_xr, tr_yr, tr_xw, tr_yw,
             fps_spad[0], fps_spad[1], fps_spad[2], fps_spad[3],
@@ -1959,6 +2513,7 @@ if (branch) {
        where M21 = -17). DISPF is unsigned 5-bit (0-31). */
     fps_psa = (fps_psa + disp - 17) & 0xFFF;
     }
+
 }  /* end if (!psa_set) */
 }  /* end fps_execute_cycle */
 
@@ -1984,13 +2539,21 @@ if (val == 0.0) return 0;
 sign = (val < 0.0) ? 1 : 0;
 abs_val = sign ? -val : val;
 
-/* Compute exponent: val = mant * 2^(exp-512), mant in [0.25, 0.5) */
+/* Compute exponent: val = mant * 2^(exp-512), mant in [0.5, 1.0).
+
+   THE RANGE IS [0.5,1.0) BECAUSE THE MANTISSA SCALE IS 2**27, which is
+   the ROM's own convention -- TM(66) is (513,1024,0), i.e. mantissa
+   2**26 at exponent 513 for the value 1.0.  With the old [0.25,0.5) the
+   multiplier below yielded mantissas in [2**25,2**26), one bit BELOW
+   normalised, and every table constant and every host value entered the
+   engine denormalised.  That is what made VDIV read !ONE with exponent
+   514 and propagate a factor of 4. */
 exp = FP_EXP_BIAS;
-while (abs_val >= 0.5 && exp < (int32)FP_EXP_MASK) { abs_val *= 0.5; exp++; }
-while (abs_val < 0.25 && exp > 0) { abs_val *= 2.0; exp--; }
+while (abs_val >= 1.0 && exp < (int32)FP_EXP_MASK) { abs_val *= 0.5; exp++; }
+while (abs_val < 0.5 && exp > 0) { abs_val *= 2.0; exp--; }
 
 /* Convert to 28-bit integer mantissa */
-mant = (int32)(abs_val * (double)(1 << 28) + 0.5);
+mant = (int32)(abs_val * (double)(1 << 27) + 0.5);
 if (mant > 0x07FFFFFF) mant = 0x07FFFFFF;
 
 if (sign) mant = -mant;
@@ -2132,20 +2695,79 @@ if (fps_tm == NULL) {
     if (fps_tm == NULL) return;
     }
 
-/* Sine table: TM[0..1023] = sin(2*pi*i/1024) */
-for (i = 0; i < 1024; i++)
-    fps_tm[i] = fps_double_to_38bit (sin (pi2 * (double)i / 1024.0));
+/* THE TRIG TABLE IS cos(2*pi*i/256), AND SIM100'S OWN COEFFICIENTS PROVE
+   IT.  Its TMROM block holds 64 real FFT words for hardware addresses
+   0-63, and they match cos(2*pi*i/256) EXACTLY to six places:
 
-/* Cosine table: TM[1024..2047] = cos(2*pi*i/1024) */
-for (i = 0; i < 1024; i++)
-    fps_tm[1024 + i] = fps_double_to_38bit (cos (pi2 * (double)i / 1024.0));
+        SIM100  1.0, 0.999699, 0.998795, 0.99729, 0.995185, 0.99248
+        cos/256 1.0, 0.999699, 0.998795, 0.99729, 0.995185, 0.99248
+
+   This filled TM[0..1023] with sin(2*pi*i/1024) instead and then
+   overwrote only the first 64 with the real values, leaving TWO
+   CONVENTIONS in one table with a seam at index 64 -- and near the start
+   the generated sine is ~0 where the true cosine is ~1, which is why VSIN
+   returned all zeros.  Generating the same curve the ROM holds makes the
+   64 known words a CHECK rather than a contradiction.
+
+   Entries 64 and up are INFERRED: SIM100 ships only the first 64, so the
+   period is established and the extent is not.  Marked here rather than
+   presented as known. */
+/* The table spans a QUARTER PERIOD in 4096 entries, not a full one.
+   VSIN's own scale constant settles it: SCLC4K = (2/PI)*4096 with
+   "IF X IS IN RANGE 0 TO PI/2, U IS IN RANGE 0 TO TABLE-SIZE", so entry
+   j is cos((PI/2) * j / 4096).  SIM100's 64 stored words are then samples
+   at STRIDE 64, which is what makes 64 words span all 4096 entries
+   exactly -- and they agree to six places.  (Read as a full period they
+   fit stride 16 equally well, since cos(2*PI*i/256) == cos(PI*i/128);
+   only the quarter-period reading covers the whole table AND matches the
+   constant the routine is assembled with.) */
+for (i = 0; i < 4096; i++)
+    fps_tm[i] = fps_double_to_38bit (cos ((pi2 / 4.0) * (double)i / 4096.0));
 
 /* Math constants (from SYMSRC.APS, octal addresses converted to decimal) */
     /* real ROM image, see the tables above */
     for (i = 0; i < (int32)(sizeof(fps_tm_fft)/sizeof(double)); i++)
-        fps_tm[i] = fps_double_to_38bit (fps_tm_fft[i]);
+        fps_tm[i * 64] = fps_double_to_38bit (fps_tm_fft[i]);
     for (i = 0; i < (int32)(sizeof(fps_tm_func)/sizeof(double)); i++)
         fps_tm[4096 + i] = fps_double_to_38bit (fps_tm_func[i]);
+    /* THE !DIV MASK IS A BIT PATTERN, NOT A VALUE, so it must be assembled
+       from its raw ROM triple rather than round-tripped through a double.
+       SIM100's TMROM gives it directly:
+
+           DATA TM( 65,1),TM( 65,2),TM( 65,3)/   512,     7,    -1/
+
+       -- exponent 512, mantissa (7<<16)|0xFFFF = 0x7FFFF, i.e. the low
+       nineteen mantissa bits set.  Decoding that AS a float happens to give
+       0.00390625, which is where the stored double came from; normalising
+       0.00390625 back again produces a completely different word, and VDIV
+       consumes it with FAND -- a BITWISE and.  TM(65,*) is hardware 4096,
+       which SYMSRC.APS assigns to !DIV. */
+    fps_tm[4096] = ((t_uint64)512 << FP_EXP_SHIFT) | (t_uint64)0x7FFFF;
+
+    /* !EXP's table carries TWO MASKS for the same reason, and BAASRC.APS
+       prints them as raw octal triples in VEXP's own header:
+
+           FRAC =  1000,3777,177777    FRACTION MASK
+           INT  =  1000,4000,0         INTEGER MASK
+
+       i.e. exponent 512 with mantissa 0x7FFFFFF and 0x8000000.  `!EXP` is
+       octal 10317 = 4303 (SYMSRC.APS), so they are the third and fourth
+       words of the block.  INT's mantissa is 0x8000000 at exponent 512 --
+       UNNORMALISED -- so decoding it as a float gives exactly 1.0, and
+       renormalising 1.0 puts 0x4000000 at exponent 513 and DESTROYS the
+       mask.  VEXP splits Y into integer and fraction with these two,
+       bitwise, exactly as VDIV uses !DIV's.
+
+       MEASURED, AND THESE TWO WRITES FIX NOTHING: both masks ALREADY
+       round-trip correctly through the stored doubles -- FRAC's
+       0.9999999925 renormalises to 0x7FFFFFF at exponent 512, and INT is
+       stored as -1.0, which IS mantissa -2**27 = 0x8000000 at 512 under
+       the asymmetric negative normalisation.  They are kept only because
+       a mask that survives by depending on the normalisation convention
+       is one convention change away from silent corruption, which is
+       exactly how !DIV's was lost.  VEXP's defect is elsewhere. */
+    fps_tm[4305] = ((t_uint64)512 << FP_EXP_SHIFT) | (t_uint64)0x7FFFFFF;
+    fps_tm[4306] = ((t_uint64)512 << FP_EXP_SHIFT) | (t_uint64)0x8000000;
 }
 
 

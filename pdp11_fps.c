@@ -88,6 +88,10 @@
 /* FN status bits (read) */
 #define FN_HALTED       0x8000
 #define FN_SWR_ACK      0x4000
+/* FN bit 020000, "LITES ACKNOWLEGE" -- DRIVER.MAC's CTL5 poll:
+       CB5T:   BIT     FN(R3),#20000           ;;;TEST LITES ACKNOWLEGE
+   Set when an EXAM leaves a value in LITES, cleared when the host reads it. */
+#define FN_LITES_ACK    0x2000
 
 /* CTL register bits */
 #define CTL_WC_ZERO     0x8000
@@ -227,6 +231,19 @@ static int32 fps_lites;                 /* Lights register */
 static int32 fps_ctl;                   /* Control register */
 static int32 fps_wc;                    /* Word Count */
 static int32 fps_hma;                   /* Host Memory Address */
+/* HOST MEMORY PAGE SELECT.  DRIVER.MAC names the two addresses that reach it:
+       LITES=  114             ;AP LITES AND PAGE SELECT REGISTER
+       RSTAP=  116             ;AP RESET AND PAGE SELECT REGISTER
+   and uses them as a split read/write pair -- read the current page from 116,
+   merge the buffer's top address bits, write the whole word back to 114:
+       MOV     RSTAP(R3),R1            ;SAVE PAGE REGS
+       BIC     #140000,R1
+       BIS     R0,R1                   ;SET HMA HIGH BITS
+       MOV     R1,LITES(R3)
+   Bits 14-15 are host address bits 16-17, so without this every DMA above
+   64KW lands in page 0. */
+static int32 fps_page;                  /* Host memory page select */
+#define FPS_HOST_ADDR   ((((fps_page >> 14) & 3) << 16) | (fps_hma & 0177777))
 static int32 fps_apma;                  /* AP Memory Address */
 static int32 fps_fmth;                  /* Format High */
 static int32 fps_fmtl;                  /* Format Low */
@@ -326,7 +343,7 @@ static int32 fps_facond_br;              /* ...as the branch field sees it */
    The Nova build reached host memory as M[] directly.  On the Unibus the
    transfer has to go through the map, so DMA uses Map_ReadW/Map_WriteW.  */
 
-#define FPS_BASE        0176000
+#define FPS_BASE        017776000
 #define FPS_VEC         0170
 #define FPS_IPL         5
 
@@ -386,6 +403,7 @@ REG fps_reg[] = {
     { ORDATA (CTRL,     fps_ctl,        16) },
     { ORDATA (WC,       fps_wc,         16) },
     { ORDATA (HMA,      fps_hma,        16) },
+    { ORDATA (PAGE,     fps_page,       16) },
     { ORDATA (APMA,     fps_apma,       16) },
     { ORDATA (FMTH,     fps_fmth,       16) },
     { ORDATA (FMTL,     fps_fmtl,       16) },
@@ -500,8 +518,16 @@ switch (rg) {
         *data = fps_fn_status & 0177777;
         break;
 
-    case FPSR_LITES:                                    /* read only */
+    case FPSR_LITES:                                    /* lights */
         *data = fps_lites & 0177777;
+        /* Reading LITES consumes the answer, so both acknowledges drop --
+           DAPEX's RDWAIT (040000) and DRIVER's CTL5 poll (020000) each
+           require the flag to be seen going 0 -> 1. */
+        fps_fn_status &= ~(FN_LITES_ACK | FN_SWR_ACK);
+        break;
+
+    case FPSR_ABRT:                                     /* page select (read) */
+        *data = fps_page & 0177777;
         break;
 
     default:
@@ -524,7 +550,14 @@ switch (rg) {
     case FPSR_WC:    fps_wc   = data & 0177777;  break;
     case FPSR_HMA:   fps_hma  = data & 0177777;  break;
     case FPSR_APMA:  fps_apma = data & 0177777;  break;
-    case FPSR_SWR:   fps_swr  = data & 0177777;  break;
+    case FPSR_SWR:
+        fps_swr = data & 0177777;
+        /* A new word for the AP: not yet read, so RDWAIT must block.  DAPEX
+           writes SWR, pulses APIRT, then spins on
+               K:      BIT FN(R2),#40000
+           which passed instantly while this flag was never cleared. */
+        fps_fn_status &= ~FN_SWR_ACK;
+        break;
 
     case FPSR_CTRL:                                     /* control */
         fps_ctl = (data & ~CTL_RO_MASK) | (fps_ctl & CTL_RO_MASK);
@@ -541,7 +574,8 @@ switch (rg) {
         fps_process_fn_command (data & 0177777);
         break;
 
-    case FPSR_LITES:                                    /* no write strobe */
+    case FPSR_LITES:                                    /* page select (write) */
+        fps_page = data & 0177777;
         break;
 
     case FPSR_ABRT:                                     /* reset */
@@ -603,6 +637,7 @@ if (cmd & FN_RESET) {
     fps_ctl = 0;
     fps_wc = 0;
     fps_hma = 0;
+fps_page = 0;
     fps_apma = 0;
     fps_fmth = 0;
     fps_fmtl = 0;
@@ -711,6 +746,9 @@ if (cmd & FN_EXAM) {
     else {
         fps_lites = fps_read_reg (regsel);
         }
+
+    /* A value is now waiting in LITES for the host to collect. */
+    fps_fn_status |= (FN_LITES_ACK | FN_SWR_ACK);
 
     /* Handle INC for EXAM too */
     switch (inc) {
@@ -890,14 +928,14 @@ if (fps_ctl & CTL_WRTHOST) {
         }
     {                                                   /* AP -> host */
     uint16 w = (uint16) host_word;
-    Map_WriteW (fps_hma & 0777777, 2, &w);
+    Map_WriteW (FPS_HOST_ADDR, 2, &w);
     }
     }
 else {
     /* Host -> AP */
     {                                                   /* host -> AP */
     uint16 w = 0;
-    Map_ReadW (fps_hma & 0777777, 2, &w);
+    Map_ReadW (FPS_HOST_ADDR, 2, &w);
     host_word = w;
     }
 
@@ -970,104 +1008,11 @@ if (fps_wc == 0)
 #define FP_EXP_BIAS     512
 #define FP_38_MASK      0x3FFFFFFFFFULL
 
-static int32 fp_get_exp (t_uint64 val)
-{
-return (int32)((val >> FP_EXP_SHIFT) & FP_EXP_MASK);
-}
-
-static int32 fp_get_mant (t_uint64 val)
-{
-int32 mant = (int32)(val & FP_MANT_MASK);
-if (mant & 0x08000000)                                 /* Sign extend 28-bit */
-    mant |= (int32)0xF0000000;
-return mant;
-}
-
-/* 38-bit AP float -> double, for tracing only. */
-static double fps_38bit_to_double (t_uint64 val)
-{
-int32 exp = fp_get_exp (val);
-int32 mant = fp_get_mant (val);
-if (mant == 0) return 0.0;
-return (double)mant / 268435456.0 * pow (2.0, (double)(exp - FP_EXP_BIAS));
-}
-
-static t_uint64 fp_pack (int32 exp, int32 mant)
-{
-return ((t_uint64)(exp & FP_EXP_MASK) << FP_EXP_SHIFT) |
-       ((t_uint64)mant & FP_MANT_MASK);
-}
-
-static t_uint64 fps_38bit_add (t_uint64 a, t_uint64 b)
-{
-int32 exp_a = fp_get_exp (a), exp_b = fp_get_exp (b);
-int32 mant_a = fp_get_mant (a), mant_b = fp_get_mant (b);
-int32 result_exp, result_mant, diff;
-
-if (mant_a == 0) return b;
-if (mant_b == 0) return a;
-
-diff = exp_a - exp_b;
-result_exp = (diff >= 0) ? exp_a : exp_b;
-if (diff > 0) mant_b >>= diff;
-else if (diff < 0) mant_a >>= -diff;
-
-result_mant = mant_a + mant_b;
-
-/* Normalize */
-if (result_mant == 0) return 0;
-while (result_mant > 0x07FFFFFF || result_mant < -0x08000000) {
-    result_mant >>= 1;
-    result_exp++;
-    }
-while (result_mant != 0 &&
-       result_mant < 0x04000000 && result_mant > -0x04000000) {
-    result_mant <<= 1;
-    result_exp--;
-    }
-if (result_exp >= (int32)FP_EXP_MASK || result_exp <= 0) return 0;
-return fp_pack (result_exp, result_mant);
-}
-
-static t_uint64 fps_38bit_sub (t_uint64 a, t_uint64 b)
-{
-int32 exp_b = fp_get_exp (b);
-int32 mant_b = fp_get_mant (b);
-if (mant_b == 0) return a;
-return fps_38bit_add (a, fp_pack (exp_b, -mant_b));
-}
-
-static t_uint64 fps_38bit_mul (t_uint64 a, t_uint64 b)
-{
-int32 exp_a = fp_get_exp (a), exp_b = fp_get_exp (b);
-int32 mant_a = fp_get_mant (a), mant_b = fp_get_mant (b);
-t_int64 prod;
-int32 result_exp, result_mant;
-
-if (mant_a == 0 || mant_b == 0) return 0;
-
-prod = (t_int64)mant_a * (t_int64)mant_b;
-/* A mantissa m represents m/2^28 -- fps_38bit_to_double divides by
-   268435456.0 -- so the product of two of them, scaled 2^-56, has to
-   come back by 28 bits, not 27.  Shifting by 27 left every product
-   exactly a factor of two high, which is what VMUL returned: 8, 20, 36
-   for an expected 4, 10, 18. */
-result_mant = (int32)(prod >> 28);
-result_exp = exp_a + exp_b - FP_EXP_BIAS;
-
-/* Normalize */
-if (result_mant == 0) return 0;
-while (result_mant > 0x07FFFFFF || result_mant < -0x08000000) {
-    result_mant >>= 1;
-    result_exp++;
-    }
-while (result_mant < 0x04000000 && result_mant > -0x04000000) {
-    result_mant <<= 1;
-    result_exp--;
-    }
-if (result_exp >= (int32)FP_EXP_MASK || result_exp <= 0) return 0;
-return fp_pack (result_exp, result_mant);
-}
+/* THE ARITHMETIC IS SHARED -- see fps_float.h.  This copy had drifted
+   roughly twenty defects behind nova_fps.c, including a mantissa scale
+   that made every operand twice its value and no working divider.
+   Hand-porting is what allowed that; the header is the fix. */
+#include "fps_float.h"
 
 
 /* Execute one AP instruction cycle */
@@ -1942,6 +1887,7 @@ fps_lites = 0;
 fps_ctl = 0;
 fps_wc = 0;
 fps_hma = 0;
+fps_page = 0;
 fps_apma = 0;
 fps_fmth = 0;
 fps_fmtl = 0;

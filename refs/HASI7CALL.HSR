@@ -1,0 +1,20 @@
+       SUBROUTINE SEQV1 
+        COMMON /APLDCM/ IPAV( 33),NU2,IDLM,NU1,IPPAAD,IPPAND,IOVS(33),
+     *  LMT(10,3),LMTE
+       COMMON /COMM  / C 1001(2     )
+       COMMON /COMM  / C 1002(32    )
+       INTEGER C 1002
+       DATA C 1001(    1)/    +110000000E-8/
+       DATA C 1001(    2)/    +300000000E-9/
+      IF (IDLM.NE.  1) CALL L 101
+      CALL APRUN (    16,1,1,0,13)
+      CALL APWD
+      CALL APEXC
+      RETURN
+      END
+        BLOCK DATA
+        COMMON /APLDCM/ IPAV( 33),NU2,IDLM,NU1,IPPAAD,IPPAND,IOVS(33),
+     *  LMT(10,3),LMTE
+        DATA NU2,IDLM,NU1,IPPAAD,IOVS(2),LMTE
+     *  /0,0,0,0,0,0/
+        END

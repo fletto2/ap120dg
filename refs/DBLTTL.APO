@@ -1,0 +1,17 @@
+     3      ***TITLE
+CMTST 
+     3      ***TITLE
+CMTST 
+    10      2 COMM     3  ***DBDB
+     2         2
+     1        20
+    13      1      ***AENTRY
+CMTST       0      2      0
+    11      1      ***DBIB
+     1     0     2     1     +100000000E-8   
+    11      1      ***DBIB
+     1     1     2     1     +200000000E-8   
+     0      1      0      ***CODE
+    1600      0   2000     20 
+     1      ***END
+CMTST 

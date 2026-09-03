@@ -1,0 +1,865 @@
+# AMLSRC -- routine reference
+
+**Reconstructed from `[327,010]AMLSRC.APS`.**  FPS published no manual for
+this library that survives in any archive searched (bitsavers,
+archive.org, and the ten manuals transcribed in `docs/ocr/`).
+Every line below is quoted or derived from the shipped source;
+where a routine does not state something, this says so rather
+than guessing.
+
+
+## Contents
+
+| routine | entry | parameters | s-pads documented |
+|---|---|---|---|
+| [FGEN](#fgen) | FGEN | 4 | 0 |
+| [FGENT](#fgent) | FGENT | 3 | 0 |
+| [BIN](#bin) | BIN | - | 0 |
+| [STEP](#step) | STEP | - | 0 |
+| [FUN1](#fun1) | FUN1 | - | 0 |
+| [FUN2](#fun2) | FUN2 | - | 0 |
+| [FUN3](#fun3) | FUN3 | - | 0 |
+| [FUN4](#fun4) | FUN4 | - | 0 |
+| [EIGRS](#eigrs) | EIGRS | 5 | 5 |
+| [TRED2](#tred2) | TRED2 | 5 | 23 |
+| [IMTQL2](#imtql2) | IMTQL2 | 5 | 19 |
+| [UDOTPR](#udotpr) | UDOTPR | 5 | 6 |
+| [INDEX](#index) | INDEX | - | 4 |
+| [RKGIL](#rkgil) | RKGIL | 11 | 26 |
+| [SKYSOL](#skysol) | SKYSOL | 8 | 10 |
+| [VINDX2](#vindx2) | VINDX2 | 6 | 6 |
+| [SCSFB](#scsfb) | SCSFB | 6 | 6 |
+| [SCUFB](#scufb) | SCUFB | 7 | 7 |
+| [SCFWD](#scfwd) | SCFWD | 5 | 14 |
+| [SCBAK](#scbak) | SCBAK | 5 | 13 |
+| [SRSFB](#srsfb) | SRSFB | 6 | 6 |
+| [SRUFB](#srufb) | SRUFB | 7 | 7 |
+| [SRFWD](#srfwd) | SRFWD | 5 | 12 |
+| [SRBAK](#srbak) | SRBAK | 5 | 11 |
+| [TSCSFB](#tscsfb) | TSCSFB | 7 | 7 |
+| [TSCUFB](#tscufb) | TSCUFB | 8 | 8 |
+| [TSCFWD](#tscfwd) | TSCFWD | 5 | 14 |
+| [TSCBAK](#tscbak) | TSCBAK | 5 | 13 |
+| [TSRSFB](#tsrsfb) | TSRSFB | 7 | 7 |
+| [TSRUFB](#tsrufb) | TSRUFB | 8 | 8 |
+| [TSRFWD](#tsrfwd) | TSRFWD | 5 | 14 |
+| [TSRBAK](#tsrbak) | TSRBAK | 5 | 10 |
+| [TCVMUL](#tcvmul) | TCVMUL | 3 | 5 |
+
+33 routines.
+
+
+## FGEN
+
+`$ENTRY FGEN, 4`
+
+
+_No `$EQU` parameter block found._
+
+
+    TRANSFER DATA FROM THE HOST TO THE AP.  ONE CALL WILL BE MADE TO THE FUNCTION
+    THE FORTRAN CALL TO PERFORM THE FUNCTION EVALUATION IS
+    CALL FGEN (GNA,INPUT,RESULT,F)
+    F=0 BINARY SEARCH
+    F=1 STEP SEARCH
+    SCRATCH S-PADS
+
+
+## FGENT
+
+`$ENTRY FGENT, 3`
+
+
+_No `$EQU` parameter block found._
+
+
+    TRANSFER DATA FROM THE HOST TO THE AP.  ONE CALL WILL BE MADE TO THE FUNCTION
+    COORDINATE VALUES WITH ONE APPUT. FOLLOWING THE FORTRAN CALL TO FGENT,
+    THE FORTRAN CALL TO PERFORM THE FUNCTION EVALUATION IS
+    CALL FGENT (GNA,INPUT,RESULT)
+    SCRATCH S-PADS
+
+
+## BIN
+
+`$ENTRY BIN`
+
+
+_No `$EQU` parameter block found._
+
+
+    THE FORTRAN CALL TO PERFORM THE FUNCTION EVALUATION IS
+    CALL FGEN (GN,INPUT,RESULT,F)
+    F=0 BINARY SEARCH
+    F=1 STEP SEARCH
+    THE S-PADS USED FOR SCRATCH ARE:
+
+
+## STEP
+
+`$ENTRY STEP`
+
+
+_No `$EQU` parameter block found._
+
+
+    THE FORTRAN CALL TO PERFORM THE FUNCTION EVALUATION IS
+    CALL FGEN (GN,INPUT,RESULT,F)
+    F=0 BINARY SEARCH
+    F=1 STEP SEARCH
+    THE S-PADS USED FOR SCRATCH ARE:
+
+
+## FUN1
+
+`$ENTRY FUN1`
+
+
+_No `$EQU` parameter block found._
+
+
+    THE S-PADS USED AS SCRATCH ARE:
+
+
+## FUN2
+
+`$ENTRY FUN2`
+
+
+_No `$EQU` parameter block found._
+
+
+    THE S-PADS USED AS SCRATCH ARE:
+
+
+## FUN3
+
+`$ENTRY FUN3`
+
+
+_No `$EQU` parameter block found._
+
+
+    THE S-PADS USED AS SCRATCH ARE:
+
+
+## FUN4
+
+`$ENTRY FUN4`
+
+
+_No `$EQU` parameter block found._
+
+
+    THE S-PADS USED AS SCRATCH ARE:
+
+
+## EIGRS
+
+`$ENTRY EIGRS, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `NM` |  |
+| 1 | `N` |  |
+| 2 | `Z` |  |
+| 3 | `E` |  |
+| 4 | `D` |  |
+
+
+    --- ABSTRACT ---
+    EQUIPMENT:              AP-120B WITH BOTH MEMORIES.
+    SIZE:                   6 + TRED2(300) + IMTQL2(250) = 556
+    FORTRAN CALL:           CALL EIGRS (NM,N,Z,E,D)
+    --- SCRATCH ---
+
+
+## TRED2
+
+`$ENTRY TRED2, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `NM` |  |
+| 1 | `N` |  |
+| 2 | `H` |  |
+| 2 | `HH` |  |
+| 2 | `Z` |  |
+| 3 | `E` |  |
+| 3 | `F` |  |
+| 3 | `G` |  |
+| 3 | `S4` |  |
+| 4 | `D` |  |
+| 5 | `EPT` |  |
+| 5 | `S5` |  |
+| 6 | `DPT` |  |
+| 6 | `S6` |  |
+| 7 | `ZPT` |  |
+| 8 | `ZPT2` |  |
+| 9 | `I` |  |
+| 10 | `J` |  |
+| 11 | `K` |  |
+| 12 | `L` |  |
+| 13 | `S1` |  |
+| 14 | `S2` |  |
+| 15 | `S3` |  |
+
+
+    --- ABSTRACT ---
+    EQUIPMENT:              AP-120B WITH FAST MEMORY.
+    SIZE:                   259 + DIV(28) + SQRT(28) + INDEX(15) +
+    UDOTPR(31) = 361 LOCATIONS
+    FORTRAN CALL:           CALL TRED2 (NM,N,Z,E,D)
+    --- SCRATCH ---
+    H = 0.0
+    F = 0.0
+    G = 0.0
+    SCRATCH S-PADS:
+
+
+## IMTQL2
+
+`$ENTRY IMTQL2, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `NM` |  |
+| 1 | `N` |  |
+| 2 | `II` |  |
+| 2 | `L` |  |
+| 2 | `Z` |  |
+| 3 | `E` |  |
+| 3 | `M` |  |
+| 4 | `D` |  |
+| 5 | `DPT` |  |
+| 6 | `EPT` |  |
+| 7 | `ZPT1` |  |
+| 8 | `ZPT2` |  |
+| 9 | `I` |  |
+| 10 | `J` |  |
+| 11 | `K` |  |
+| 12 | `SP13` |  |
+| 13 | `S1` |  |
+| 14 | `S2` |  |
+| 15 | `S3` |  |
+
+
+    --- ABSTRACT ---
+    EQUIPMENT:      AP-120B, FAST MEMORY
+    SIZE:           APPX 200 LOCATIONS PLUS DIV, SQRT, INDEX.
+    FORTRAN CALL:   CALL IMTQL2 (NM,N,Z,E,D)
+    --- SCRATCH ---
+    J = 0
+    S = 1.0
+    C = 1.0
+    P = 0.0
+    S = 1.0 / R
+    C = 1.0 / R
+
+
+## UDOTPR
+
+`$ENTRY UDOTPR, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` |  |
+| 1 | `IA` |  |
+| 2 | `B` |  |
+| 3 | `IB` |  |
+| 4 | `N` |  |
+| 5 | `S1` |  |
+
+
+    EQUIPMENT:      AP-120B WITH ONE CYCLE MEMORY
+    SIZE:           31 LOCATIONS
+    DOES   FA =  SUM( A(MI)*B(MJ) )   FOR M=0,N-1
+
+
+## INDEX
+
+`$ENTRY INDEX`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 13 | `I` |  |
+| 14 | `J` |  |
+| 15 | `N` |  |
+| 15 | `N27` |  |
+
+
+_The header states no formula, size or abstract._
+
+
+## RKGIL
+
+`$ENTRY RKGIL, 11`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `ABTMP` |  |
+| 0 | `N` |  |
+| 0 | `SCR` |  |
+| 1 | `H` |  |
+| 1 | `ONE` |  |
+| 1 | `V1` |  |
+| 2 | `ABZ` |  |
+| 2 | `T0` |  |
+| 2 | `VPT1` |  |
+| 3 | `FLAG` |  |
+| 3 | `THREE` |  |
+| 3 | `ZPT1` |  |
+| 4 | `DV` |  |
+| 5 | `V` |  |
+| 6 | `Z` |  |
+| 7 | `M` |  |
+| 8 | `NDIM` |  |
+| 8 | `T` |  |
+| 9 | `A` |  |
+| 10 | `B` |  |
+| 11 | `J` |  |
+| 12 | `I` |  |
+| 13 | `DVPT` |  |
+| 14 | `VPT` |  |
+| 15 | `ZPT` |  |
+| 393 | `BITMAP` |  |
+
+
+    --- ABSTRACT ---
+    INTEGRATED FOR  T = T0  WITH STEP SIZE  H.  IT IS REQUIRED OF
+    CALLS.  IF IT IS CALLED AGAIN, PERHAPS WITH A DIFFERENT STEP SIZE,
+    USER IS RESPONSIBLE FOR THE CHOICES OF STEP SIZES AND FOR THE
+    EQUIPMENT:              AB-120B WITH STANDARD MEMORY.
+    SIZE:                   APPX 80 LOCATIONS PLUS DFUN.
+    H       $EQU      1             "ADDRESS OF THE STEP SIZE
+    --- SCRATCH ---
+    CALL DFUN(N,H,T,DV,V)
+    CALL DFUN(N,H,T(J),DV,V)
+    --- S-PAD PARAMETERS ---
+    H     $EQU      1                       "ADDRESS OF STEP SIZE
+    FORTRAN CALL:           CALL RKGIL(N,H,T0,FLAG,DV,V,Z,M,NDIM)
+    S-PAD PARAMETERS:
+
+
+## SKYSOL
+
+`$ENTRY SKYSOL, 8`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | COEFFICIENT MATRIX. SIZE=NWA. |
+| 1 | `V` | LOAD VECTOR INPUT & SOLUTION VECTOR OUTPUT. SIZE=NN. |
+| 2 | `MAXA` | DIAGONAL POINTER ARRAY.  SIZE=NN+1 |
+| 3 | `NN` | DEGREES OF FREEDOM. |
+| 4 | `MA` | MAX COLUMN HEIGHT IN COEFFICIENT MATRIX. |
+| 5 | `NWA` | NUMBER OF COEFFICIENT ELEMENTS STORED IN 'A' |
+| 6 | `KKK` | COMPUTATION CONTROL PARAMETER: |
+| 7 | `WS` | COMPUTATION WORKSPACE. SIZE=NN |
+| 10 | `N` |  |
+| 11 | `J` |  |
+
+
+    --- ABSTRACT ---
+    EQUIPMENT: AP-120 WITH EITHER MEMORY
+    SIZE: 244+VDIV(75)+DOTPR(9)+VMOV(6)+VSMA(14)= **348** (STANDARD MEMORY)
+    FORTRAN: CALL SKYSOL(A,V,MAXA,NN,MA,NWA,KKK,WS)
+    S-PAD PARAMETERS
+    C       NN   - SIZE OF STIFFNESS MATRIX
+    C=0.0
+
+
+## VINDX2
+
+`$ENTRY VINDX2, 6`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `A` | BASE ADDR FOR SOURCE VECTOR |
+| 1 | `B` | BASE ADDR FOR INDEX VECTOR |
+| 2 | `J` | INDEX VECTOR INCREMENT |
+| 3 | `C` | BASE ADDR FOR DESTINATION VECTOR |
+| 4 | `K` | DESTINATION VECTOR INCREMENT |
+| 5 | `N` | ELEMENT COUNT |
+
+
+_The header states no formula, size or abstract._
+
+
+## SCSFB
+
+`$ENTRY SCSFB, 6`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `X` | BASE ADDR (MD) OF COMPLEX WORK VECTOR |
+| 2 | `IRP` | BASE ADDR (MD) OF ILOCF (POINTER TO INDEX LIST) |
+| 3 | `UL` | BASE ADDR (MD) OF INFO ON COMPLEX NONZERO |
+| 4 | `SKEW` | INDEX NUMBER (<=0 OR >N) WHICH FLAGS |
+| 5 | `D` | BASE ADDR (MD) OF COMPLEX DIAGONAL ELEMENTS |
+
+
+    ---ABSTRACT---
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY
+    SIZE:      22 + SCFWD (51) + CVMUL (25 FAST, 26 STND) + SCBAK (52)
+    FORTRAN CALL:  CALL SCSFB(N,X,IRP,UL,SKEW,D)
+    SCRATCH:       SP(0-7,9-15),DPX(-3 TO 2),DPY(-2 TO 3),FA,FM,MD
+    CALL SCFWD(N,X,IRP,UL,SKEW)
+    CALL CVMUL(X,2,D,2,X,2,N,1)
+    CALL SCBAK(N,X,IRP,UL,SKEW)
+
+
+## SCUFB
+
+`$ENTRY SCUFB, 7`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `X` | BASE ADDR (MD) OF COMPLEX WORK VECTOR |
+| 2 | `ICP` | BASE ADDR (MD) OF POINTERS TO L |
+| 3 | `L` | BASE ADDR (MD) OF INFO ON COMPLEX OFF-DIAGONAL |
+| 4 | `IRP` | BASE ADDR (MD) OF POINTERS TO U |
+| 5 | `U` | BASE ADDR (MD) OF INFO ON COMPLEX OFF-DIAGONAL |
+| 6 | `D` | BASE ADDR (MD) OF COMPLEX DIAGONAL ELEMENTS |
+
+
+    ---ABSTRACT---
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY
+    SIZE:      22 + SCFWD (51) + CVMUL (25 FAST, 26 STND) + SCBAK (52)
+    FORTRAN CALL:  CALL SCUFB(N,X,ICP,L,IRP,U,D)
+    SCRATCH:       SP(0-7,9-15),DPX(-3 TO 2),DPY(-1 TO 3),FA,FM,MD
+    CALL SCFWD(N,X,ICP,L,0)
+    CALL CVMUL(X,2,D,2,X,2,N,1)
+    CALL SCBAK(N,X,IRP,U,0)
+
+
+## SCFWD
+
+`$ENTRY SCFWD, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `X` | BASE ADDR OF COMPLEX WORK VECTOR |
+| 2 | `ICP` | BASE ADDR OF POINTERS TO L |
+| 3 | `L` | BASE ADDR (MD) OF INFO ON COMPLEX NONZERO |
+| 4 | `SKEW` | INDEX NUMBER (<=0 OR >N) WHICH FLAGS |
+| 8 | `LO` | BASE ADDRESS - 6 FOR L |
+| 9 | `LOFF` | TEMPORARY FOR L OFFSET |
+| 10 | `TWO` | 2 |
+| 11 | `THREE` | 3 |
+| 12 | `XCUR` | CURRENT XR,XI FOR COLUMN |
+| 13 | `NZ` | COUNTER FOR NONZEROS IN COLUMN |
+| 14 | `ROW` | ROW INDEX OF CURRENT NONZERO IN COLUMN |
+| 15 | `FIRST` | TEMPORARY |
+| 15 | `ROWW` | ROW INDEX OF PREVIOUS NONZERO IN COLUMN |
+
+
+    ---ABSTRACT---
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY
+    SIZE:      51 LOCATIONS
+    FORTRAN CALL:  CALL SCFWD(N,X,ICP,L,SKEW)
+    SCRATCH:       SP(0-3,8-15),DPX(0-2),DPY(0-3),FA,FM,MD
+
+
+## SCBAK
+
+`$ENTRY SCBAK, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `X` | BASE ADDR (MD) OF COMPLEX WORK VECTOR |
+| 2 | `IRP` | BASE ADDR (MD) OF POINTERS TO U |
+| 3 | `U` | BASE ADDR (MD) OF INFO ON COMPLEX NONZERO |
+| 4 | `SKEW` | INDEX NUMBER (<=0 OR >N) WHICH FLAGS |
+| 9 | `TWO` | 2 |
+| 10 | `THREE` | 3 |
+| 11 | `XX` | POINTER TO CURRENT XI FOR ROW |
+| 12 | `LAST` | CURRENT (LAST) VALUE IN IRP |
+| 13 | `NZ` | COUNTER FOR NONZEROS IN ROW |
+| 14 | `COL` | COLUMN INDEX OF CURRENT NONZERO IN ROW |
+| 15 | `COLL` | 2 * COLUMN INDEX |
+| 15 | `TP` | TEMPORARY |
+
+
+    ---ABSTRACT---
+    PERFORMS THE BACK SUBSTITUTION ON COMPLEX SIMULTANEOUS EQUATIONS UX=B, WHERE
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY
+    SIZE:      52 LOCATIONS
+    FORTRAN CALL:  CALL SCBAK(N,X,IRP,U,SKEW)
+    SCRATCH:       SP(0-3,9-15),DPX(0-1),DPY(0-3),FA,FM,MD
+
+
+## SRSFB
+
+`$ENTRY SRSFB, 6`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `X` | BASE ADDR (MD) OF REAL WORK VECTOR |
+| 2 | `IRP` | BASE ADDR (MD) OF POINTERS TO UL |
+| 3 | `UL` | BASE ADDR (MD) OF INFO ON REAL NONZERO |
+| 4 | `SKEW` | INDEX NUMBER (<=0 OR >N) WHICH FLAGS |
+| 5 | `D` | BASE ADDR (MD) OF REAL DIAGONAL ELEMENTS |
+
+
+    ---ABSTRACT---
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY
+    SIZE:      21 + SRFWD (33) + VMUL (20 FAST, 11 STND) + SRBAK (35)
+    FORTRAN CALL:  CALL SRSFB(N,X,IRP,UL,SKEW,D)
+    SCRATCH:       SP(0-6,10-15),DPX(-3 TO 2),DPY(-2 TO 3),FA,FM,MD
+    CALL SRFWD(N,X,IRP,UL,SKEW)
+    CALL VMUL(X,1,D,1,X,1,N)
+    CALL SRBAK(N,X,IRP,UL,SKEW)
+
+
+## SRUFB
+
+`$ENTRY SRUFB, 7`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `X` | BASE ADDR (MD) OF REAL WORK VECTOR |
+| 2 | `ICP` | BASE ADDR (MD) OF POINTERS TO L |
+| 3 | `L` | BASE ADDR (MD) OF INFO ON REAL OFF-DIAGONAL |
+| 4 | `IRP` | BASE ADDR (MD) OF POINTERS TO U |
+| 5 | `U` | BASE ADDR (MD) OF INFO ON REAL OFF-DIAGONAL |
+| 6 | `D` | BASE ADDR (MD) OF REAL DIAGONAL ELEMENTS |
+
+
+    ---ABSTRACT---
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY
+    SIZE:      21 + SRFWD (33) + VMUL (20 FAST, 11 STND) + SRBAK (35)
+    FORTRAN CALL:  CALL SRUFB(N,X,ICP,L,IRP,U,D)
+    SCRATCH:       SP(0-6,10-15),DPX(-3 TO 2),DPY(-1 TO 3),FA,FM,MD
+    CALL SRFWD(N,X,ICP,L,0)
+    CALL VMUL(X,1,D,1,X,1,N)
+    CALL SRBAK(N,X,IRP,U,0)
+
+
+## SRFWD
+
+`$ENTRY SRFWD, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `X` | BASE ADDR OF REAL WORK VECTOR |
+| 2 | `ICP` | BASE ADDR OF POINTERS TO L |
+| 3 | `L` | BASE ADDR (MD) OF INFO ON REAL NONZERO |
+| 4 | `SKEW` | INDEX NUMBER (<=0 OR >N) WHICH FLAGS |
+| 10 | `LO` | BASE ADDRRESS - 4 FOR L |
+| 11 | `LOFF` | TEMPORARY FOR L OFFSET |
+| 12 | `TWO` | 2 |
+| 13 | `XCUR` | CURRENT X FOR COLUMN |
+| 14 | `NZ` | COUNTER FOR NONZEROS IN COLUMN |
+| 15 | `FIRST` | TEMPORARY |
+| 15 | `ROW` | ROW INDEX OF CURRENT NONZERO IN COLUMN |
+
+
+    ---ABSTRACT---
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY
+    SIZE:      33 LOCATIONS
+    FORTRAN CALL:  CALL SRFWD(N,X,ICP,L,SKEW)
+    SCRATCH:       SP(0-4,10-15),DPX(0),DPY(0-3),FA,FM,MD
+
+
+## SRBAK
+
+`$ENTRY SRBAK, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `X` | BASE ADDR (MD) OF REAL WORK VECTOR |
+| 2 | `IRP` | BASE ADDR (MD) OF POINTERS TO U |
+| 3 | `U` | BASE ADDR (MD) OF INFO ON REAL NONZERO |
+| 4 | `SKEW` | INDEX NUMBER (<=0 OR >N) WHICH FLAGS |
+| 11 | `TWO` | 2 |
+| 12 | `XX` | POINTER TO CURENT X FOR ROW |
+| 13 | `LAST` | CURENT (LAST) VALUE IN IRP |
+| 14 | `NZ` | COUNTER FOR NONZEROS IN ROW |
+| 15 | `COL` | COLUMN INDEX OF CURENT NONZERO IN ROW |
+| 15 | `TP` | TEMPORARY |
+
+
+    ---ABSTRACT---
+    PERFORMS THE BACK SUBSTITUTION ON REAL SIMULTANEOUS EQUATIONS UX=B, WHERE
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY
+    SIZE:      35 LOCATIONS
+    FORTRAN CALL:  CALL SRBAK(N,X,IRP,U,SKEW)
+    SCRATCH:       SP(0-3,11-15),DPX(0),DPY(0-1),FA,FM,MD
+
+
+## TSCSFB
+
+`$ENTRY TSCSFB, 7`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `XMD` | BASE ADDR IN MD FOR RHS AND RESULT |
+| 2 | `X` | BASE ADDR IN TMRAM OF COMPLEX WORK VECTOR |
+| 3 | `IRP` | BASE ADDR (MD) OF ILOCF (POINTER TO INDEX LIST) |
+| 4 | `UL` | BASE ADDR (MD) OF INFO ON COMPLEX NONZERO |
+| 5 | `SKEW` | INDEX NUMBER (<=0 OR >N) WHICH FLAGS |
+| 6 | `D` | BASE ADDR (MD) OF COMPLEX RECIPROCAL DIAGONAL |
+
+
+    ---ABSTRACT---
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY AND TMRAM
+    SIZE:      31 + TSCFWD (44) + TCVMUL (17) + TSCBAK (44)
+    FORTRAN CALL:  CALL TSCSFB(N,XMD,X,IRP,UL,SKEW,D)
+    SCRATCH:       SP(0-15),DA,DPX(-4 TO 3),DPY(-2 TO 3),FA,FM,MD,TM
+    CALL MTMOV(XMD,X,N)
+    CALL TSCFWD(N,X,IRP,UL,SKEW)
+    CALL TCVMUL(X,D,N)
+    CALL TSCBAK(N,X,IRP,UL,SKEW)
+    CALL TMMOV(X,XMD,N)
+
+
+## TSCUFB
+
+`$ENTRY TSCUFB, 8`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `XMD` | BASE ADDR (MD) OF COMPLEX WORK VECTOR |
+| 2 | `X` | BASE ADDR (TM) OF COMPLEX WORK VECTOR |
+| 3 | `ICP` | BASE ADDR (MD) OF POINTERS TO L |
+| 4 | `L` | BASE ADDR (MD) OF INFO ON COMPLEX OFF-DIAGONAL |
+| 5 | `IRP` | BASE ADDR (MD) OF POINTERS TO U |
+| 6 | `U` | BASE ADDR (MD) OF INFO ON COMPLEX OFF-DIAGONAL |
+| 7 | `D` | BASE ADDR (MD) OF COMPLEX DIAGONAL ELEMENTS |
+
+
+    ---ABSTRACT---
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY AND TMRAM
+    SIZE:      29 + TSCFWD (44) + TCVMUL (17) + TSCBAK (44)
+    FORTRAN CALL:  CALL TSCUFB(N,XMD,X,ICP,L,IRP,U,D)
+    SCRATCH:       SP(0-15),DA,DPX(-4 TO 3),DPY(-1 TO 3),FA,FM,MD,TM
+    CALL MTMOV(XMD,X,N+N)
+    CALL TSCFWD(N,X,ICP,L,0)
+    CALL TCVMUL(X,D,N)
+    CALL TSCBAK(N,X,IRP,U,0)
+    CALL TMMOV(X,XMD,N+N)
+
+
+## TSCFWD
+
+`$ENTRY TSCFWD, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `X` | BASE ADDR IN TMRAM OF COMPLEX WORK VECTOR |
+| 2 | `ICP` | BASE ADDR (MD) OF ILOCF (POINTER TO INDEX LIST) |
+| 3 | `L` | BASE ADDR (MD) OF INFO ON COMPLEX NONZERO |
+| 4 | `SKEW` | INDEX NUMBER (<=0 OR >N) WHICH FLAGS |
+| 7 | `ROWW` | 2 * ROW INDEX |
+| 8 | `LO` | BASE ADDRESS - 6 FOR L |
+| 9 | `LOFF` | TEMPORARY FOR L OFFSET |
+| 10 | `TWO` | 2 |
+| 11 | `THREE` | 3 |
+| 12 | `XCUR` | POINTER TO CURRENT XR FOR COLUMN |
+| 13 | `NZ` | COUNTER FOR NONZEROS IN COLUMN |
+| 14 | `ROW` | ROW INDEX OF CURRENT NONZERO IN COLUMN |
+| 15 | `FIRST` | TEMPORARY |
+
+
+    ---ABSTRACT---
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY AND TMRAM
+    SIZE:      44 LOCATIONS
+    FORTRAN CALL:  CALL TSCFWD(N,X,ICP,L,SKEW)
+    SCRATCH:       SP(0-3,7-15),DPX(0-3),DPY(0-3),FA,FM,MD,TM
+
+
+## TSCBAK
+
+`$ENTRY TSCBAK, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `X` | BASE ADDR IN TMRAM OF COMPLEX WORK VECTOR |
+| 2 | `IRP` | BASE ADDR (MD) OF ILOCF (POINTER TO INDEX LIST) |
+| 3 | `U` | BASE ADDR (MD) OF INFO ON COMPLEX NONZERO |
+| 4 | `SKEW` | INDEX NUMBER (<=0 OR >N) WHICH FLAGS |
+| 9 | `TWO` | 2 |
+| 10 | `THREE` | 3 |
+| 11 | `XX` | POINTER TO CURRENT XI FOR ROW |
+| 12 | `LAST` | CURRENT (LAST) VALUE IN IRP |
+| 13 | `NZ` | COUNTER FOR NONZEROS IN ROW |
+| 14 | `COL` | COLUMN INDEX OF CURRENT NONZERO IN ROW |
+| 15 | `COLL` | 2 * COLUMN INDEX |
+| 15 | `TP` | TEMPORARY |
+
+
+    ---ABSTRACT---
+    PERFORMS THE BACK SUBSTITUTION ON COMPLEX SIMUTANEOUS EQUATIONS UX=B, WHERE
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY AND TMRAM
+    SIZE:      44 LOCATIONS
+    FORTRAN CALL:  CALL TSCBAK(N,X,IRP,U,SKEW)
+    SCRATCH:       SP(0-3,9-15),DA,DPX(0-2),DPY(0-3),FA,FM,MD,TM
+
+
+## TSRSFB
+
+`$ENTRY TSRSFB, 7`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `XMD` | BASE ADDR (MD) FOR RHS AND RESULT |
+| 2 | `X` | BASE ADDR (TM) OF REAL WORK VECTOR |
+| 3 | `IRP` | BASE ADDR (MD) OF POINTERS TO UL |
+| 4 | `UL` | BASE ADDR (MD) OF INFO ON REAL NONZERO |
+| 5 | `SKEW` | INDEX NUMBER (<=0 OR >N) WHICH FLAGS |
+| 6 | `D` | BASE ADDR (MD) OF REAL DIAGONAL ELEMENTS |
+
+
+    ---ABSTRACT---
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY AND TMRAM
+    SIZE:      34 + TSRFWD (35) + MTTMUL (20) + TSRBAK (33)
+    FORTRAN CALL:  CALL TSRSFB(N,XMD,X,IRP,UL,SKEW,D)
+    SCRATCH:       SP(0-6,10-15),DPX(-4 TO 3),DPY(-2 TO 2),FA,FM,MD,TM,DA
+    CALL MTMOV(XMD,X,N)
+    CALL TSRFWD(N,X,IRP,UL,SKEW)
+    CALL MTTMUL(D,1,X,1,X,1,N)
+    CALL TSRBAK(N,X,IRP,UL,SKEW)
+    CALL TMMOV(X,XMD,N)
+
+
+## TSRUFB
+
+`$ENTRY TSRUFB, 8`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `XMD` | BASE ADDR (MD) FOR RHS AND RESULT |
+| 2 | `X` | BASE ADDR (TM) OF REAL WORK VECTOR |
+| 3 | `ICP` | BASE ADDR (MD) OF POINTERS TO L |
+| 4 | `L` | BASE ADDR (MD) OF INFO ON REAL OFF-DIAGONAL |
+| 5 | `IRP` | BASE ADDR (MD) OF POINTERS TO U |
+| 6 | `U` | BASE ADDR (MD) OF INFO ON REAL OFF-DIAGONAL |
+| 7 | `D` | BASE ADDR (MD) OF REAL DIAGONAL ELEMENTS |
+
+
+    ---ABSTRACT---
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY AND TMRAM
+    SIZE:      33 + TSRFWD (35) + MTTMUL (20) + TSRBAK (33)
+    FORTRAN CALL:  CALL TSRUFB(N,XMD,X,ICP,L,IRP,U,D)
+    SCRATCH:       SP(0-6,10-15),DPX(-4 TO 3),DPY(-1 TO 2),FA,FM,MD,TM,DA
+    CALL MTMOV(XMD,X,N)
+    CALL TSRFWD(N,X,ICP,L,0)
+    CALL MTTMUL(D,1,X,1,X,1,N)
+    CALL TSRBAK(N,X,IRP,U,0)
+    CALL TMMOV(X,XMD,N)
+
+
+## TSRFWD
+
+`$ENTRY TSRFWD, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `X` | BASE ADDR IN TMRAM OF REAL WORK VECTOR |
+| 2 | `ICP` | BASE ADDR (MD) OF POINTER TO L |
+| 3 | `L` | BASE ADDR (MD) OF INFO ON REAL NONZERO |
+| 4 | `SKEW` | INDEX NUMBER (<=0 OR >N) WHICH FLAGS |
+| 10 | `LO` | BASE ADDRESS - 3 FOR L |
+| 11 | `LOFF` | TEMPORARY FOR L OFFSET |
+| 12 | `C27` | 27.  NEEDED FOR FLOATING COUNT |
+| 13 | `XCUR` | POINTER TO CURRENT X FOR COLUMN |
+| 14 | `NZ` | COUNTER FOR NONZEROS IN COLUMN |
+| 14 | `ROWW` | TM OUTPUT POINTER |
+| 15 | `FIRST` | TEMPORARY |
+| 15 | `ROW` | ROW INDEX OF CURRENT NONZERO IN COLUMN |
+| 15 | `TWO` | 2 |
+
+
+    ---ABSTRACT---
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY AND TMRAM
+    SIZE:      35 LOCATIONS
+    FORTRAN CALL:  CALL TSRFWD(N,X,ICP,L,SKEW)
+    SCRATCH:       SP(0-3,10-15),DPX(0-3),DPY(0-2),FA,FM,MD,TM,DA
+
+
+## TSRBAK
+
+`$ENTRY TSRBAK, 5`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `N` | NUMBER OF EQUATIONS |
+| 1 | `X` | BASE ADDR IN TMRAM OF REAL WORK VECTOR |
+| 2 | `IRP` | BASE ADDR (MD) OF POINTERS TO U |
+| 3 | `U` | BASE ADDR (MD) OF INFO ON REAL NONZERO |
+| 4 | `SKEW` | INDEX NUMBER (<=0 OR >N) WHICH FLAGS |
+| 11 | `XX` | POINTER TO CURENT XI FOR ROW |
+| 12 | `LAST` | CURENT (LAST) VALUE IN IRP |
+| 13 | `NZ` | COUNTER FOR NONZEROS IN ROW |
+| 14 | `COL` | COLUMN INDEX OF CURENT NONZERO IN ROW |
+| 15 | `UOFF` | INCREMENT FOR POINTER TO U |
+
+
+    ---ABSTRACT---
+    PERFORMS THE BACK SUBSTITUTION ON REAL SIMUTANEOUS EQUATIONS UX=B, WHERE
+    EQUIPMENT: AP120B/190L WITH EITHER SPEED MAIN DATA MEMORY AND TMRAM
+    SIZE:      33 LOCATIONS
+    FORTRAN CALL:  CALL TSRBAK(N,X,IRP,U,SKEW)
+    SCRATCH:       SP(0-3,11-15),DA,DPX(0-1),DPY(0),FA,FM,MD,TM
+
+
+## TCVMUL
+
+`$ENTRY TCVMUL, 3`
+
+
+| s-pad | name | meaning |
+|---|---|---|
+| 0 | `X` | BASE ADDR (TM) OF SOURCE AND DESTINATION |
+| 1 | `D` | BASE ADDR (MD) OF 2ND SOURCE COMPLEX VECTOR |
+| 2 | `N` | COMPLEX ELEMENT COUNT |
+| 14 | `XO` | POINTER TO OUTPUT VECTOR |
+| 15 | `TWO` | 2 |
+
+
+    ---ABSTRACT---
+    FORMULA:   X(2M)=X(2M)*D(2M)-X(2M+1)*D(2M+1)
+    EQUIPMENT:  AP WITH TMRAM AND EITHER SPEED MD MEMORY
+    SIZE:    17 LOCATIONS
+    FORTRAN CALL:  CALL TCVMUL(X,D,N)
+    SCRATCH:       SP(0,2,14,15),DA,DPX(0),DPY(0),FA,FM,MD,TM
+

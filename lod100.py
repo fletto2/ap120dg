@@ -131,6 +131,25 @@ class LoadModule:
         self._header(0, len(data), addr, 0, DEST_PS)
         self.words.extend(data)
 
+    def add_code_instrs_md(self, instrs, addr=0):
+        """Instructions destined for MAIN DATA -- the pre-ISR flat load.
+
+        Same 4-host-words-per-instruction payload as add_code_ps, but the
+        header's destination word is DEST_MD and the caller passes a doubled
+        address.  Measured on the 11/44: refs/ISRCODE.LM's two APFET blocks
+        carry destination 1 where a PS-destined block carries 0.
+        """
+        if not instrs:
+            return
+        data = []
+        for ins in instrs:
+            data.append((ins >> 48) & 0xFFFF)
+            data.append((ins >> 32) & 0xFFFF)
+            data.append((ins >> 16) & 0xFFFF)
+            data.append(ins & 0xFFFF)
+        self._header(0, len(data), addr, 0, DEST_MD)
+        self.words.extend(data)
+
     def add_code_md(self, values, addr=0, page=0):
         """32-bit values into main data memory (overlay maps, packed tables)."""
         if not values:
@@ -463,7 +482,37 @@ def emit_dbib(lm, modules, block_addr):
                     dt -= 16
                 rpt = parse_octal(tok[3])
                 nval = 3 if dt == 4 else 1
-                vals = [int(x) for x in tok[4:4 + nval]]
+                try:
+                    vals = [int(x) for x in tok[4:4 + nval]]
+                except ValueError:
+                    # FLOATING $DATA (DT 2).  ASM100 writes the value as
+                    # "+100000000E-8"; the load module carries THREE words
+                    #     (IEEE_hi + 0x100, IEEE_lo, 0)
+                    # -- the IEEE-754 single high half with the exponent
+                    # biased two higher, then the low half verbatim.
+                    # MEASURED on six values against the hardware:
+                    #   1.0  0x4080/0      1.5  0x40C0/0     1.1 0x408C/0xCCCD
+                    #   2.0  0x4100/0      3.25 0x4150/0     0.3 0x3F99/0x999A
+                    # see refs/hasi5..7 and CLAUDE.md.
+                    try:
+                        fv = float(tok[4])
+                        bits = struct.unpack('>I', struct.pack('>f', fv))[0]
+                        hi = ((bits >> 16) + 0x100) & 0xFFFF
+                        lo = bits & 0xFFFF
+                        vals = [hi - 0x10000 if hi > 0x7FFF else hi,
+                                lo - 0x10000 if lo > 0x7FFF else lo, 0]
+                        nval = 3
+                    except (ValueError, struct.error):
+                    # DT 2 is FLOATING and ASM100 writes it as
+                    # "+100000000E-8".  Encoding that into the load
+                    # module's value words is NOT implemented -- it needs
+                    # the AP 38-bit form and a hardware reference to check
+                    # against.  Skip the record rather than crash or guess,
+                    # and say so.  See CLAUDE.md.
+                        sys.stderr.write(
+                            "lod100: WARNING: value not encoded: %s\n"
+                            % " ".join(tok[4:4 + nval]))
+                        continue
                 rest = tok[4 + nval:]
                 if reloc and len(rest) >= 3:
                     rtype, rarg = parse_octal(rest[1]), parse_octal(rest[2])
@@ -556,6 +605,210 @@ def build_overlay_table(segments, partition_table_addr, task_mode=False,
 # are the one part of a TCB that must be correct before the supervisor runs.
 
 
+
+DB_BY_MOD = {}    # module title -> {module-relative dbid: MD address}
+
+
+def parse_fpb(pb_data, nparams=None):
+    """Decode a ***FPB / ***PB block's raw token list into parameter records.
+
+    [M 3.11] and LOAD1 label 8000 agree on the structure: the block header's
+    count is the number of PARAMETER records, each "type dest ndim", and each
+    is followed by `ndim` DIMENSION records of two tokens.  BAALIB's CVADD is
+    the worked example -- header 7, six dimension records, 13 records total.
+
+    `lnk100.py` stores the block as a flat list of integers in `pb_data`, so
+    the walk has to re-impose that structure.  Returns a list of
+    (type, dest, ndim) triples; the dimension values are skipped because
+    SRCN dimensions every array as "(1)" (a dimension record may be DYNAMIC,
+    an argument pointer rather than a size, and nothing available here
+    distinguishes the static case -- see CLAUDE.md).
+    """
+    out, i = [], 0
+    while i + 2 < len(pb_data) + 1 and (nparams is None or len(out) < nparams):
+        if i + 2 >= len(pb_data) + 1 and i + 3 > len(pb_data):
+            break
+        if i + 3 > len(pb_data):
+            break
+        ptype, dest, ndim = pb_data[i], pb_data[i + 1], pb_data[i + 2]
+        out.append((ptype, dest, ndim))
+        i += 3 + 2 * ndim
+    return out
+
+def check_modules_ended(linker):
+    """ERROR 14, MISSING END -- raised BEFORE any output.
+
+    Loader error table: `14 F MISSING END -- A bad object module was
+    encountered.`  FATAL.
+
+    CONFIRMED ON THE 11/44: an object truncated before its `***END` makes
+    the recovered LOD100 stop with ERROR 14, while `lod100.py` loaded it
+    and wrote a module.  `lnk100.py` now sets `saw_end` on each module as
+    it reads the marker.
+    """
+    for mod in getattr(linker, 'modules', []):
+        # ERROR 13 is checked FIRST because a doubled title also leaves the
+        # first module unterminated -- the parser starts a new one on the
+        # second ***TITLE -- so a missing-END test alone reports 14 where
+        # the machine reports 13.  Measured on the 11/44: the doubled-title
+        # object gives ERROR 13, the truncated one ERROR 14.
+        if getattr(mod, 'double_title', False):
+            raise SystemExit(
+                "lod100: ERROR 13, DOUBLE TITLE BLOCK -- a subroutine's "
+                "title was encountered twice (%s)"
+                % (getattr(mod, 'name', '?') or '?'))
+        if not getattr(mod, 'saw_end', False):
+            raise SystemExit(
+                "lod100: ERROR 14, MISSING END -- a bad object module was "
+                "encountered (%s has no ***END)"
+                % (getattr(mod, 'name', '?') or '?'))
+
+
+def check_readyq(sess):
+    """ERROR 35, RDYQUE NOT DEFINED -- raised BEFORE any output.
+
+    FINISH looks the ready-queue block up and treats its absence as
+    `GO TO 90010`, which stops the load: a missing ready queue is an error,
+    not a condition to handle.
+
+    CONFIRMED ON THE 11/44, and FINISH is a RECOVERED module so this is
+    genuine ground truth -- unlike error 38, whose site TASKY is a
+    reconstruction and which the hybrid therefore cannot arbitrate.  The
+    single-LINK task job with `LOAD TABLES.APO` removed (TABLES is what
+    declares READYQ) stops with ERROR 35 while lod100.py wrote a module.
+
+    Checked against `Linker.ALL_MODULES`, the whole-job view: a check over
+    `_groups` alone false-fires on all three task references, whose blocks
+    are not all reachable from there.
+    """
+    if not getattr(sess, 'tasks', None):
+        return
+    for mod in Linker.ALL_MODULES:
+        for blk in getattr(mod, 'dbdb', []):
+            if blk[0].strip().upper() in ('READYQ', 'RDYQUE'):
+                return
+    raise SystemExit(
+        "lod100: ERROR 35, RDYQUE NOT DEFINED -- the user must define a "
+        "common block called RDYQUE")
+
+
+def check_isrmap(linkers):
+    """ERROR 36 / 37 -- an ISR module needs an ISRMAP block of ISRLEN words.
+
+    LOAD1's ISR handler, on reading object block 16:
+
+        ID=SRCST(DBDTA1,-1,-1,ISRMAP,-1)    "LOOK FOR ISRMAP
+        IF (ID.EQ.0) GO TO 90280            -> ERRMES(36)
+        ID=EXTVT(DBDTA1,ID,3,ID,1)
+        IF (ID.NE.ISRLEN) GO TO 90300       -> ERRMES(37)
+
+    ERROR 36 IS HARDWARE-CONFIRMED: loading an ISR object WITHOUT
+    TABLES.APO (which is what declares ISRMAP) stops the recovered loader
+    with error 36, while lod100.py wrote a module.  ISRLEN is 120, from the
+    manual's own error text and the supervisor's `$COMMON /ISRMAP/
+    DUMMY(120.)`.
+
+    refs/isr.cmd and the two code-before-ISR references all load TABLES.APO
+    and so declare a correct ISRMAP -- they are the evidence this does not
+    false-fire.
+    """
+    mods = []
+    for lk in linkers:
+        for m in getattr(lk, 'modules', []):
+            if m not in mods:
+                mods.append(m)
+    if not any(getattr(m, 'isr_index', None) is not None for m in mods):
+        return
+    for mod in mods:
+        for bname, _dbmod, blen, _blocal, _bitems in getattr(mod, 'dbdb', []):
+            if bname.strip().upper() == 'ISRMAP':
+                if blen != 120:
+                    raise SystemExit(
+                        "lod100: ERROR 37, ISRMAP IS THE WRONG SIZE -- the "
+                        "ISRMAP common block must be 120 words long, not %d"
+                        % blen)
+                return
+    raise SystemExit(
+        "lod100: ERROR 36, ISRMAP MISSING -- the user must define a common "
+        "block called ISRMAP")
+
+
+def check_common_blocks_match(linker):
+    """ERROR 15, UNMATCHED COMMON BLOCK -- raised BEFORE any output.
+
+    Loader error table: `15 F UNMATCHED COMMON BLOCK -- Common blocks of
+    the same name must correspond to each other with respect to size and
+    item types.`  FATAL.
+
+    CONFIRMED ON THE 11/44.  Two modules with DIFFERENT titles both
+    declaring `/COMM/` -- one 34 words (2/2, 1/40), the other 18 (2/2,
+    1/20) -- make the recovered LOD100 stop with ERROR 15, while
+    `lod100.py` wrote a module.
+
+    Sharing a common between modules is the NORMAL case (the supervisor's
+    TABLES.APO has several modules sharing SYSCOM), so the test is on the
+    ITEM LIST, not on the name recurring.
+    """
+    seen = {}
+    for mod in getattr(linker, 'modules', []):
+        for bname, _dbmod, _blen, _blocal, bitems in getattr(mod, 'dbdb', []):
+            key = bname.strip()
+            shape = [tuple(it) if isinstance(it, (list, tuple)) else (1, it)
+                     for it in bitems]
+            if key in seen and seen[key][1] != shape:
+                raise SystemExit(
+                    "lod100: ERROR 15, UNMATCHED COMMON BLOCK -- /%s/ is "
+                    "declared differently by %s and %s (size and item types "
+                    "must correspond)" % (key, seen[key][0],
+                                          getattr(mod, 'name', '?')))
+            seen.setdefault(key, (getattr(mod, 'name', '?'), shape))
+
+
+def check_no_triple_in_called_blocks(linker, sess):
+    """ERROR 31, IMPROPER USE OF TRIPLE -- raised BEFORE any output.
+
+    Loader error table: `31 F IMPROPER USE OF TRIPLE -- A double precision
+    integer cannot be used at this point.`  F is FATAL, and the recovered
+    LOD100 writes no load module at all.
+
+    ISOLATED ON THE 11/44.  FPS's own SEQV1 declares $REAL, $TRIPLE and
+    $INTEGER items in one $COMMON and is refused with error 31; a variant
+    keeping `$TRIPLE TRIP` but with `$DATA TRIP 1,1,1` removed assembles
+    0 ERROR(S) and is STILL refused.  So the trigger is the kind-4 ITEM
+    DECLARATION in a CALLed routine's data block, not its initialiser --
+    which is precisely the HASI's COMMON declaration, where FORTRAN has no
+    double-precision-integer type to write.
+
+    Kind 4 is legitimate elsewhere (FINISH emits the PS partition table as
+    a valtyp-4 record), so this is refused HERE and nowhere else.
+    """
+    for name in sorted(getattr(sess, 'callable', []) or []):
+        mod = linker_module_for(linker, name)
+        # ERROR 18, ENTRY POINT DECLARED CALLABLE IS NOT RELOCATABLE --
+        # "An entry point declared callable with the CALL command is not
+        # relocatable, as required (it is an absolute symbol)."  Also FATAL.
+        # A plain ***ENTRY carries its type in column 3 and SYMLIB's $EQU
+        # absolutes are the type-0 records (surveyed here: 66 of them, and
+        # only those); ***AENTRY records are all type 2, relocatable.  So a
+        # CALL naming an absolute must be refused -- `CALL !ONE` currently
+        # produced `SUBROUTINE !ONE`, which is not a FORTRAN name and could
+        # never compile.
+        if mod is not None and getattr(mod, 'entry_types', {}).get(name) == 0:
+            raise SystemExit(
+                "lod100: ERROR 18, ENTRY POINT DECLARED CALLABLE IS NOT "
+                "RELOCATABLE -- %s is an absolute symbol" % name)
+        for bname, _dbmod, _blen, _blocal, bitems in (
+                getattr(mod, 'dbdb', []) if mod else []):
+            for gi, it in enumerate(bitems, 1):
+                kind = it[0] if isinstance(it, (list, tuple)) else 1
+                if kind == 4:
+                    raise SystemExit(
+                        "lod100: ERROR 31, IMPROPER USE OF TRIPLE -- a double "
+                        "precision integer cannot be used at this point "
+                        "(common block %s, group %d, in CALLed routine %s)"
+                        % (bname.strip(), gi, name))
+
+
 def write_hasi(linker, filename, lmid=1, mode='ADC', entries=None):
     """Host FORTRAN interface routines for host-callable FPS-100 entries.
 
@@ -571,7 +824,24 @@ def write_hasi(linker, filename, lmid=1, mode='ADC', entries=None):
     lines = []
     for name, addr in sorted(wanted.items()):
         mod = linker_module_for(linker, name)
-        params = parse_fpb(mod.pb_data) if mod else []
+        params = parse_fpb(mod.pb_data, getattr(mod, 'pb_nspads', None)) if mod else []
+        from_fpb = bool(params)
+        if not params and mod:
+            # NO ***FPB: the parameter count comes from the ***AENTRY
+            # record's S-PAD field, and every parameter defaults to
+            # INTEGER.  VERIFIED AGAINST HARDWARE: FPS's own SUB1.S has
+            # "$ENTRY SUBR1,13." and no $PARAM, its AENTRY record reads
+            # "SUBR1 0 2 15" (15 octal = 13), and the recovered LOD100
+            # declares thirteen INTEGER parameters for it.  Looking only
+            # for an FPB produced ZERO, which is what this replaces.
+            # aentries is a dict: name -> (offset, TYPE, spad).  The third
+            # field is the s-pad parameter count ([M] Loader 3.12).
+            for ent_name, tup in getattr(mod, 'aentries', {}).items():
+                if ent_name.strip().upper() == name.strip().upper():
+                    nsp = tup[2] if len(tup) > 2 and isinstance(tup[2], int) else 0
+                    params = [(1, 0, 0)] * nsp
+                    from_fpb = False
+                    break
         n = len(params)
 
         # The SUBROUTINE statement and its continuation, exactly as
@@ -593,10 +863,88 @@ def write_hasi(linker, filename, lmid=1, mode='ADC', entries=None):
         lines.append("      COMMON /APLDCM/ IPAV( 33),NU2,IDLM,NU1,IPPAAD,"
                      "IPPAND,IOVS(33),")
         lines.append("     * LMT(10,3),LMTE")
+        # COMMON BLOCKS.  SRC1 declares one FORTRAN common per data block
+        # the routine's module carries, names its array "C nnnn" with
+        # nnnn = blockid*1000 + group (SRC2's COMPOS numbering), types it,
+        # and emits the $DATA initialisers.  VERIFIED AGAINST HARDWARE:
+        # for FPS's own SUB1.S ($COMIO PASS 1 / $COMMON /PASS/ IT(17.) /I
+        # / $DATA IT(1) 0) the recovered LOD100 writes
+        #     COMMON /PASS  / C 1001(17    )
+        #     INTEGER C 1001
+        #     DATA C 1001(    1)/        0/
+        # This emitted NOTHING before, on any job -- see CLAUDE.md.
+        for bn, (bname, dbmod, blen, blocal, bitems) in enumerate(
+                getattr(mod, 'dbdb', []) if mod else [], 1):
+            # ONE FORTRAN COMMON PER ITEM GROUP, not per block.  VERIFIED
+            # AGAINST HARDWARE (refs/HASI5CALL.HSR): FPS's COMM block has
+            # two item records and the recovered LOD100 emits TWO commons,
+            # "C 1001(2)" and "C 1002(32)" -- blockid*1000 + GROUP, the
+            # COMPOS numbering, GROUP being the item's index in the block.
+            # Only the INTEGER group is declared; a REAL group is left to
+            # FORTRAN's implicit typing, exactly as the hardware does.
+            starts = []
+            off = 0
+            for gi, it in enumerate(bitems, 1):
+                kind = it[0] if isinstance(it, (list, tuple)) else 1
+                glen = it[1] if isinstance(it, (list, tuple)) and len(it) > 1 else 0
+                cnum = bn * 1000 + gi
+                # ERROR 31, IMPROPER USE OF TRIPLE -- "A double precision
+                # integer cannot be used at this point", and the manual marks
+                # it FATAL.  Isolated on the 11/44: FPS's own SEQV1, whose
+                # $COMMON holds $REAL, $TRIPLE and $INTEGER items, is refused
+                # by the recovered LOD100 with error 31, and it is STILL
+                # refused with the triple's $DATA removed -- so the trigger is
+                # the kind-4 ITEM DECLARATION in a CALLed routine's block, not
+                # its initialiser.  That is exactly this line's problem:
+                # FORTRAN has no double-precision-integer type to declare the
+                # group with.  (Kind 4 is legitimate elsewhere -- FINISH writes
+                # the PS partition table as a valtyp-4 record -- so this must
+                # be refused HERE and nowhere else.)
+                if kind == 4:
+                    raise SystemExit(
+                        "lod100: ERROR 31, IMPROPER USE OF TRIPLE -- a double "
+                        "precision integer cannot be used at this point "
+                        "(common block %s, group %d, in a CALLed routine)"
+                        % (bname.strip(), gi))
+                lines.append("      COMMON /%-6s/ C%5d(%-6d)"
+                             % (bname[:6], cnum, glen))
+                if kind == 1:
+                    lines.append("      INTEGER C%5d" % cnum)
+                starts.append((off, glen, cnum))
+                off += glen
+            recs = []
+            for blk in (getattr(mod, 'dbib', []) or []):
+                recs.extend(blk if isinstance(blk, list) and blk
+                            and isinstance(blk[0], (list, tuple)) else [blk])
+            for rec in recs:
+                try:
+                    if int(str(rec[0]), 8) != bn:
+                        continue
+                    rel = int(str(rec[1]), 8)
+                    raw = str(rec[4])
+                except (ValueError, IndexError):
+                    continue
+                for gstart, glen, cnum in starts:
+                    if gstart <= rel < gstart + glen:
+                        # VERBATIM -- the hardware writes "+100000000E-8",
+                        # ASM100's own notation, not a reformatted float.
+                        lines.append("      DATA C%5d(%5d)/%13s/"
+                                     % (cnum, rel - gstart + 1, raw))
+                        break
         # The load module is fetched once, by the host-resident subroutine
         # L<lmid*100+1> that write_host_resident emits.
         lines.append("      IF (IDLM.NE.%3d) CALL L%3d" % (lmid, lmid * 100 + 1))
-        if mode == 'ADC':
+        # NO APPUT WHEN THERE IS NO ***FPB.  VERIFIED AGAINST HARDWARE:
+        # for SUBR1 the recovered LOD100 DECLARES thirteen parameters and
+        # then goes straight to APRUN -- no IPAV staging, no APPUT calls.
+        # SRC1 writes the declarations from the AENTRY count; SRCN writes
+        # the body from PARDTA, which is EMPTY without an FPB, so there is
+        # nothing to transfer and no types or directions to transfer it by.
+        if not from_fpb:
+            mode_params = False
+        else:
+            mode_params = True
+        if mode == 'ADC' and mode_params:
             # Parameter passing: stage each argument's main-data address in
             # IPAV and move it down.  The IPAV element a call reads must be
             # set BEFORE the call -- its length argument is
@@ -724,6 +1072,7 @@ class Session:
 
     def __init__(self):
         self.inputs = []
+        self.order = []          # (cmd, path) in COMMAND order, for the ISR split
         self.output = None
         self.host_output = None
         self.hasi_output = None
@@ -784,7 +1133,7 @@ class Session:
     def number(self, tok):
         return int(tok, self.radix) if self.radix != 10 else int(tok, 10)
 
-    PHASE_FIELDS = ('inputs', 'libs', 'force_at', 'noload_at',
+    PHASE_FIELDS = ('inputs', 'libs', 'order', 'force_at', 'noload_at',
                     'roots', 'segments', 'current', 'tasks', 'pending_task')
 
     def close_phase(self):
@@ -800,6 +1149,7 @@ class Session:
         ph = _Phase(self)
         self.phases.append(ph)
         self.inputs, self.libs = [], []
+        self.order = []
         self.force_at, self.noload_at = [], []
         self.roots, self.segments, self.current = [], {}, None
         self.tasks, self.pending_task = [], None
@@ -934,6 +1284,20 @@ class Session:
             elif cmd == 'MODE':
                 self.mode = args[0].upper()
             elif cmd == 'RADIX':
+                # ASSUMPTION, stated because the manual does not settle it.
+                # [M 2.3.3] says RADIX "sets the radix for FUTURE user
+                # input", so the command's OWN argument is parsed before
+                # the change takes effect -- but it does not say in WHICH
+                # radix, and the two readings differ: under the default
+                # octal, "RADIX 10" read in the current radix is 8 (no
+                # change at all), while read as decimal it selects
+                # decimal.  The manual lists the acceptable values as
+                # "8 / 10 / 16", which only makes sense written decimal,
+                # so int() is used here -- deliberately NOT self.number().
+                # No shipped command file or INSTAL.TXT job uses RADIX, so
+                # there is no ground truth; the recovered LOD100's own
+                # handler is a no-op (slot 1024), so hardware cannot
+                # arbitrate either.  See CLAUDE.md.
                 self.radix = int(args[0])
             elif cmd == 'PSOFF':
                 self.psoff = self.number(args[0])
@@ -947,6 +1311,8 @@ class Session:
                 target = self.current.inputs if self.current is not None \
                     else (self.libs if cmd == 'LIB' else self.inputs)
                 target.extend(args)
+                if self.current is None:
+                    self.order.extend((cmd, a) for a in args)
                 snapf, snapn = frozenset(self.force), frozenset(self.noload)
                 owner = self.current if self.current is not None else self
                 for _ in args:
@@ -1226,6 +1592,24 @@ def _find_isr(inputs):
     return None
 
 
+def _split_isr(inputs):
+    """(isr_index, inputs before the ISR object, the ISR object and after).
+
+    LOAD1 builds the ISR's tree when it READS block 16, so the split is at
+    the object that carries it: everything earlier was already loaded flat.
+    """
+    inputs = list(inputs or ())
+    for i, path in enumerate(inputs):
+        try:
+            mods = parse_apo(path, stop_at_leb=False)
+        except (IOError, OSError):
+            continue
+        for m in mods:
+            if getattr(m, 'isr_index', None) is not None:
+                return m.isr_index, inputs[:i], inputs[i:]
+    return None, inputs, []
+
+
 def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
                  noload=(), sess=None, lm=None, _unused=None):
     """Produce (linker, load_module, segments).
@@ -1257,17 +1641,57 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
     # store flat and only what follows lands in the segment.  This scans the
     # phase's inputs up front, so everything in the phase lands in the
     # segment.  The two agree whenever the ISR is the first code-bearing
-    # input, which is what the tape's own arrangement gives -- the reference
-    # job loads TABLES.APO first and that is data blocks only, no code.  A
-    # job with a code module ahead of the ISR would differ, and there is no
-    # hardware reference for one.  Fixing it properly means deciding the
-    # segment structure DURING the load rather than before it.
-    isr_index = _find_isr(inputs)
+    # input, which is what the tape's own arrangement gives -- refs/isr.cmd
+    # loads TABLES.APO first and that is data blocks only, no code.
+    #
+    # THERE ARE NOW TWO HARDWARE REFERENCES FOR THE CASE THAT DIFFERS, and
+    # they settle the layout completely.  refs/ix.cmd and refs/iy.cmd put a
+    # code module ahead of the ISR (FORCE APFET and FORCE RGEN respectively);
+    # both run clean on the 11/44 and give
+    #
+    #   plain ISR   2032                           code(128,698) code(64,762)
+    #   RGEN        2080   code( 40,32)            code(128,698) code(64,762)
+    #   APFET       2304   code(128,32) code(128,96) code(128,698) code(64,762)
+    #
+    # so the segment images are BYTE-IDENTICAL in all three and the module's
+    # own blocks are PREPENDED.  This code emits none of them: it produces
+    # 2032 for all three, silently, with no warning.
+    #
+    # The rule to implement: split `inputs` at the first object carrying
+    # block 16; link everything before it FLAT from PSLOW exactly as the
+    # no-roots path does; emit its data blocks as now, then its code blocks
+    # with DOUBLED addresses, ahead of the segment images.  The doubling is
+    # because these blocks are MD-destined and a PS instruction is two main
+    # data words -- PS 16 -> 32, and APFET's second block at PS 48 -> 96,
+    # which is the same (CNT*PAKFAC)/2 relation FSLMLD uses.  Note this is
+    # NOT the convention of the PS-destined flat references, whose addresses
+    # advance in instructions (VADD: (56,16) (32,30) (108,38)); read a
+    # block's address in the units of its destination.
+    #
+    # NOT DONE HERE.  The split has to keep TABLES.APO's data blocks
+    # allocated exactly as they are today or refs/ISR.LM regresses, and that
+    # is worth doing as its own pass with all three references as the check
+    # rather than half-done.
+    # SPLIT IN COMMAND ORDER, not in the order the phase's LOAD and LIB
+    # lists happen to concatenate: `inputs` is every LOAD followed by every
+    # LIB, so a LIB named before the ISR would land after it and its modules
+    # would wrongly reach the segment.  sess.order preserves the real order.
+    _ordered = [p for _c, p in getattr(sess, 'order', ())] or list(inputs or ())
+    isr_index, isr_pre, isr_rest = _split_isr(_ordered)
+    if isr_index is not None:
+        # Keep only files this phase actually holds, in the split's sense.
+        _have = set(inputs or ())
+        isr_pre = [p for p in isr_pre if p in _have]
+        isr_rest = [p for p in inputs or () if p not in set(isr_pre)]
+    isr_pre_inputs = []
     if isr_index is not None and not sess.roots:
         sess.roots = parse_tree("((%d))" % isr_index)
         sess.segments = {sg.num: sg for sg in walk_segments(sess.roots)}
         sess.current = sess.segments[isr_index]
         sess.isr = True
+        # Only the ISR object and what follows it reach the segment.
+        isr_pre_inputs = isr_pre
+        inputs = isr_rest
 
     md_used = 0
     flat_blocks = []
@@ -1298,6 +1722,13 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
         dbib_mods = []
         for mod in linker.modules:
             addrs = {}
+            # Shared, keyed by module TITLE.  There are TWO allocation
+            # sites -- the flat path and the segment path -- and ONE patch
+            # site, so the patch used to read whichever dict was in scope.
+            # id() cannot be the key either: an overlay segment's linker
+            # holds its OWN module objects, which is why identity keying
+            # broke exactly the three ISR references.
+            DB_BY_MOD[getattr(mod, 'title', None) or id(mod)] = addrs
             for n, (name, dbmod, length, local, items) in enumerate(mod.dbdb, 1):
                 if length > 0:
                     flat_blocks.append((name, db_md, length))
@@ -1305,6 +1736,22 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
                     db_md += length
             if addrs and mod.dbib:
                 dbib_mods.append((mod, addrs))
+        # TYPE-3 (data block) RELOCATIONS FOR THE FLAT PATH.  The segment
+        # path patches these inside its own loop, but that loop is driven
+        # by `_groups`, which is EMPTY for a job with no pre-ISR linker and
+        # no overlay segments -- so a flat LOAD left every data-block
+        # reference at 0.  MEASURED: a tag at the segment-path patch site
+        # printed nothing at all for refs/hasi3.cmd.
+        for _m, widx, rarg in getattr(linker, 'db_relocs', ()):
+            _a = DB_BY_MOD.get(getattr(_m, 'title', None) or id(_m))
+            if not _a or rarg not in _a:
+                continue
+            off = _m.base_addr - linker.origin + widx
+            if off < 0 or off >= len(linker.linked_code):
+                continue
+            w = linker.linked_code[off]
+            linker.linked_code[off] = ((w & ~0xFFFF)
+                                       | ((w + _a[rarg]) & 0xFFFF))
         md_used = db_md - mdoff
         emit_dbib(lm, dbib_mods, None)
         # CODE IS EMITTED AFTER THE DATA BLOCKS.  The recovered LOD100's
@@ -1407,6 +1854,17 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
     # below the data blocks.  The recovered LOD100 bears it out: allocating
     # it moved the whole module up by exactly 150 words, segment images from
     # MD 694 to 844, and put the task's queue links at MD 1.
+    # A module loaded BEFORE the ISR block goes into program store FLAT.
+    # Link it here so its data blocks are allocated ahead of the segment
+    # images, exactly as LOAD1 allocates them during the load.
+    pre_linker = None
+    if isr_pre_inputs:
+        pre_linker = _load(isr_pre_inputs, psoff, noload,
+                           force=getattr(sess, 'force', ()),
+                           libs=getattr(sess, 'libs', ()),
+                           force_at=getattr(sess, 'force_at', None),
+                           noload_at=getattr(sess, 'noload_at', None))
+
     md = mdoff
     tcb_addrs = {}
     for tid, opts in sess.tasks:
@@ -1415,9 +1873,26 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
     data_blocks = []                 # (name, addr, length)
     seen_db = {}
     dbib_mods = []
-    for seg in segments:
-        for mod in seg.linker.modules:
+    # The flat pre-ISR modules allocate first -- they were loaded first.
+    _groups = ([(pre_linker, pre_linker.modules)] if pre_linker else [])
+    _groups += [(seg.linker, seg.linker.modules) for seg in segments]
+    # ERROR 36/37 (ISRMAP MISSING / WRONG SIZE) is checked HERE, not in
+    # main(), because this is where the whole job's modules are visible: an
+    # ISR job splits them across the pre-ISR linker and the segment linkers,
+    # and main() has neither in scope.  Still before any output -- main()
+    # writes only after this returns.
+    check_isrmap([g[0] for g in _groups])
+    check_readyq(sess)
+    for seg_linker, _mods in _groups:
+        for mod in _mods:
             addrs = {}
+            # Shared, keyed by module TITLE.  There are TWO allocation
+            # sites -- the flat path and the segment path -- and ONE patch
+            # site, so the patch used to read whichever dict was in scope.
+            # id() cannot be the key either: an overlay segment's linker
+            # holds its OWN module objects, which is why identity keying
+            # broke exactly the three ISR references.
+            DB_BY_MOD[getattr(mod, 'title', None) or id(mod)] = addrs
             for n, (name, dbmod, length, local, items) in enumerate(mod.dbdb, 1):
                 key = "%s.%s" % (mod.name.strip(), name) if local else name
                 if length <= 0:
@@ -1436,19 +1911,36 @@ def _build_phase(inputs, lmid=1, psoff=0, mdoff=0, ppa=0, entry=None,
             # only known once the blocks are allocated.  LINKUP takes it from
             # DBDTA1 element 1 with RELTYP=0, so it is added into the low 16
             # bits like every other fixup and is never PC-relative.
-            for _m, widx, rarg in getattr(seg.linker, 'db_relocs', ()):
-                if _m is not mod or rarg not in addrs:
+            for _m, widx, rarg in getattr(seg_linker, 'db_relocs', ()):
+                _a = DB_BY_MOD.get(getattr(_m, 'title', None) or id(_m))
+                if not _a or rarg not in _a:
                     continue
                 # Patch the LAID-OUT array, not mod.code: link() has already
                 # copied the module into linker.linked_code and that is what
                 # mod_words emits.
-                off = mod.base_addr - seg.linker.origin + widx
-                if off < 0 or off >= len(seg.linker.linked_code):
+                off = _m.base_addr - seg_linker.origin + widx
+                if off < 0 or off >= len(seg_linker.linked_code):
                     continue
-                w = seg.linker.linked_code[off]
-                seg.linker.linked_code[off] = ((w & ~0xFFFF)
-                                               | ((w + addrs[rarg]) & 0xFFFF))
+                w = seg_linker.linked_code[off]
+                seg_linker.linked_code[off] = ((w & ~0xFFFF)
+                                               | ((w + _a[rarg]) & 0xFFFF))
     emit_dbib(lm, dbib_mods, None)
+    # THE PRE-ISR MODULES' CODE, AHEAD OF THE SEGMENT IMAGES AND WITH
+    # DOUBLED ADDRESSES.  These blocks are main-data destined, and a PS
+    # instruction is two MD words -- the same (CNT*PAKFAC)/2 relation
+    # FSLMLD uses -- so a block linked at PS 16 is emitted at 32.  Measured
+    # on the 11/44: FORCE RGEN gives code(40,32) and FORCE APFET, whose two
+    # ***CODE blocks sit at PS 16 and PS 48, gives code(128,32) code(128,96).
+    if pre_linker:
+        for mod in pre_linker.modules:
+            if not mod.code:
+                continue
+            base = mod.base_addr
+            for start, count, loc in mod.code_blocks:
+                if count <= 0:
+                    continue
+                lm.add_code_instrs_md(mod_words(pre_linker, base, start, count),
+                                      addr=(base + loc) * MD_WORDS_PER_INSTR)
     for seg in segments:
         seg.md_addr = md
         md += seg.length * MD_WORDS_PER_INSTR
@@ -1613,6 +2105,25 @@ def main():
     linker, lm, segments = build(inputs, lmid=lmid, psoff=psoff, mdoff=mdoff,
                                  ppa=ppa, entry=entry, noload=sess.noload,
                                  sess=sess)
+
+    # ERROR 31 IS FATAL AND MUST BE RAISED BEFORE ANY OUTPUT.  The recovered
+    # LOD100 refuses a job whose CALLed routine declares a $TRIPLE item in a
+    # data block and writes NO load module; raising it during HASI generation
+    # (which runs after write_binary below) left a partial .LM behind, which
+    # is exactly the state a fatal error must not produce.  Isolated on the
+    # 11/44: SEQV1 is refused with error 31 even with the triple's $DATA
+    # removed, so the kind-4 ITEM DECLARATION is the trigger.
+    check_modules_ended(linker)
+    # ERROR 36/37 (ISRMAP MISSING / WRONG SIZE) IS NOT WIRED IN.  The
+    # condition is unambiguous in LOAD1 and error 36 is hardware-confirmed,
+    # but the check needs the WHOLE job's modules and an ISR job splits them
+    # across the pre-ISR linker and the segment linkers, neither of which is
+    # in scope here.  check_isrmap() below is written and correct for a full
+    # module list; wiring it needs that list assembled where `_groups` is.
+    # See CLAUDE.md -- two attempts, both reverted, suite kept green.
+
+    check_common_blocks_match(linker)
+    check_no_triple_in_called_blocks(linker, sess)
 
     out_bin = args.output or sess.output
     out_host = args.host or sess.host_output
